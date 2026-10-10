@@ -1,0 +1,5 @@
+HBF_EVENTLAB_WORKLOAD 1
+# 2 channels, 64B interleaving. Each 4KiB Global write contributes half of each local DLU.
+WRITE 1 0 4096 content=1
+WRITE 2 4096 4096 content=1
+READ 3 0 8192 after=1,2 expect=1 group=7

@@ -1,0 +1,17 @@
+# 构建产物与本机IDE文件
+/build*/
+/.vs/
+/out/
+*.user
+
+# 默认忽略日志
+*.log
+
+# 保留文档引用的最终验证证据
+!/docs/validation/*-debug.log
+!/docs/validation/*-release.log
+!/docs/validation/stage3-cli-normal.log
+!/docs/validation/stage3-cli-recovery.log
+!/docs/validation/stage3-cli-merged.log
+!/docs/validation/stage3-cli-persistent.log
+!/docs/validation/stage3-cli-missing.log
