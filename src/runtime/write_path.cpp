@@ -9,7 +9,7 @@ WritePath::WritePath(const StaticDeviceDescription& d, const IAddressLayout& lay
     : description_(d), layout_(layout), capacity_(capacity), media_(media), events_(events),
       admission_(admission),
       storage_(checked_mul(d.geometry().host_channels, d.capabilities().max_pending_write_dlus)), assembly_(d, storage_) {
-    if (admission.channels() != d.geometry().host_channels || admission.limit() != d.configuration().outstanding_limit)
+    if (admission.channels() != d.geometry().host_channels || admission.limit() != d.configuration().mocs_selected)
         throw std::invalid_argument("shared command ledger must match the device profile");
     if (&admission.notifications().events()!=&events) throw std::invalid_argument("different runtime clocks");
     capacity_.attach_notifications(admission.notifications());

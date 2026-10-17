@@ -1,6 +1,6 @@
 # HBF EventLab 使用说明
 
-适用代码版本：0.5.0。以下命令均从仓库根目录执行。项目采用C++17与CMake，核心库无第三方运行依赖。已经验证的平台见[验证说明](verification.md#evidence)；参数用途见[设计决策](design_decisions.md#5-参数与模型假设)。
+适用代码版本：0.5.0。以下命令均从仓库根目录执行。项目采用C++17与CMake，核心库无第三方运行依赖。已经验证的平台见[验证说明](verification.md#evidence)；参数用途见[参数说明](parameters.md)。
 
 公开项目名为 **HBF EventLab**。C++ 命名空间为 `hbf_eventlab`，公共头文件位于 `include/hbf_eventlab/`，CMake 链接目标为 `HBFEventLab::core`，CLI 为 `hbf_eventlab_cli`。workload 必须使用 `HBF_EVENTLAB_WORKLOAD 1` 格式头；格式名和版本均严格校验。
 
@@ -63,7 +63,13 @@ Debug 使用独立的 `build-linux-debug` 目录和 `-DCMAKE_BUILD_TYPE=Debug`�
 
 | 参数 | 默认值与含义 |
 |---|---|
-| 第一个位置参数 | workload文件；必需。 |
+| 第一个位置参数 | workload文件；运行时必需；单独使用 `--help` 可查看用法。 |
+| `--config FILE` | 加载一个 INI 配置文件；未指定时使用功能默认配置。 |
+| `--set section.key=value` | 覆盖任意已注册参数；可重复使用。完整字段、单位和约束见[参数说明](parameters.md)。 |
+| `--dump-config FILE` | 导出包含所有默认值与显式覆盖的有效配置，可再次加载。 |
+| `--speed-grade N` | 默认1；选择1/2/3，派生带宽、最大模块数和最大堆叠层数。 |
+| `--mocs-supported N` | 默认256；声明设备支持的MOCS上限。 |
+| `--pending N` | 默认8；每channel的Pending写DLU上限，同时决定组装payload预算。 |
 | `--channels N` | 默认2个UCIe channel；静态几何仍校验合法范围。 |
 | `--interleave bytes` | 默认64B，Global交织粒度。 |
 | `--base bytes` | 默认0，Host全局地址起点；输入地址包含此base。 |
@@ -75,18 +81,23 @@ Debug 使用独立的 `build-linux-debug` 目录和 `-DCMAKE_BUILD_TYPE=Debug`�
 | `--timeout-retries N` | 默认3；同一内容、页及当前pass内允许的额外整页组装轮数，初始组装不计；0关闭此类自动重试。 |
 | `--retry-delay N` | 默认1000000 Tick（当前为1µs）；从0x4响应计起的兜底等待间隔。容量相关完成反馈可提前唤醒；启用Pending重试时必须为正。 |
 | `--retention N` | 默认65536个64B符号片段；0关闭恢复数据保留。 |
-| `--mocs N` | 默认256；本CLI capability为256，所以可选1或256。 |
+| `--mocs N` | 默认256；选定MOCS。Supported与Selected均须为1或256—16384内的2的幂，且Selected≤Supported。 |
 | `--fail-sequence p,q` | 默认无；按序在指定页注入一次可重用program失败。 |
 | `--persistent-page p` | 默认无；该页每次program均失败。 |
 | `--max-tick N` | 默认1000000000000，绝对模拟时间上限，单位ps。 |
 | `--max-events N` | 默认10000000，累计callback上限；0关闭该项限额。 |
 | `--trace` | 默认关闭；输出Host/Device事件及命令身份。 |
+| `--stats-json FILE` | 默认关闭；导出统一统计汇总及Global/逻辑片段/命令尝试明细。父目录须已存在；禁止覆盖输入workload。 |
 
-CLI故障注入仅作用于逻辑channel 0 / die 0 / bank 0 / block 0；序列元素为页号，越界先报输入错误。Host看不到注入器。所有未声明参数均报错；当前无独立`--help`选项，无参数运行会打印用法并以5退出。
+覆盖顺序为内建默认值 → 配置文件 → 显式CLI选项；`--config`的位置不影响优先级，同一字段的多个CLI覆盖按从左到右最后一次生效。未知字段／策略及非法组合在运行前报错。参数调整不需要重新编译。
 
-CLI使用每channel 1 die / 1 bank、每块8页、每bank 4个可见块与1个spare。默认2channel总逻辑容量256KiB；这是功能几何，不是产品配置。API可以构造其他合法几何，测试包含16channel/64B交织。
+```powershell
+.\build\Release\hbf_eventlab_cli.exe examples\workloads\normal.txt --config configs\functional.ini --mocs-supported 1024 --mocs 512 --dump-config effective.ini
+```
 
-除上表可选项外，Pending上限、时延、读窗口、缓冲深度和Core路由通过 `StaticDeviceDescription` / `ExecutionConfiguration` 配置；不要给CLI传入尚未实现的参数。配置在一次模拟内冻结。
+故障注入默认作用于逻辑channel 0 / die 0 / bank 0 / block 0；通过`faults`小节可改变目标。页号越界、同时指定非空失败序列和持续失败页均报输入错误。Host看不到注入器。`--help`打印用法并以0退出，无参数运行以5退出。
+
+默认功能几何为每channel 1 die / 1 bank、每块8页、每bank 4个可见块与1个spare；2channel总逻辑容量256KiB。它不是产品配置，几何、Pending、介质时延、窗口、缓冲及Core路由均可通过同一配置入口修改。Grade 1最多支持8个模块；16channel示例需选择Grade 2或3。配置在一次模拟内冻结。
 
 ## 有限 workload 格式 v1
 
@@ -189,28 +200,69 @@ CLI的 `HOST` 行同时报告命令尝试和逻辑工作结果。计数单位如
 
 例如64条timeout响应可能对应一轮整页重发；发生尝试错误的Global条目仍可能最终成功。三类重发命令计数按本次重发原因分类；replay中的资源重试也属于 `replay_commands`，因此不能将它与上述重试计数相加当作互斥总数。实验比较应同时保存配置、尝试错误、逻辑结果与排空状态。
 
+## 统一统计
+
+```powershell
+.\build\Release\hbf_eventlab_cli.exe examples\workloads\normal.txt --stats-json build\normal-statistics.json
+.\build\Release\hbf_eventlab_cli.exe examples\workloads\recovery.txt --fail-sequence 2 --stats-json build\recovery-statistics.json
+```
+
+`IStatisticsSink`只接收观察事件；`StatisticsCollector`提供有限workload的精确记录、只读查询及JSON。Host和Device在load/首次移交之前挂接同一个collector，其生命周期应覆盖两侧。一个collector对应一次Host/Device运行；限额中断后继续同一次运行时沿用它。独立Device也可单独挂接，此时没有Global/逻辑记录；替代Host端口用于完整统计时，应提供相同的Device侧统计事件。
+
+```cpp
+StatisticsCollector statistics; // 定义在 Host / Device 之前
+// 构造 events、device、interleaver、host、runner ...
+device.set_statistics_sink(statistics);
+host.set_statistics_sink(statistics);
+host.load(workload);
+host.start();
+const auto report = runner.run();
+const auto summary = statistics.summarize(report.at);
+// globals() / logical_work() / attempts() 提供只读明细。
+```
+
+五个时刻均为模拟事件时间，“释放”指workload释放，不是资源释放：
+
+| 字段 | 边界 |
+|---|---|
+| `globals[].released` | 原始Global的`at`释放边界，逻辑子工作继承它；重试不重置。`scheduled_release`保留输入时刻，尚未释放或提前取消时`released`为空。依赖等待也计入释放后的时间。 |
+| `attempts[].handoff` | 端口Taken，预留RX并开始请求传输，尚未消耗MOCS。NotTaken不产生尝试记录。 |
+| `attempts[].rx_arrival` | 请求序列化及传播结束，到达RX。 |
+| `attempts[].accepted` | 正式接受、占用MOCS并释放RX。接受后报错的命令也有此时刻，不保证写数据进入Assembly。 |
+| `attempts[].delivered` | 返回传输结束、credit释放。取Device事件时刻，不取后续Host回调或导出时刻。 |
+
+另外保存`queued_at`（本次发送单元入队边界，重试更新）、`assessed`（Host处理响应）、`finished`（逻辑最终归属）。初始跨Global写burst的`queued_at`取其全部贡献片段均到达释放时刻的边界；各Global仍保留各自释放时刻。
+
+延迟键按read/write、层次、success/failed/pending分组，例如`write.attempt.success.accepted_response`：
+
+| 指标后缀 | 定义与样本单位 |
+|---|---|
+| `global.*.end_to_end` | Global全部逻辑子工作最终结束的时刻－原始释放。不取平均，也不因第一个错误提前完成。 |
+| `logical.*.end_to_end` | 原始64B逻辑工作最终结束－原始释放；包含相关重试及恢复等待。 |
+| `logical.*.initial_host_wait` | 该逻辑工作第一次实际移交－原始释放；尚无移交则没有样本。 |
+| `attempt.*.queue_wait` | 本次移交－本次`queued_at`。 |
+| `attempt.*.request_link` | RX到达－移交，包含序列化和传播。 |
+| `attempt.*.ingress_wait` | 正式接受－RX到达。 |
+| `attempt.*.accepted_response` | 交付－正式接受，即一条命令的credit持有时长。包括组装、调度、介质和响应排队/传输，不等同于NAND时延。 |
+| `attempt.*.handoff_response` | 交付－移交。 |
+
+每个分布给出`count/min/max/mean/p50/p95/p99`，分位数用nearest-rank；没有样本的键不生成。未交付尝试只有已经结束的分段，归入pending，不把当前等待年龄当作完整响应延迟。零延迟有效；缺失时刻用JSON `null`。
+
+JSON schema为1，时间单位为Tick（CLI中1ps），包含`summary`、`globals`、`logical_work`、`attempts`。64B逻辑工作与真实移交事务分别计数：完整4KiB burst只计一条尝试，但可关联多个Global的64个片段；replay通过channel/local地址/content关联原始工作，不创建新的逻辑分母，不重复完成历史成功。明细的`work_ids`、`unit`、`unit_attempt`和`replay_pass`支持继续细分。`replay_attempts`与`retried_unit_attempts`可能交叉，不能相加。
+
+尝试success/failed按Device协议状态划分；`responses`以`op + status`为键，读写同数值状态不合并。Host的DataToken检查失败另计`host_verification_failures`，因此协议成功不必然表示逻辑成功。逻辑记录保留失败`reason`。
+
+`Stalled`、`LimitReached`及运行中的模型诊断也导出已观察记录与停止原因。未完成项保留pending；尚未释放就取消的工作计入failed及其`cancelled_before_release`子集，不计算负的端到端延迟。输入校验或输出文件创建失败时没有有效运行统计。时刻和ID应以64位整数读取，避免JavaScript浮点数在大值处丢精度。
+
+默认collector空间为O(原始工作数＋命令尝试数)，导出和分位数计算有宿主程序开销；这些记录不代表模拟硬件缓冲，不增加事件或Tick。未开启时不保存统计历史。当前统一输出尚不含DLU组装进度、Pending/Bank占用曲线、利用率及宿主程序墙钟耗时；时间结果仍是未校准的功能模型结果。
+
+同一Global可能跨多个块，部分子工作在释放前被取消，其余子工作仍在以后释放、完成；因此`logical_work`单独保存`cancelled_before_release`和`released`，不能仅从父Global的最终状态推断。Global仍等剩余子工作结束后取得最终结果。
+
+实验记录还应保存输入文件、`--dump-config`导出的有效配置及CLI的CONFIG/STOP行；统计JSON不内含完整设备与Host配置。
+
 ## 运行器与参数
 
-| 参数 | 默认值 | 来源性质 |
-|---|---:|---|
-| Tick | 1 ps | 项目分辨率 |
-| sense / program / erase | 100000 / 500000 / 1000000 ps | 功能演示值，未校准 |
-| Cache access | 100 ps | 模型假定 |
-| 每 Bank Cache | 两个 4KiB 槽 | 规范相关组织；具体槽与保护机制为模型选择 |
-| UCIe 有效带宽 | 每方向 48 GB/s | 依据 §5.1.2 档位，完整事务成本仍是模型 |
-| 控制服务量 / 固定传播 | 请求/响应各16 B、各100 ps | 模型假定，不是逐拍 AXI |
-| RX / TX | 每 channel 16项+16384B / 8项+512B | 模型容量参数 |
-| Core Channel | 拓扑存在，无限带宽、零延迟 | 模型假设 |
-| 读窗口 | 10000 ps 或32条，Batch即释放 | 数值为策略参数 |
-| MOCS / Pending | CLI 256 / 8 | 功能配置，仍经过能力校验 |
-| Assembly timeout | 10000000 ps | 功能演示值 |
-| Host 打开 DLU / 保留区 | 每channel 2 / 65536×64B=4MiB | Host 策略，符号容量不等于 C++ 内存 |
-| replay 预算 | 每任务3遍 | 工程保护，不是规范次数 |
-| Pending 重试预算 / 兜底间隔 | 每发送单元额外3次 / 1000000 ps | Host策略；完成反馈可提前触发重查 |
-| timeout 重试预算 | 每内容、页、pass额外3轮 | Host策略；与replay遍数分开 |
-| 输入上限 | 1048576个64B逻辑片段 | 有限输入保护 |
-| 模拟时间 / 总callbacks | 1 s / 10000000 | 工程保护 |
-| 同Tick callbacks / 轮次 | 各100000 | 前进性保护；0可在API中禁用 |
+参数键、默认值、单位、合法范围、零值语义和依据集中维护在[参数说明](parameters.md)。Tick固定为1ps；默认NAND／Cache时延及RX／TX深度是未校准模型假设。Core Channel当前只表达拓扑，采用无限带宽、零延迟模型；修改参数不代表引入新的介质并发机制。
 
 CLI 打印配置、Global 结果、尝试错误、恢复次数、设备操作数和活动摘要。总事件数从 EventQueue 初始化起累计；恢复运行应提高总预算，不重新计数。时间限制检查下一个事件，不强行推进到限制时刻。
 

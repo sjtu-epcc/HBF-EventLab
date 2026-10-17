@@ -1,5 +1,6 @@
 #pragma once
 #include "hbf_eventlab/interfaces/host_port.hpp"
+#include "hbf_eventlab/interfaces/statistics_sink.hpp"
 #include "hbf_eventlab/runtime/read_path.hpp"
 #include "hbf_eventlab/runtime/bank_cache.hpp"
 #include "hbf_eventlab/runtime/link_buffers.hpp"
@@ -35,8 +36,8 @@ class DeviceDriver : public IHostPort {
 public:
     using Receiver=std::function<void(const DeliveredResponse&)>;
     DeviceDriver(StaticDeviceDescription,ExecutionConfiguration,EventQueue&,
-                 std::unique_ptr<INandSchedulingPolicy> = std::make_unique<FcfsNandPolicy>(),
-                 std::unique_ptr<IUcieArbitrationPolicy> = std::make_unique<FifoUciePolicy>(),
+                 std::unique_ptr<INandSchedulingPolicy> = {},
+                 std::unique_ptr<IUcieArbitrationPolicy> = {},
                  std::unique_ptr<IReadDispatchPolicy> = {});
     ~DeviceDriver();
     DeviceDriver(const DeviceDriver&)=delete;
@@ -56,8 +57,12 @@ public:
     const BufferBudget& ingress(ChannelId ch) const;
     const BufferBudget& egress(ChannelId ch) const { return egress_.budget(ch); }
     const DeviceRuntimeState& resources() const { return runtime_; }
+    // Read-only diagnostic for verifying configured retirement budget.
+    std::uint64_t capacity_hole_limit(ChannelId ch) const { return capacity_.hole_limit(ch); }
     DeviceActivity activity() const;
     const DeviceStatistics& statistics() const { return stats_; }
+    // Attach before the first transfer. No sink means no measurement history.
+    void set_statistics_sink(IStatisticsSink&);
     // Fault input and optional streaming diagnostics; no unbounded history in Device.
     void set_program_outcome(std::function<ProgramOutcome(const ProgramOperation&)> f) { outcome_=std::move(f); }
     void set_trace(std::function<void(const DeviceTrace&)> f) { trace_=std::move(f); }
@@ -141,6 +146,7 @@ private:
     std::set<EventId> events_owned_;
     std::uint64_t next_attempt_=0;
     DeviceStatistics stats_;
+    IStatisticsSink* statistics_sink_=nullptr;
     std::function<ProgramOutcome(const ProgramOperation&)> outcome_=[](const auto&){return ProgramOutcome::Success;};
     std::function<void(const DeviceTrace&)> trace_;
 };

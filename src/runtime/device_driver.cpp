@@ -2,6 +2,10 @@
 #include <algorithm>
 
 namespace hbf_eventlab {
+void DeviceDriver::set_statistics_sink(IStatisticsSink& sink) {
+    if(next_attempt_||statistics_sink_)throw std::logic_error("attach Device statistics once before handoff");
+    statistics_sink_=&sink;
+}
 namespace {
 ExecutionConfiguration validated(ExecutionConfiguration c,const StaticDeviceDescription& d) { c.validate(d); return c; }
 Tick after(Tick now,Tick delay) { return Tick{checked_add(now.value,delay.value)}; }
@@ -16,18 +20,31 @@ DeviceDriver::DeviceDriver(StaticDeviceDescription d,ExecutionConfiguration c,Ev
         std::unique_ptr<INandSchedulingPolicy> nand,std::unique_ptr<IUcieArbitrationPolicy> link,
         std::unique_ptr<IReadDispatchPolicy> dispatch)
     :description_(std::move(d)),config_(validated(std::move(c),description_)),events_(e),
-     topology_(description_.geometry(),config_),layout_(description_.geometry()),
+     topology_(description_.geometry(),description_.topology()),layout_(description_.geometry()),
      zones_(description_),replacements_(description_.geometry()),media_(description_.geometry()),
-     capacity_(description_,layout_,zones_,replacements_,media_),signals_(events_),
-     admission_(description_.geometry().host_channels,description_.configuration().outstanding_limit,signals_),
-     egress_(description_.geometry().host_channels,config_.egress),
+     capacity_(description_,layout_,zones_,replacements_,media_,description_.capacity_policy()),signals_(events_),
+     admission_(description_.geometry().host_channels,description_.configuration().mocs_selected,signals_),
+     egress_(description_.geometry().host_channels,config_.buffers.egress),
      writes_(description_,layout_,capacity_,media_,events_,admission_),
      reads_(description_,layout_,capacity_,media_,admission_,writes_,egress_),
      nand_policy_(std::move(nand)),link_policy_(std::move(link)),dispatch_policy_(std::move(dispatch)) {
-    if(!nand_policy_ || !link_policy_) throw std::invalid_argument("missing execution policy");
-    if(!dispatch_policy_) dispatch_policy_=std::make_unique<WindowDispatchPolicy>(config_.read_window,config_.read_threshold);
+    if(nand_policy_) config_.nand_scheduler="custom";
+    else {
+        if(config_.nand_scheduler!="fcfs") throw std::invalid_argument("execution.nand_scheduler: unsupported policy");
+        nand_policy_=std::make_unique<FcfsNandPolicy>();
+    }
+    if(link_policy_) config_.ucie_scheduler="custom";
+    else {
+        if(config_.ucie_scheduler!="fifo") throw std::invalid_argument("execution.ucie_scheduler: unsupported policy");
+        link_policy_=std::make_unique<FifoUciePolicy>();
+    }
+    if(dispatch_policy_) config_.read_dispatch.policy="custom";
+    else {
+        if(config_.read_dispatch.policy!="window") throw std::invalid_argument("execution.read_dispatch.policy: unsupported policy");
+        dispatch_policy_=std::make_unique<WindowDispatchPolicy>(config_.read_dispatch.wait,config_.read_dispatch.threshold);
+    }
     for(ChannelId ch=0;ch<description_.geometry().host_channels;++ch) {
-        channels_.push_back(std::make_unique<Channel>(config_.ingress,*dispatch_policy_));
+        channels_.push_back(std::make_unique<Channel>(config_.buffers.ingress,*dispatch_policy_));
         watch_responses(ch);
     }
     writes_.set_cache_invalidator([this]{ cache_.invalidate_all(); });
@@ -72,7 +89,7 @@ HandoffResult DeviceDriver::try_submit(const LocalTransaction& input,Receiver re
     if(!channel.rx.fits(payload)) waits.push_back(WaitKey::channel_key(WaitReason::IngressSpace,ch));
     if(!waits.empty()) return {HandoffDisposition::NotTaken,{},std::move(waits)};
     const TransferAttemptId id{checked_add(next_attempt_,1)};
-    const auto service=checked_add(config_.request_control_bytes,payload);
+    const auto service=checked_add(config_.ucie.overhead.request_control_bytes,payload);
     // There is no hidden unbounded request queue: source offers only when this lane
     // can start. Request-side arbitration of multiple source records belongs to Host.
     const std::vector<TransferCandidateView> offer{{id.value,id.value,cmd.op,service}};
@@ -83,16 +100,18 @@ HandoffResult DeviceDriver::try_submit(const LocalTransaction& input,Receiver re
     channel.transactions.insert(id.value);
     channel.rx.reserve(payload); channel.request_busy=true; ++channel.request_flights;
     next_attempt_=id.value; ++stats_.handoffs; ++stats_.request_transfers;
-    const auto serialized=after(events_.now(),config_.serialization(service));
+    const auto serialized=after(events_.now(),config_.ucie.serialization(service));
     schedule(serialized,EventPhase::Completion,[this,ch] {
         channels_[ch]->request_busy=false;
         signals_.notify(WaitKey::channel_key(WaitReason::RequestLink,ch));
     });
-    schedule(after(serialized,config_.request_fixed_latency),EventPhase::Arrival,[this,ch,id] {
+    schedule(after(serialized,config_.ucie.overhead.request_fixed_latency),EventPhase::Arrival,[this,ch,id] {
         auto& t=transactions_.at(id.value); t.stage=Stage::Ingress;
         --channels_[ch]->request_flights; // RX reservation becomes resident, unchanged accounting.
+        if(statistics_sink_)statistics_sink_->observe(StatAttemptAdvanced{id,AttemptMilestone::RxArrival,events_.now()});
         emit("rx-arrival",ch,id.value); request_pump(ch);
     });
+    if(statistics_sink_)statistics_sink_->observe(StatAttemptStarted{id,cmd,events_.now()});
     emit("handoff",ch,id.value);
     return {HandoffDisposition::Taken,id,{}};
 }
@@ -156,6 +175,7 @@ bool DeviceDriver::admit(Transaction& t) {
     channels_[ch]->rx.release(cmd.op==Op::Write?cmd.size_bytes:0);
     t.input.data.clear(); t.input.data.shrink_to_fit(); // Assembly/Egress now owns accepted payload.
     t.accepted_sequence=++stats_.accepted; emit("accepted",ch,t.id.value);
+    if(statistics_sink_)statistics_sink_->observe(StatAttemptAdvanced{t.id,AttemptMilestone::Accepted,events_.now()});
     if(t.acceptance) {
         const AcceptedNotice notice{t.id,ch,cmd.id,events_.now()};
         auto observer=std::move(t.acceptance);
@@ -213,7 +233,7 @@ bool DeviceDriver::try_cache(Transaction& t) {
     notify_sense_order(t);
     remove_window(t); ++stats_.cache_hits; emit("cache-hit",c.channel,t.id.value,probe.target);
     const auto id=t.id.value;
-    schedule(after(events_.now(),config_.cache_access),EventPhase::Completion,[this,id,c] {
+    schedule(after(events_.now(),config_.media_timing.cache_access),EventPhase::Completion,[this,id,c] {
         auto& tx=transactions_.at(id);
         reads_.serve_cached(c,std::move(*tx.cache_result)); tx.cache_result.reset();
         tx.cache_pending=false; tx.read.reset(); notify_sense_order(tx);
@@ -313,7 +333,7 @@ void DeviceDriver::execute_media(ChannelId ch) {
             if(!operation) {runtime_.release(bank,ticket);throw std::logic_error("erase readiness changed during commit");}
             channels_[ch]->erases.erase(*choice.erase); ++stats_.erases;
             emit("erase-issue",ch,ticket,choice.view.target);
-            schedule(after(events_.now(),config_.erase),EventPhase::Completion,[this,op=*operation,bank,ticket] {
+            schedule(after(events_.now(),config_.media_timing.erase),EventPhase::Completion,[this,op=*operation,bank,ticket] {
                 cache_.invalidate(op.physical); writes_.finish_erase(op.id);
                 runtime_.release(bank,ticket); notify_bank(bank); notify_cache(bank);
                 emit("erase-finish",bank.channel,ticket,page_address(op.physical)); request_pump(bank.channel);
@@ -322,7 +342,7 @@ void DeviceDriver::execute_media(ChannelId ch) {
             const auto operation=writes_.issue_program(*choice.program);
             if(!operation) {runtime_.release(bank,ticket);throw std::logic_error("program readiness changed during commit");}
             ++stats_.programs; emit("program-issue",ch,ticket,operation->physical);
-            schedule(after(events_.now(),config_.program),EventPhase::Completion,[this,op=*operation,bank,ticket] {
+            schedule(after(events_.now(),config_.media_timing.program),EventPhase::Completion,[this,op=*operation,bank,ticket] {
                 const auto outcome=outcome_(op);
                 // Actual media update invalidates tags, never protected response bytes.
                 if(outcome==ProgramOutcome::Success) cache_.invalidate_page(op.physical);
@@ -339,7 +359,7 @@ void DeviceDriver::execute_media(ChannelId ch) {
             if(!operation) {cache_.cancel_fill(*fill);runtime_.release(bank,ticket);continue;}
             auto& tx=transactions_.at(choice.transaction); remove_window(tx); tx.read.reset(); notify_sense_order(tx);
             ++stats_.senses; emit("sense-issue",ch,ticket,operation->physical);
-            schedule(after(events_.now(),config_.sense),EventPhase::Completion,[this,op=*operation,fill=*fill,bank,ticket] {
+            schedule(after(events_.now(),config_.media_timing.sense),EventPhase::Completion,[this,op=*operation,fill=*fill,bank,ticket] {
                 cache_.finish_fill(fill); reads_.finish_read(op.id);
                 runtime_.release(bank,ticket); notify_bank(bank); notify_cache(bank);
                 emit("sense-finish",bank.channel,ticket,op.physical); request_pump(bank.channel);
@@ -380,7 +400,7 @@ void DeviceDriver::start_response(ChannelId ch) {
         const auto& t=transactions_.at(identity); const auto& cmd=t.input.command;
         if(t.stage!=Stage::Egress) continue;
         const auto payload=cmd.op==Op::Read && reads_.response(ch,cmd.id)->data?host_unit_bytes:0;
-        candidates.push_back({t.id.value,t.accepted_sequence,cmd.op,checked_add(config_.response_control_bytes,payload)});
+        candidates.push_back({t.id.value,t.accepted_sequence,cmd.op,checked_add(config_.ucie.overhead.response_control_bytes,payload)});
     }
     if(candidates.empty()) return;
     const auto id=link_policy_->select(candidates);
@@ -388,9 +408,9 @@ void DeviceDriver::start_response(ChannelId ch) {
     if(chosen==candidates.end()) throw std::logic_error("link policy selected a noncandidate");
     auto& t=transactions_.at(id); t.stage=Stage::ResponseLink;
     channel.response_busy=true; ++channel.response_flights;
-    const auto serialized=after(events_.now(),config_.serialization(chosen->service_bytes));
+    const auto serialized=after(events_.now(),config_.ucie.serialization(chosen->service_bytes));
     schedule(serialized,EventPhase::Completion,[this,ch] { channels_[ch]->response_busy=false; request_pump(ch); });
-    schedule(after(serialized,config_.response_fixed_latency),EventPhase::Completion,[this,id]{deliver(id);});
+    schedule(after(serialized,config_.ucie.overhead.response_fixed_latency),EventPhase::Completion,[this,id]{deliver(id);});
     emit("response-issue",ch,id);
 }
 void DeviceDriver::deliver(std::uint64_t id) {
@@ -405,6 +425,9 @@ void DeviceDriver::deliver(std::uint64_t id) {
     t.egress.reset(); t.stage=Stage::Feedback;
     auto& channel=*channels_[ch]; --channel.response_flights; ++channel.feedback;
     ++stats_.delivered; emit("delivered",ch,id);
+    if(statistics_sink_)std::visit([&](const auto& response) {
+        statistics_sink_->observe(StatAttemptDelivered{t.id,events_.now(),cmd.op,static_cast<std::uint8_t>(response.status)});
+    },*t.delivered);
     signals_.notify(WaitKey::channel_key(WaitReason::ResultSpace,0));
     if(t.target) notify_cache(bank_of(*t.target));
     // Cleanup first; feedback is a subsequent normal event, never a recursive call.

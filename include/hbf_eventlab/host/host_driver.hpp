@@ -3,6 +3,7 @@
 #include "hbf_eventlab/host/retention_store.hpp"
 #include "hbf_eventlab/host/recovery_manager.hpp"
 #include "hbf_eventlab/policies/host_send_policy.hpp"
+#include "hbf_eventlab/interfaces/statistics_sink.hpp"
 #include <bitset>
 #include <memory>
 namespace hbf_eventlab {
@@ -24,12 +25,14 @@ struct HostTrace {
 class HostDriver {
 public:
     HostDriver(IHostPort&,EventQueue&,const IHostInterleaver&,HostConfiguration={},
-               std::unique_ptr<IHostSendPolicy> = std::make_unique<FillOpenDluPolicy>());
+               std::unique_ptr<IHostSendPolicy> = {});
     ~HostDriver();
     HostDriver(const HostDriver&)=delete;
     HostDriver& operator=(const HostDriver&)=delete;
     void load(const std::vector<GlobalRequest>&); // fully validate before start/any transmission
     void start();
+    // Use the same sink as DeviceDriver, before load. The sink outlives this Host.
+    void set_statistics_sink(IStatisticsSink&);
     HostActivity activity() const;
     const std::map<GlobalRequestId,WorkResult>& results() const {return results_;}
     const HostStatistics& statistics() const {return stats_;}
@@ -66,6 +69,7 @@ private:
         std::uint64_t handoffs=0;
         std::uint64_t capacity_at_handoff=0;
         Tick retry_at{};
+        Tick queued_at{}; // observation only; does not alter candidate ordering
     };
     struct Version {
         std::vector<SendUnitId> normal;
@@ -136,6 +140,7 @@ private:
     std::uint64_t next_work_=0,next_unit_=0,next_command_=0;
     bool loaded_=false,started_=false;
     HostStatistics stats_;
+    IStatisticsSink* statistics_sink_=nullptr;
     std::function<void(const HostTrace&)> trace_;
 };
 } // namespace hbf_eventlab

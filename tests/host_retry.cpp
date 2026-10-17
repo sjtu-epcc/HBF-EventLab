@@ -206,7 +206,7 @@ void pending_during_replay(){retry_during_replay(false);}
 void timeout_during_replay(){retry_during_replay(true);}
 
 void real_pending() {
-    EventQueue events;ExecutionConfiguration ec;ec.program=Tick{3000000};
+    EventQueue events;ExecutionConfiguration ec;ec.media_timing.program=Tick{3000000};
     DeviceDriver device(profile(1),ec,events);RoundRobinInterleaver inter(GlobalByteAddress{},1,device.description().geometry().channel_bytes());
     HostConfiguration hc;hc.max_open_dlus_per_channel=3;hc.pending_retry_delay=Tick{10000000};
     HostDriver host(device,events,inter,hc);SimulationRunner runner(events,host,device);

@@ -43,7 +43,7 @@ CapacityRetirementCoordinator::CapacityRetirementCoordinator(const StaticDeviceD
         NandMediaState& media, CapacityPolicy policy)
     : description_(d), layout_(layout), zones_(zones), replacement_(replacement), media_(media),
       policy_(policy), leases_(std::make_shared<PhysicalLeaseState>()) {
-    if (policy.max_hole_permille > 1000) throw std::invalid_argument("hole density must be <= 1000 permille");
+    policy.validate();
     if (zones.managed_ || replacement.managed_ || zones.has_pins() || replacement.has_pins())
         throw std::logic_error("capacity coordinator requires unattached, drained dependencies");
     zones.managed_ = replacement.managed_ = true;

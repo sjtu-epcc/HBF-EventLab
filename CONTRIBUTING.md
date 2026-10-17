@@ -32,7 +32,7 @@ The concrete contracts for these principles are defined in the architecture and 
 
 ## Testing and Verification
 
-Run all commands below from the repository root. See the [README Quick Start](README-EN.md#quick-start) for dependencies and installation steps, and [Verification](docs/verification.md) for the test matrix, environments, and interpretation of results.
+Run all commands below from the repository root. See the [README Quick Start](README.md#quick-start) for dependencies and installation steps, and [Verification](docs/verification.md) for the test matrix, environments, and interpretation of results.
 
 ### Linux
 
@@ -59,7 +59,7 @@ Run all commands below from the repository root. See the [README Quick Start](RE
    ./build-linux-release/hbf_eventlab_cli examples/workloads/recovery.txt --open 4 --fail-sequence 2
    ```
 
-   All commands above are expected to return exit code 0. Both workloads should print `STOP Completed workload=Success` and `host_drained=1 device_drained=1`. Debug and Release on Linux x86_64 / Ubuntu 26.04 LTS / GCC 15.2.0 have passed the full regression suite and these examples.
+   All commands above are expected to return exit code 0. Both workloads should print `STOP Completed workload=Success` and `host_drained=1 device_drained=1`. The environments and results verified for the current test set are recorded in [Verification](docs/verification.md#evidence).
 
 3. **Run targeted scenarios.** During development, first verify cases relevant to your change, such as a single Host recovery:
 
@@ -114,7 +114,8 @@ Update documentation according to its responsibilities, and avoid duplicating la
 | Change | Corresponding Document |
 |---|---|
 | Component responsibilities, data flow, or lifecycles | [architecture.md](docs/architecture.md) |
-| Input format, CLI, default configuration, or exit codes | [usage.md](docs/usage.md) |
+| Input format, CLI, or exit codes | [usage.md](docs/usage.md) |
+| Parameter keys, defaults, units, validation, or configuration loading | [parameters.md](docs/parameters.md) |
 | Specification interpretations, mechanisms, or parameter rationale | [design_decisions.md](docs/design_decisions.md) |
 | Verification scope, environments, or test evidence | [verification.md](docs/verification.md) |
 | Added or removed capability limitations | [scope_and_limitations.md](docs/scope_and_limitations.md) |
@@ -128,4 +129,4 @@ Use UTF-8 for text and follow the line-ending rules in [.gitattributes](.gitattr
 
 A PR description should enable a reviewer who has not participated in the discussion to understand the problem, triggering conditions, behavior after the change, relevant specification or decision entries, verification performed, input or interface compatibility, and known limitations. If changes to simulation semantics alter experiment results, explicitly explain why.
 
-When submitting code, documentation, or data, ensure you have the right to provide it, and identify reused sources and notices that must be retained. See the [README](README-EN.md#license-status) for the repository's license status.
+When submitting code, documentation, or data, ensure you have the right to provide it, and identify reused sources and notices that must be retained. See the [README](README.md#license-status) for the repository's license status.

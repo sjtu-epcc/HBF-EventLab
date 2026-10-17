@@ -2,6 +2,10 @@
 
 HBF EventLab 是面向 OCP HBF v0.7.0 选定行为子集的离散事件模拟器。本文描述当前实现及所有权边界；规范依据与项目解释见[设计决策](design_decisions.md)，输入和运行方式见[使用说明](usage.md)，能力边界见[支持范围与限制](scope_and_limitations.md)。
 
+统一配置的装配顺序为：内建默认值 → INI文件 → 显式CLI覆盖 → `resolve_configuration()`校验与派生 → 冻结配置 → 构造运行组件。`SimulationConfiguration`按device、address、host、execution、faults、run、output分组；组件接收各自的类型化子配置，不读取配置文件，也不共享一个可修改的全局参数对象。
+
+`StaticDeviceDescription`持有几何、能力、设备选定参数、Core拓扑及容量补偿预算。`ExecutionConfiguration`组合介质时延、UCIe档位与开销、缓冲及读调度配置；Host保留自己的发送、恢复及输入限制。统一入口负责跨组校验和策略装配，合法性过滤仍由运行组件执行。具体参数与来源见[参数说明](parameters.md)。
+
 ## 1. 自动运行主线
 
 ```text
@@ -44,6 +48,7 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 | `RecoveryManager`、`WriteRetentionStore` | Host 恢复范围、每遍排空和预算；有限、版本化的恢复 token 保留。 |
 | `EventQueue`、`AdmissionWaitRegistry` | 时间与因果顺序、取消和限额；按原因/对象的异步唤醒。 |
 | `SimulationRunner` | 驱动事件并查询状态摘要，区分完成、停滞、限额和模型诊断。 |
+| `IStatisticsSink`、`StatisticsCollector` | 接收带事件时刻的观察记录，关联Global、逻辑片段和命令尝试，提供只读统计及JSON；不参与调度。 |
 
 overlap、写顺序、错误作用域、同组交付、同 Bank sense 顺序和所有权是固定正确性条件。策略可以改变合法候选的优先级，不能绕过这些条件。接口存在也不意味着所有替代实现均已通过验证。Core Channel 目前只有路由模型，Cache 替换也尚无独立策略插件。
 
@@ -137,7 +142,7 @@ Pending 可见性先于 Cache；缺失片段不能从旧 NAND 或旧 Cache 补�
 
 | 所有者 | 关键状态 | 更新或释放边界 |
 |---|---|---|
-| 静态描述 | geometry、capability、配置 | 单次模拟冻结。 |
+| 静态描述 | geometry、capability、选定参数、Core拓扑、容量预算 | 单次模拟冻结。 |
 | 容量协调器及映射组件 | zone映射、替换、RetiredHoleMap、逻辑退役、内容代次、lease | 排空、失效与一致提交。 |
 | `NandMediaState` | 物理页符号内容、不可用状态、擦除历史 | 介质操作完成。 |
 | `CommandAdmission` / `ReadOrderTracker` | command账本与组内命令队列 | 接受／响应交付。 |

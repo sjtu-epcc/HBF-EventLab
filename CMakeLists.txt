@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 project(HBFEventLab VERSION 0.5.0 LANGUAGES CXX)
 add_library(hbf_eventlab
+    src/configuration/simulation_configuration.cpp
+    src/host/host_configuration.cpp
+    src/architecture/topology_configuration.cpp
+    src/architecture/ucie_profile.cpp
+    src/statistics/collector.cpp
     src/host/global_request_splitter.cpp
     src/host/retention_store.cpp
     src/host/recovery_manager.cpp
@@ -45,6 +50,45 @@ add_executable(hbf_eventlab_cli examples/minimal_loop.cpp)
 target_link_libraries(hbf_eventlab_cli PRIVATE hbf_eventlab_workload_io)
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(hbf_eventlab_configuration_tests tests/configuration.cpp)
+    target_link_libraries(hbf_eventlab_configuration_tests PRIVATE HBFEventLab::core)
+    foreach(scenario defaults parse_override parser_errors unknown_fields numeric grades grade_limits mocs_ranges
+            small_read small_write small_burst capabilities geometry topology capacity buffers timing zeros
+            policies custom_policy address faults roundtrip frozen all_keys default_equivalence)
+        add_test(NAME configuration_${scenario} COMMAND hbf_eventlab_configuration_tests ${scenario})
+        set_tests_properties(configuration_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    foreach(scenario precedence roundtrip invalid_grade invalid_mocs unknown duplicate policy buffer collision workload_guard config_guard read_small write_small burst_small)
+        add_test(NAME configuration_cli_${scenario} COMMAND ${CMAKE_COMMAND}
+            "-DPROGRAM=$<TARGET_FILE:hbf_eventlab_cli>"
+            "-DWORKLOAD=${CMAKE_CURRENT_SOURCE_DIR}/examples/workloads/normal.txt"
+            "-DCASE=${scenario}" "-DCASE_DIR=${CMAKE_CURRENT_BINARY_DIR}/configuration-${scenario}-$<CONFIG>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_configuration_cli.cmake")
+        set_tests_properties(configuration_cli_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    add_executable(hbf_eventlab_statistics_tests tests/statistics.cpp)
+    target_link_libraries(hbf_eventlab_statistics_tests PRIVATE HBFEventLab::core)
+    foreach(scenario boundaries cross_global_burst multi_channel pending_retry timeout_retry replay
+            unfinished_resume ingress_wait cancelled_future partial_future_cancel mismatch backpressure observational
+            event_time zero_and_status guards_empty stalled)
+        add_test(NAME statistics_${scenario} COMMAND hbf_eventlab_statistics_tests ${scenario})
+        set_tests_properties(statistics_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    foreach(mode normal limit)
+        set(stats_args "")
+        set(stats_exit 0)
+        if(mode STREQUAL "limit")
+            set(stats_args --max-tick 100)
+            set(stats_exit 4)
+        endif()
+        add_test(NAME statistics_cli_${mode} COMMAND ${CMAKE_COMMAND}
+            "-DPROGRAM=$<TARGET_FILE:hbf_eventlab_cli>"
+            "-DWORKLOAD=${CMAKE_CURRENT_SOURCE_DIR}/examples/workloads/normal.txt"
+            "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/statistics-${mode}-$<CONFIG>.json"
+            "-DEXPECTED=${stats_exit}" "-DARGS=${stats_args}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_statistics_cli.cmake")
+        set_tests_properties(statistics_cli_${mode} PROPERTIES TIMEOUT 30)
+    endforeach()
     add_executable(hbf_eventlab_host_retry_tests tests/host_retry.cpp)
     target_link_libraries(hbf_eventlab_host_retry_tests PRIVATE HBFEventLab::core)
     foreach(scenario pending_root_first pending_follower_first pending_late_followers pending_exhausted

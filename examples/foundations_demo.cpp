@@ -13,7 +13,7 @@ int main() {
         CapacityRetirementCoordinator capacity(d, layout, zones, replacements, media);
         AddressResolver resolver(capacity);
         AdmissionWaitRegistry signals(events);
-        CommandAdmission admission(d.geometry().host_channels, d.configuration().outstanding_limit,signals);
+        CommandAdmission admission(d.geometry().host_channels, d.configuration().mocs_selected,signals);
         test_support::BoundedReadResults results(64);
         WritePath writes(d, layout, capacity, media, events, admission);
         ReadPath reads(d, layout, capacity, media, admission, writes, results);

@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-下列结果对应项目版本 **0.5.0**，共 **187 项**；回归日期为 **2026-10-10**。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节。
+当前测试集共 **246 项**；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
-| 配置 | 测试结果 | CTest墙钟耗时 |
-|---|---|---:|
-| Debug | 187/187通过，0失败 | 41.66s |
-| Release | 187/187通过，0失败 | 29.17s |
+| 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
+|---|---|---|---:|
+| Debug | 2026-10-14 | 246/246通过，0失败 | 49.43s |
+| Release | 2026-10-16 | 246/246通过，0失败 | 8.47s |
 
 上述 CTest 使用 4 个并行作业。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-187项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、65个Host行为场景和8个CLI场景组成。分类表示验证职责，不表示规范章节数量。
+246项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、65个Host行为场景、17个统计场景、26个配置场景和24个CLI场景组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -44,6 +44,12 @@
 | 数据与预算 | retention_pins、missing_retention、persistent_failure、prior_success_retained | 恢复数据身份、有限失败、历史成功与独立工作。 |
 | 输入与停止 | input_validation、ordered_pending、runner_device_activity、cancelled_future_release | 能力诊断、双方排空、取消无用未来事件。 |
 | 运行限额 | time_limit、event_limit、same_tick_limit、round_limit | 分别触限、现场保留，不制造完成或额外Tick。 |
+| 统计时间与归属 | statistics_boundaries、statistics_ingress_wait、statistics_cross_global_burst、statistics_multi_channel | 五个时刻、credit持有时长、跨Global burst一次响应、跨channel最后逻辑结果决定Global完成。 |
+| 统计重试与终止 | statistics_pending_retry、statistics_timeout_retry、statistics_replay、statistics_partial_future_cancel、statistics_unfinished_resume | 重试不改逻辑分母/释放时刻；部分子工作提前取消、限额停止及恢复继续不丢失或伪造样本。 |
+| 统计观察与导出 | statistics_event_time、statistics_observational、statistics_zero_and_status、statistics_cli_normal、statistics_cli_limit | 使用事件时间；开关统计不改Tick/事件数；同数值读写状态分开；JSON结构、缺失时刻和输入保护。 |
+| 配置格式与装配 | configuration_parse_override、configuration_numeric、configuration_frozen、configuration_cli_precedence | 字段类型、未知／重复输入、覆盖优先级和解析后冻结。 |
+| 配置合法性与运行 | configuration_grade_limits、configuration_mocs_ranges、configuration_small_read、configuration_small_write、configuration_small_burst、configuration_capacity | 档位上限、Supported／Selected、实际写模式诊断、真实超时／burst前进及预算传递。 |
+| 配置复现与保护 | configuration_roundtrip、configuration_default_equivalence、configuration_cli_roundtrip、configuration_cli_collision | 导出再载入保持结果／Tick／事件数；输入与输出不互相覆盖。 |
 
 场景名指测试函数或CLI案例名；同名案例按“生命周期 / Device / Host / CLI”区分。Host断言主要位于 [host.cpp](../tests/host.cpp) 和 [host_retry.cpp](../tests/host_retry.cpp)。实际CTest注册以[构建定义](../CMakeLists.txt)和`ctest -N`为准。设计表中的测试引用指向对应注册位置；需要查看断言时可在`tests/`中搜索函数，例如：
 
@@ -75,6 +81,8 @@ ctest --test-dir build-verify -C Release --output-on-failure --parallel 4
 ctest --test-dir build-verify -C Release -N
 ctest --test-dir build-verify -C Release -R '(^|_)recovery_once$' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^host_retry_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^statistics_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^configuration_' --output-on-failure
 ```
 
 Linux 的构建与全量回归命令见 [贡献指南](../CONTRIBUTING.md#testing-and-verification)，依赖安装见 [README 快速开始](../README.md#quick-start)。列出 Linux 测试使用 `ctest --test-dir build-linux-release -N`；详细日志由 CTest 保存在各构建目录的 `Testing/Temporary/LastTest.log`。
@@ -117,6 +125,10 @@ DEVICE programs=2 erases=2 senses=2 cache_hits=126 host_drained=1 device_drained
 
 上表八类CLI案例均通过退出码和输出检查。写重试的额外计数含义见[使用说明](usage.md#写重试统计)；可添加 `--pending-retries 0 --timeout-retries 0` 对比关闭资源重试的基线，此配置不关闭program-fail replay。直接运行示例的命令见 [README](../README.md#quick-start)。
 
+另外两项CLI统计用例启用`--stats-json`，分别解析完整运行及限额停止的输出；断言Global/逻辑/尝试数量、时间顺序、缺失时间为null，并检查输出路径不能覆盖输入。API的17项统计场景与两项CLI案例合计19项。接口、指标定义和导出示例见[统一统计](usage.md#统一统计)。
+
+14项CLI配置案例另行验证文件覆盖、非法配置诊断、导出重载、路径保护，以及MOCS=1下纯读、64B写和完整burst三种不同结果。配置与参数语义见[参数说明](parameters.md)。
+
 ## 5. 验证边界
 
 - 针对性断言不能证明全部状态组合正确；有序Pending、完整AXI/ECC和广域异步故障不在支持范围内。
@@ -134,8 +146,8 @@ DEVICE programs=2 erases=2 senses=2 cache_hits=126 host_drained=1 device_drained
 |---|---|
 | <a id="t01"></a>T01 | [address_mapping()](../tests/foundations.cpp#L27) |
 | <a id="t02"></a>T02 | [admission()](../tests/foundations.cpp#L74) |
-| <a id="t03"></a>T03 | [write_lifecycle()](../tests/foundations.cpp#L102) |
-| <a id="t04"></a>T04 | [events_dispatch()](../tests/foundations.cpp#L156) |
+| <a id="t03"></a>T03 | [write_lifecycle()](../tests/foundations.cpp#L103) |
+| <a id="t04"></a>T04 | [events_dispatch()](../tests/foundations.cpp#L157) |
 | <a id="t05"></a>T05 | [capacity_compensation()](../tests/capacity_retirement.cpp#L67) |
 | <a id="t06"></a>T06 | [capacity_density()](../tests/capacity_retirement.cpp#L93) |
 | <a id="t07"></a>T07 | [capacity_atomicity()](../tests/capacity_retirement.cpp#L113) |

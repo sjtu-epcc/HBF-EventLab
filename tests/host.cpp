@@ -59,7 +59,8 @@ struct Fixture {
 void normal(){Fixture f;f.run({wr(1,0),rd(2,0,4096,{GlobalRequestId{1}})});
     check(f.device.statistics().programs==1&&f.host.statistics().responses==128,"one DLU / 128 commands");}
 void sixteen_channels(){
-    Fixture f({}, {},16);std::vector<GlobalRequest> v;std::vector<GlobalRequestId> deps;
+    ExecutionConfiguration ec;ec.ucie.speed_grade=UcieSpeedGrade::Grade2;
+    Fixture f({}, ec,16);std::vector<GlobalRequest> v;std::vector<GlobalRequestId> deps;
     for(unsigned n=0;n<16;++n){v.push_back(wr(n+1,n*4096));deps.push_back(GlobalRequestId{n+1});}
     v.push_back(rd(17,0,16*4096,deps));f.run(v);
     check(f.device.statistics().programs==16,"16 cross-entry DLUs");
@@ -111,7 +112,7 @@ void parser(){
     }
 }
 void hints(){
-    HostConfiguration c;c.hints=ReadHintMode::AllRegular;ExecutionConfiguration ec;ec.read_threshold=0;ec.read_window=Tick{100000};
+    HostConfiguration c;c.hints=ReadHintMode::AllRegular;ExecutionConfiguration ec;ec.read_dispatch.threshold=0;ec.read_dispatch.wait=Tick{100000};
     Fixture a(c,ec);auto x=a.run({wr(1,0),rd(2,0,64,{GlobalRequestId{1}})});
     c.hints=ReadHintMode::TailBatch;Fixture b(c,ec);auto y=b.run({wr(1,0),rd(2,0,64,{GlobalRequestId{1}})});
     check(y.at<x.at,"tail B closes window earlier than timer");
@@ -139,7 +140,7 @@ void recovery_once(){
     check(f.host.statistics().attempt_errors>=64,"64 error responses coalesced");
 }
 void follower_before_root(){
-    HostConfiguration c;c.max_open_dlus_per_channel=4;ExecutionConfiguration ec;ec.egress={256,16384};Fixture f(c,ec,1,256,Tick{10000000},std::make_unique<ReverseLink>());
+    HostConfiguration c;c.max_open_dlus_per_channel=4;ExecutionConfiguration ec;ec.buffers.egress={256,16384};Fixture f(c,ec,1,256,Tick{10000000},std::make_unique<ReverseLink>());
     f.fail_sequence({2});f.run({wr(1,0,4*4096),rd(2,0,4*4096,{GlobalRequestId{1}})});
     auto first=std::find_if(f.trace.begin(),f.trace.end(),[](auto&e){return e.action=="program-fail"||e.action=="follower-fail";});
     check(first!=f.trace.end()&&first->action=="follower-fail","follower arrived before root");
@@ -256,8 +257,8 @@ void policy_guard(){
 
 void delayed_old_attempts(){
     HostConfiguration hc;hc.max_open_dlus_per_channel=4;
-    ExecutionConfiguration ec;ec.erase=Tick{1};ec.program=Tick{10000};
-    ec.request_fixed_latency=Tick{100000};ec.ingress={256,16384};
+    ExecutionConfiguration ec;ec.media_timing.erase=Tick{1};ec.media_timing.program=Tick{10000};
+    ec.ucie.overhead.request_fixed_latency=Tick{100000};ec.buffers.ingress={256,16384};
     Fixture f(hc,ec);f.fail_sequence({0,0});
     std::set<CommandId> live,frozen;std::uint64_t failing_pass=~std::uint64_t{};
     bool saw_link=false;std::size_t barriers=0,root_events=0;
@@ -283,7 +284,7 @@ void delayed_old_attempts(){
 }
 void ingress_old_attempts(){
     HostConfiguration hc;hc.max_open_dlus_per_channel=4;
-    ExecutionConfiguration ec;ec.erase=Tick{1};ec.program=Tick{1000000};ec.ingress={256,16384};
+    ExecutionConfiguration ec;ec.media_timing.erase=Tick{1};ec.media_timing.program=Tick{1000000};ec.buffers.ingress={256,16384};
     // 256 MOCS hold four pages. A fifth page is already in ingress when page0 fails.
     hc.max_open_dlus_per_channel=6;Fixture f(hc,ec);f.fail_sequence({0});
     bool saw_ingress=false;std::set<CommandId> live,frozen;bool notified=false;
@@ -345,8 +346,8 @@ void round_limit(){
 
 void late_read_second_pass(){
     HostConfiguration hc;hc.max_open_dlus_per_channel=4;
-    ExecutionConfiguration ec;ec.erase=Tick{1};ec.program=Tick{10000};
-    ec.request_fixed_latency=Tick{100000};ec.ingress={256,16384};
+    ExecutionConfiguration ec;ec.media_timing.erase=Tick{1};ec.media_timing.program=Tick{10000};
+    ec.ucie.overhead.request_fixed_latency=Tick{100000};ec.buffers.ingress={256,16384};
     Fixture timing(hc,ec);timing.fail_sequence({0,0});timing.run({wr(1,0,8192)});
     Tick second{};
     for(auto&e:timing.trace)if(e.action=="program-fail"&&e.pass==1){second=e.at;break;}

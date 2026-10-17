@@ -111,7 +111,7 @@ void mocs_ingress() {
     check(f.device.statistics().request_transfers==2,"credit wait does not retransmit link");
 }
 void rx_reservation() {
-    ExecutionConfiguration c;c.ingress={1,4096};c.request_fixed_latency=Tick{50000};Fixture f(c);
+    ExecutionConfiguration c;c.buffers.ingress={1,4096};c.ucie.overhead.request_fixed_latency=Tick{50000};Fixture f(c);
     auto a=f.tx(Op::Write);auto b=f.tx(Op::Read);
     const auto first=f.device.try_submit(a,[](auto&){});check(first.disposition==HandoffDisposition::Taken,"first handoff");
     const auto second=f.device.try_submit(b,[](auto&){});check(second.disposition==HandoffDisposition::NotTaken,"RX no oversell");
@@ -120,26 +120,26 @@ void rx_reservation() {
     check(f.device.activity().in_flight_requests==1,"in-flight counted");
 }
 void window_batch_timer() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=0;Fixture f(c);
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=0;Fixture f(c);
     for(auto hint:{ReadHint::Regular,ReadHint::Regular,ReadHint::Batch,ReadHint::Batch,ReadHint::Regular})
         f.send(f.tx(Op::Read,{},0,0,64,0,hint));
     f.run();check(f.device.statistics().window_batches==3&&f.count("window-release")==5,"RRBBR -> RRB/B/R timer");
     check(!(f.moment("sense-issue")<f.moment("window-release")),"sense waits release");
 }
 void window_threshold() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=2;Fixture f(c);
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=2;Fixture f(c);
     f.send(f.tx(Op::Read));f.send(f.tx(Op::Read));f.run();
     check(f.device.statistics().window_batches==1,"threshold one batch");
     check(f.moment("sense-issue").value<50000,"threshold avoids timer wait");
 }
 void window_channel_isolation() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=0;Fixture f(c);
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=0;Fixture f(c);
     const auto a=f.send(f.tx(Op::Read));
     f.send(f.tx(Op::Read,{1,0,0,0},0,0,64,0,ReadHint::Batch));f.run();
     check(f.moment("window-release",a.value).value>=50000,"other channel Batch cannot close window");
 }
 void batch_pending() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=0;Fixture f(c);
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=0;Fixture f(c);
     f.send(f.tx(Op::Write,{0,0,1,0},0,0));
     f.send(f.tx(Op::Read,{0,0,0,0}));
     const auto b=f.send(f.tx(Op::Read,{0,0,1,0},0,0,64,0,ReadHint::Batch));f.run();
@@ -148,7 +148,7 @@ void batch_pending() {
     check(f.moment("window-release").value<50000,"forwarded B releases earlier Regular");
 }
 void batch_missing() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=0;Fixture f(c);
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=0;Fixture f(c);
     f.send(f.tx(Op::Write,{0,0,1,0},0,0));
     f.send(f.tx(Op::Read));
     const auto b=f.send(f.tx(Op::Read,{0,0,1,0},0,1,64,0,ReadHint::Batch));f.run();
@@ -192,7 +192,7 @@ void pending_order_diagnostic() {
     check(f.replies.empty(),"no invented error completion");
 }
 void tx_cache_pressure() {
-    ExecutionConfiguration c;c.egress={1,64};c.response_fixed_latency=Tick{2000000};Fixture f(c);
+    ExecutionConfiguration c;c.buffers.egress={1,64};c.ucie.overhead.response_fixed_latency=Tick{2000000};Fixture f(c);
     f.warm({},4);f.warm({0,0,1,0});f.trace.clear();
     for(PageId p=0;p<4;++p)f.send(f.tx(Op::Read,{},p,0,64,0,ReadHint::Batch));
     f.send(f.tx(Op::Read,{0,0,1,0},0,0,64,0,ReadHint::Batch));
@@ -217,14 +217,14 @@ void cache_rewrite() {
     check(f.wr(w).status==WriteStatus::Success&&f.device.statistics().senses==2,"rewrite new sense");
 }
 void pending_frozen() {
-    ExecutionConfiguration c;c.response_fixed_latency=Tick{500000};Fixture f(c);
+    ExecutionConfiguration c;c.ucie.overhead.response_fixed_latency=Tick{500000};Fixture f(c);
     f.send(f.tx(Op::Write));const auto a=f.send(f.tx(Op::Read));const auto b=f.send(f.tx(Op::Read,{},0,1));
     f.send(f.tx(Op::Write,{},0,1,64,99));f.run();
     check(f.rr(a).data==DataToken{17}&&f.rr(b).status==ReadStatus::PendingWriteMissing,"accepted Pending observation frozen");
     check(f.device.statistics().senses==0,"Pending reads bypass NAND");
 }
 void pending_tx_full() {
-    ExecutionConfiguration c;c.egress={1,64};c.response_fixed_latency=Tick{500000};Fixture f(c);
+    ExecutionConfiguration c;c.buffers.egress={1,64};c.ucie.overhead.response_fixed_latency=Tick{500000};Fixture f(c);
     f.send(f.tx(Op::Write));const auto a=f.send(f.tx(Op::Read));
     const auto b=f.send(f.tx(Op::Read));f.run();
     check(f.rr(a).data==DataToken{17}&&f.rr(b).data==DataToken{17},"Pending waits finite result reservation");
@@ -232,7 +232,7 @@ void pending_tx_full() {
     check(f.moment("accepted",b.value).value>=f.replies.at(a).at.value,"no Pending acceptance before result space");
 }
 void rejected_batch_no_effect() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=0;Fixture f(c,1);
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=0;Fixture f(c,1);
     const auto a=f.send(f.tx(Op::Read));
     const auto b=f.send(f.tx(Op::Read,{},0,1,64,0,ReadHint::Batch));f.run();
     check(f.moment("window-release",a.value).value>=50000,"unaccepted B cannot flush A");
@@ -288,13 +288,14 @@ void response_feedback() {
 }
 void configuration() {
     auto d=profile();ExecutionConfiguration c;
-    check(c.serialization(64)==Tick{1334},"48 GB/s counted in ps with ceiling");
-    c.effective_gbytes_per_second=94;check(c.serialization(64)==Tick{681},"94 GB/s effective rate");
-    c.effective_gbytes_per_second=188;check(c.serialization(64)==Tick{341},"188 GB/s effective rate");
-    c.core_channels_per_ucie=2;c.validate(d);CoreChannelTopology topology(d.geometry(),c);
+    check(c.ucie.serialization(64)==Tick{1334},"48 GB/s counted in ps with ceiling");
+    c.ucie.speed_grade=UcieSpeedGrade::Grade2;check(c.ucie.serialization(64)==Tick{681},"94 GB/s effective rate");
+    c.ucie.speed_grade=UcieSpeedGrade::Grade3;check(c.ucie.serialization(64)==Tick{341},"188 GB/s effective rate");
+    CoreChannelTopologyConfiguration routes;routes.core_channels_per_ucie=2;
+    c.validate(d);CoreChannelTopology topology(d.geometry(),routes);
     check(topology.core_channel(0)==0&&topology.core_channel(1)==1&&d.geometry().dies_per_channel==2,"Core grouping not extra capacity");
-    c.ingress.payload_bytes=64;rejects<std::invalid_argument>([&]{c.validate(d);});
-    c.ingress.payload_bytes=4096;c.effective_gbytes_per_second=0;rejects<std::invalid_argument>([&]{c.validate(d);});
+    c.buffers.ingress.payload_bytes=64;rejects<std::invalid_argument>([&]{c.validate(d);});
+    c.buffers.ingress.payload_bytes=4096;c.ucie.speed_grade=static_cast<UcieSpeedGrade>(0);rejects<std::invalid_argument>([&]{c.validate(d);});
 }
 void cache_pin_invalidation() {
     BankCache cache;PageData a{},b{},c{};a.fill(DataToken{1});b.fill(DataToken{2});c.fill(DataToken{3});
@@ -342,27 +343,27 @@ void invalid_policy() {
     check(f.device.resources().active()==0&&f.device.activity().outstanding==1,"invalid policy cannot commit resources");
 }
 void link_latency() {
-    ExecutionConfiguration c;c.request_fixed_latency=Tick{2000};c.response_fixed_latency=Tick{3000};
+    ExecutionConfiguration c;c.ucie.overhead.request_fixed_latency=Tick{2000};c.ucie.overhead.response_fixed_latency=Tick{3000};
     Fixture f(c);auto cmd=f.tx(Op::Read);cmd.command.address.local=LocalByteAddress{f.device.description().geometry().channel_bytes()};
     auto id=f.send(cmd);f.run();
-    const auto req=c.serialization(c.request_control_bytes).value+c.request_fixed_latency.value;
-    const auto resp=c.serialization(c.response_control_bytes).value+c.response_fixed_latency.value;
+    const auto req=c.ucie.serialization(c.ucie.overhead.request_control_bytes).value+c.ucie.overhead.request_fixed_latency.value;
+    const auto resp=c.ucie.serialization(c.ucie.overhead.response_control_bytes).value+c.ucie.overhead.response_fixed_latency.value;
     check(f.moment("accepted").value==req&&f.replies.at(id).at.value==req+resp,"service plus fixed delay modeled independently");
 }
 void pending_recheck() {
-    ExecutionConfiguration c;c.egress={1,64};c.response_fixed_latency=Tick{20000000};Fixture f(c);
+    ExecutionConfiguration c;c.buffers.egress={1,64};c.ucie.overhead.response_fixed_latency=Tick{20000000};Fixture f(c);
     f.send(f.tx(Op::Write));auto a=f.send(f.tx(Op::Read));auto b=f.send(f.tx(Op::Read));f.run();
     check(f.rr(a).data==DataToken{17},"accepted forward survives assembly timeout");
     check(f.rr(b).status==ReadStatus::UnwrittenPage,"unaccepted Pending read rechecks after timeout, cannot keep old observation");
 }
 void deadline_link_boundary() {
     auto run=[](bool late) {
-        ExecutionConfiguration c;c.request_fixed_latency=Tick{0};c.program=Tick{1000};c.erase=Tick{1000};
+        ExecutionConfiguration c;c.ucie.overhead.request_fixed_latency=Tick{0};c.media_timing.program=Tick{1000};c.media_timing.erase=Tick{1000};
         Fixture f(c,256,Tick{200000});
         const auto first=f.send(f.tx(Op::Write));
         for(std::uint32_t slot=1;slot<63;++slot)f.send(f.tx(Op::Write,{},0,slot));
-        const auto arrival=c.serialization(80).value+200000+(late?1:0);
-        const auto start=arrival-c.serialization(80).value;
+        const auto arrival=c.ucie.serialization(80).value+200000+(late?1:0);
+        const auto start=arrival-c.ucie.serialization(80).value;
         f.events.schedule_at(Tick{start},EventPhase::Arrival,[&]{f.send(f.tx(Op::Write,{},0,63));});
         f.run();return f.wr(first).status;
     };
@@ -373,7 +374,7 @@ class ReverseNand final:public INandSchedulingPolicy {
 public:std::uint64_t select(const std::vector<MediaCandidateView>& c)const override{return c.back().identity;}
 };
 void sense_order_policy() {
-    ExecutionConfiguration c;c.read_window=Tick{50000};c.read_threshold=3;
+    ExecutionConfiguration c;c.read_dispatch.wait=Tick{50000};c.read_dispatch.threshold=3;
     Fixture f(c,256,Tick{10000000},std::make_unique<ReverseNand>());
     f.warm({},3);f.trace.clear();
     for(PageId p=0;p<3;++p)f.send(f.tx(Op::Read,{},p));
@@ -391,7 +392,7 @@ void sense_order_blocked() {
     check(order==std::vector<PageId>({0,1}),"younger same-Bank sense cannot bypass older order-blocked read");
 }
 void ordered_late_error() {
-    ExecutionConfiguration c;c.egress={1,64};Fixture f(c);f.warm();
+    ExecutionConfiguration c;c.buffers.egress={1,64};Fixture f(c);f.warm();
     auto a=f.send(f.tx(Op::Read,{},0,0,64,0,ReadHint::Batch,9));
     auto bad=f.tx(Op::Read,{},0,0,64,0,ReadHint::Batch,9);
     bad.command.address.local=LocalByteAddress{f.device.description().geometry().channel_bytes()};
@@ -400,7 +401,7 @@ void ordered_late_error() {
     check(f.replies.at(a).at<f.replies.at(b).at,"group head delivered first");
 }
 void rewrite_saved_read() {
-    ExecutionConfiguration c;c.egress={1,64};c.response_fixed_latency=Tick{3000000};Fixture f(c);f.warm();f.trace.clear();
+    ExecutionConfiguration c;c.buffers.egress={1,64};c.ucie.overhead.response_fixed_latency=Tick{3000000};Fixture f(c);f.warm();f.trace.clear();
     auto r=f.send(f.tx(Op::Read));auto w=f.write({},0,900);f.run();
     check(f.rr(r).data==DataToken{100}&&f.wr(w).status==WriteStatus::Success,"read old contents survive actual rewrite");
     check(!(f.moment("accepted",w.value)<f.moment("sense-finish")),"rewrite waits for logical read result");
