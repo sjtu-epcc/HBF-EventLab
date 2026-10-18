@@ -35,7 +35,7 @@ struct Fixture {
     explicit Fixture(std::uint32_t pending=8, std::uint32_t spares=2, std::uint32_t mocs=256)
         : d(profile(pending,spares,mocs)), layout(d.geometry()), zones(d), replacement(d.geometry()),
           media(d.geometry()), capacity(d,layout,zones,replacement,media),
-          admission(d.geometry().host_channels,d.configuration().outstanding_limit,signals),
+          admission(d.geometry().host_channels,d.configuration().mocs_selected,signals),
           writes(d,layout,capacity,media,events,admission), reads(d,layout,capacity,media,admission,writes,results) {}
     struct Issued { SubmitResult admission; ReadDisposition disposition; std::optional<ReadStatus> immediate_status; std::optional<ReadOperationId> operation; };
     Issued submit_and_issue(const HostCommand& cmd) {
@@ -107,7 +107,7 @@ void shared_credit() {
     const auto first=f.command(Op::Write); f.writes.submit(first,{DataToken{7}});
     auto missing=f.command(Op::Read,0,1);
     check(f.submit_and_issue(missing).immediate_status==ReadStatus::PendingWriteMissing,"read shares write credit");
-    const auto limit=f.d.configuration().outstanding_limit;
+    const auto limit=f.d.configuration().mocs_selected;
     for(std::uint32_t i=2;i<limit;++i)
         check(f.submit_and_issue(f.command(Op::Read,0,1)).immediate_status==ReadStatus::PendingWriteMissing,
               "accepted error responses fill the configured shared ledger");

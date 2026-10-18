@@ -30,8 +30,8 @@ bool HostDriver::page_succeeded(ContentKey key,PageId page,std::uint64_t pass) c
 void HostDriver::requeue(Unit& u) {
     if(u.stage!=UnitStage::Done)throw std::logic_error("retry before final response");
     u.stage=UnitStage::Queued;u.accepted=false;u.successful=false;u.command.reset();
+    enqueue(u,events_.now());
     for(const auto& f:u.fragments)if(!u.replay)work_.at(f.id).accepted=false;
-    channels_[u.fragments.front().address.channel].queue.insert(u.id);
 }
 
 void HostDriver::note_write_retry(Unit& u,const WriteResponse& response) {

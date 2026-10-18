@@ -32,7 +32,7 @@ struct Fixture {
     explicit Fixture(std::uint32_t pending = 8, std::uint32_t spares = 2, std::uint32_t mocs = 256, std::uint32_t permille = 50)
         : d(profile(pending, spares, mocs)), layout(d.geometry()), zones(d), replacement(d.geometry()),
           media(d.geometry()), capacity(d, layout, zones, replacement, media, CapacityPolicy{permille}), resolver(capacity),
-          admission(d.geometry().host_channels, d.configuration().outstanding_limit,signals),
+          admission(d.geometry().host_channels, d.configuration().mocs_selected,signals),
           writes(d, layout, capacity, media, events, admission) {}
     ChannelAddress address(PageId p, std::uint32_t slot = 0) const {
         return {b.channel, layout.encode_logical({b, p, slot * host_unit_bytes})};

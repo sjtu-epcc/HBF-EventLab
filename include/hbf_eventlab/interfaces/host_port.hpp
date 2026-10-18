@@ -6,7 +6,6 @@
 #include <vector>
 #include <variant>
 namespace hbf_eventlab {
-using TransferAttemptId=Quantity<struct TransferAttemptTag>;
 struct LocalTransaction { HostCommand command; std::vector<DataToken> data; };
 using DeviceResponse=std::variant<ReadResponse,WriteResponse>;
 struct DeliveredResponse { TransferAttemptId attempt; DeviceResponse response; Tick at; };

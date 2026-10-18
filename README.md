@@ -20,6 +20,7 @@ The project supports research into **Host–HBF coordination, access organizatio
 | Fault recovery | The Host automatically replays requests based on responses, merges recovery endpoints, drains old attempts, and explicitly terminates affected work when the recovery budget is exhausted or recovery data is insufficient. |
 | Addressing and capacity | Component APIs provide Zone swaps, replacement with spare blocks in the same Bank, sparse compensation, and permanent logical retirement; CLI commands are not available for all of these capabilities. |
 | Run results | Completion, stalls, run limits, and model errors are distinguished, with separate checks that transient Host and Device activity has drained. |
+| Statistics | Optional JSON records request/attempt latency, per-channel Pending occupancy curves, fragment progress, and DLU context lifecycles, including timeouts, retries, and unfinished work. See [Statistics](docs/usage.md#统一统计). |
 
 The media model uses `DataToken` to represent symbolic content. It does not store actual user bytes or NAND cell charge. Core Channel currently uses an ideal model with infinite bandwidth and zero latency; the fixed NAND latencies and buffer parameters cannot be used directly to predict real product performance.
 
@@ -51,7 +52,7 @@ See [Verification](docs/verification.md#evidence) for complete toolchain details
    ctest --test-dir build-linux-release --output-on-failure --parallel "$(nproc)"
    ```
 
-   Ninja is a single-configuration generator: select Debug or Release with `CMAKE_BUILD_TYPE` during configuration. Executables are placed directly in the build directory. Use separate directories for Debug and Release, and a new directory when switching generators. See the [Contributing Guide](CONTRIBUTING-EN.md#testing-and-verification) for full Debug/Release regression commands.
+   Ninja is a single-configuration generator: select Debug or Release with `CMAKE_BUILD_TYPE` during configuration. Executables are placed directly in the build directory. Use separate directories for Debug and Release, and a new directory when switching generators. See the [Contributing Guide](CONTRIBUTING.md#testing-and-verification) for full Debug/Release regression commands.
 
 3. **Run the workloads.** Run the normal read/write workload, followed by the automatic recovery workload that injects a single program failure on page 2:
 
@@ -104,14 +105,15 @@ The C++ namespace is `hbf_eventlab`, public headers are in [include/hbf_eventlab
 |---|---|
 | [Design Decisions and OCP Specification Traceability](docs/design_decisions.md) | Links specification clauses, design decisions, code locations, and verification evidence for each item to make the implementation basis traceable and verifiable, and documents project interpretations and model assumptions. |
 | [Architecture](docs/architecture.md) | Component responsibilities, address models, event lifecycles, and Host/Device boundaries. |
+| [Parameters](docs/parameters.md) | Unified configuration, defaults, units, validation, and reproducible configuration snapshots. |
 | [Usage](docs/usage.md) | Building, workload format, CLI, configuration, exit codes, and examples. |
 | [Verification](docs/verification.md) | Test matrix, verified environments, results, and reproduction commands. |
 | [Scope and Limitations](docs/scope_and_limitations.md) | Supported response subset, input restrictions, unimplemented features, and performance model boundaries. |
-| [Contributing Guide](CONTRIBUTING-EN.md) | Issue reporting, development workflow, testing, and documentation synchronization requirements. |
+| [Contributing Guide](CONTRIBUTING.md) | Issue reporting, development workflow, testing, and documentation synchronization requirements. |
 
 ## Contributing and Reproducing Experiments
 
-Issue reports, additional tests, reviews of specification interpretations, and proposals for policy experiments are welcome. See the [Contributing Guide](CONTRIBUTING-EN.md) before changing behavior or interfaces. The design decisions and specification traceability tables are key references for understanding the model's semantics.
+Issue reports, additional tests, reviews of specification interpretations, and proposals for policy experiments are welcome. See the [Contributing Guide](CONTRIBUTING.md) before changing behavior or interfaces. The design decisions and specification traceability tables are key references for understanding the model's semantics.
 
 When using this project for experiments, record the code version or commit, workload, complete configuration, fault inputs, and random seeds. Explain the meaning of each metric and the basis for the parameters. Report simulated Ticks, program wall-clock execution time, and real hardware latency separately.
 

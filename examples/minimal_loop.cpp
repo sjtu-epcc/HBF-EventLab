@@ -1,89 +1,125 @@
-#include "hbf_eventlab/runtime/simulation_runner.hpp"
+#include "hbf_eventlab/configuration/simulation_configuration.hpp"
 #include "hbf_eventlab/policies/round_robin_interleaver.hpp"
 #include "hbf_eventlab/adapters/workload_reader.hpp"
+#include "hbf_eventlab/statistics/collector.hpp"
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
+#include <cctype>
 using namespace hbf_eventlab;
 namespace {
-std::uint64_t number(const std::string&s){
-    if(s.empty()||s[0]=='-'||s[0]=='+')throw std::invalid_argument("expected unsigned number");
-    std::size_t end=0;auto n=std::stoull(s,&end,s.rfind("0x",0)==0||s.rfind("0X",0)==0?16:10);
-    if(end!=s.size())throw std::invalid_argument("invalid number");return n;
+bool same_path(const std::string& a,const std::string& b) {
+    if(a.empty()||b.empty())return false;
+    if(std::filesystem::exists(a)&&std::filesystem::exists(b))return std::filesystem::equivalent(a,b);
+    auto x=std::filesystem::weakly_canonical(std::filesystem::absolute(a)).generic_string();
+    auto y=std::filesystem::weakly_canonical(std::filesystem::absolute(b)).generic_string();
+#ifdef _WIN32
+    std::transform(x.begin(),x.end(),x.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
+    std::transform(y.begin(),y.end(),y.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
+#endif
+    return x==y;
 }
-unsigned small(const std::string&s){auto n=number(s);if(n>UINT32_MAX)throw std::invalid_argument("integer too large");return static_cast<unsigned>(n);}
+void protect_output(const std::string& output,const std::string& workload,const std::string& config) {
+    if(same_path(output,workload)||same_path(output,config))
+        throw std::invalid_argument("output must not overwrite workload or input configuration");
+}
+void usage() {
+    std::cout<<"usage: hbf_eventlab_cli workload.txt [--config FILE] [--set key=value] [--dump-config FILE]\n"
+        <<"  [--channels N] [--interleave N] [--base N] [--burst] [--regular] [--open N]\n"
+        <<"  [--mocs N] [--mocs-supported N] [--pending N] [--speed-grade 1|2|3]\n"
+        <<"  [--replays N] [--retention N] [--pending-retries N] [--timeout-retries N] [--retry-delay N]\n"
+        <<"  [--fail-sequence p,q] [--persistent-page N] [--max-tick N] [--max-events N]\n"
+        <<"  [--trace] [--stats-json FILE]\n"
+        <<"Defaults < INI file < explicit CLI overrides (left to right). See docs/parameters.md.\n";
+}
 const char* result(LogicalResult r){return r==LogicalResult::Success?"Success":r==LogicalResult::Failed?"Failed":"Pending";}
 }
 int main(int argc,char**argv){
     try{
-        if(argc<2){std::cerr<<"usage: hbf_eventlab_cli workload.txt [--channels N] [--interleave N] [--base N] [--burst]\n"
-            <<"  [--regular] [--open N] [--replays N] [--retention N] [--mocs N]\n  [--pending-retries N] [--timeout-retries N] [--retry-delay N]\n"
-            <<"  [--fail-sequence page,page] [--persistent-page N] [--max-tick N] [--max-events N] [--trace]\n";return 5;}
-        HostConfiguration hc;ExecutionConfiguration ec;RunLimits limits;unsigned channels=2,mocs=256;
-        std::uint64_t base=0,interleave=64;std::vector<PageId> faults;std::optional<PageId> persistent;bool trace=false;
+        if(argc<2){usage();return 5;}
+        if(std::string(argv[1])=="--help"){usage();return 0;}
+        std::string config_path;
+        std::vector<std::pair<std::string,std::string>> overrides;
+        const std::map<std::string,std::string> aliases={
+            {"--channels","device.geometry.host_channels"},{"--interleave","address.interleave_bytes"},
+            {"--base","address.global_base"},{"--open","host.max_open_dlus_per_channel"},
+            {"--replays","host.recovery.max_replay_passes"},{"--retention","host.retained_fragments"},
+            {"--pending-retries","host.retry.max_pending_retries"},{"--timeout-retries","host.retry.max_timeout_retries"},
+            {"--retry-delay","host.retry.pending_delay_ps"},{"--mocs","device.selected.mocs_selected"},
+            {"--mocs-supported","device.capabilities.mocs_supported"},{"--pending","device.capabilities.max_pending_write_dlus"},
+            {"--speed-grade","device.ucie_speed_grade"},{"--persistent-page","faults.persistent_page"},
+            {"--max-tick","run.max_tick_ps"},{"--max-events","run.total_events"},
+            {"--stats-json","output.statistics_json"},{"--dump-config","output.effective_config"}};
         for(int i=2;i<argc;++i){
-            std::string key=argv[i];
-            if(key=="--burst"){hc.writes=WriteCommandMode::Burst4096;continue;}
-            if(key=="--regular"){hc.hints=ReadHintMode::AllRegular;continue;}
-            if(key=="--trace"){trace=true;continue;}
+            const std::string key=argv[i];
+            if(key=="--burst"){overrides.emplace_back("host.write_mode","burst4096");continue;}
+            if(key=="--regular"){overrides.emplace_back("host.read_hint_mode","all_regular");continue;}
+            if(key=="--trace"){overrides.emplace_back("output.trace","true");continue;}
+            if(key!="--config"&&key!="--set"&&key!="--fail-sequence"&&!aliases.count(key))
+                throw std::invalid_argument("unknown option: "+key);
             if(i+1>=argc)throw std::invalid_argument("missing option value: "+key);
-            std::string value=argv[++i];
-            if(key=="--channels")channels=small(value);
-            else if(key=="--interleave")interleave=number(value);
-            else if(key=="--base")base=number(value);
-            else if(key=="--open")hc.max_open_dlus_per_channel=number(value);
-            else if(key=="--replays")hc.max_replay_passes=small(value);
-            else if(key=="--pending-retries")hc.max_pending_retries=small(value);
-            else if(key=="--timeout-retries")hc.max_timeout_retries=small(value);
-            else if(key=="--retry-delay")hc.pending_retry_delay=Tick{number(value)};
-            else if(key=="--retention")hc.retained_fragments=number(value);
-            else if(key=="--mocs")mocs=small(value);
-            else if(key=="--max-tick")limits.max_tick=Tick{number(value)};
-            else if(key=="--max-events")limits.events.total_events=number(value);
-            else if(key=="--persistent-page")persistent=small(value);
-            else if(key=="--fail-sequence"){
-                if(value.empty()||value.back()==',')throw std::invalid_argument("empty fault page");
-                std::istringstream in(value);std::string page;while(std::getline(in,page,','))faults.push_back(small(page));
-            }else throw std::invalid_argument("unknown option: "+key);
+            const std::string value=argv[++i];
+            if(key=="--config"){
+                if(!config_path.empty()||value.empty())throw std::invalid_argument("exactly one nonempty --config path is supported");
+                config_path=value;
+            }else if(key=="--set"){
+                const auto eq=value.find('=');if(eq==std::string::npos)throw std::invalid_argument("--set requires key=value");
+                overrides.emplace_back(value.substr(0,eq),value.substr(eq+1));
+            }else if(key=="--fail-sequence")overrides.emplace_back("faults.fail_sequence","["+value+"]");
+            else overrides.emplace_back(aliases.at(key),value);
         }
-        Geometry geometry{channels,1,1,8,4,1};
-        for(auto page:faults)if(page>=geometry.pages_per_block)throw std::invalid_argument("fault page outside geometry");
-        if(persistent&&*persistent>=geometry.pages_per_block)throw std::invalid_argument("fault page outside geometry");
-        StaticDeviceDescription desc{geometry,{256,8,false,true},{mocs,Tick{10000000},geometry.block_group_dlus()}};
-        EventQueue events;DeviceDriver device(desc,ec,events);
-        RoundRobinInterleaver inter(GlobalByteAddress{base},channels,geometry.channel_bytes(),interleave);
+        SimulationConfiguration raw;
+        if(!config_path.empty()){
+            std::ifstream file(config_path);if(!file)throw std::invalid_argument("cannot open configuration: "+config_path);
+            raw=read_configuration(file,config_path);
+        }
+        for(const auto& o:overrides)apply_configuration_override(raw,o.first,o.second);
+        const auto resolved=resolve_configuration(std::move(raw));
+        const auto& cfg=resolved.values();const auto& hc=cfg.host;const auto& ec=cfg.execution;const auto& limits=cfg.run;
+        const auto& geometry=cfg.device.geometry;
+        const bool trace=cfg.output.trace;
+        const std::optional<std::string> statistics_path=cfg.output.statistics_json.empty()?std::nullopt:std::optional<std::string>{cfg.output.statistics_json};
+        protect_output(cfg.output.statistics_json,argv[1],config_path);
+        protect_output(cfg.output.effective_config,argv[1],config_path);
+        if(same_path(cfg.output.statistics_json,cfg.output.effective_config))
+            throw std::invalid_argument("statistics and effective configuration outputs must be different files");
+        std::ifstream input(argv[1]);if(!input)throw std::invalid_argument("cannot open workload file");
+        const auto workload=read_workload(input);
+        StatisticsCollector measurements; // outlives both producers
+        EventQueue events;DeviceDriver device(resolved.description(),ec,events);
+        RoundRobinInterleaver inter(cfg.address.global_base,geometry.host_channels,geometry.channel_bytes(),cfg.address.interleave_bytes);
         HostDriver host(device,events,inter,hc);
-        // Explicit experiment input. Host sees only command responses, never this injector.
-        device.set_program_outcome([faults,persistent,index=std::size_t{}](const ProgramOperation& op)mutable{
-            if(op.logical.channel!=0||op.logical.die!=0||op.logical.bank!=0||op.logical.block!=0)return ProgramOutcome::Success;
-            if(persistent&&op.physical.page==*persistent)return ProgramOutcome::FailedReusable;
-            if(index<faults.size()&&op.physical.page==faults[index]){++index;return ProgramOutcome::FailedReusable;}
-            return ProgramOutcome::Success;
-        });
+        if(statistics_path){device.set_statistics_sink(measurements);host.set_statistics_sink(measurements);}
+        device.set_program_outcome(make_program_outcome(cfg.faults));
         if(trace){
             host.set_trace([](auto&e){std::cout<<"HOST "<<e.at.value<<" "<<e.action<<" cmd="<<e.command.value
                 <<" unit="<<e.unit.value<<" channel="<<e.block.channel<<" block="<<e.block.block<<" pass="<<e.pass<<"\n";});
             device.set_trace([](auto&e){std::cout<<"DEVICE "<<e.at.value<<" "<<e.action<<" channel="<<e.channel<<" id="<<e.identity<<"\n";});
         }
-        std::ifstream input(argv[1]);if(!input)throw std::invalid_argument("cannot open workload file");
-        host.load(read_workload(input));host.start();SimulationRunner runner(events,host,device);const auto report=runner.run(limits);
-        std::cout<<"HBF EventLab | functional timing, NOT calibrated performance\n"
-            <<"CONFIG channels="<<channels<<" dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 base="<<base
-            <<" interleave_bytes="<<interleave<<" command_write_bytes="<<(hc.writes==WriteCommandMode::Fragment64?64:4096)
-            <<" hints="<<(hc.hints==ReadHintMode::TailBatch?"tail-batch":"all-regular")
-            <<" open_dlus="<<hc.max_open_dlus_per_channel<<" mocs="<<mocs<<" pending_limit=8\n"
-            <<"CONFIG tick=1ps sense="<<ec.sense.value<<" program="<<ec.program.value<<" erase="<<ec.erase.value
-            <<" cache_access="<<ec.cache_access.value<<" assembly_timeout=10000000 read_window="<<ec.read_window.value
-            <<" read_threshold="<<ec.read_threshold<<" bandwidth_GBps="<<ec.effective_gbytes_per_second
-            <<" controls_B="<<ec.request_control_bytes<<"/"<<ec.response_control_bytes
-            <<" propagation_ps="<<ec.request_fixed_latency.value<<"/"<<ec.response_fixed_latency.value
-            <<" RX="<<ec.ingress.entries<<"/"<<ec.ingress.payload_bytes<<" TX="<<ec.egress.entries<<"/"<<ec.egress.payload_bytes
-            <<" caches_per_bank=2 CoreChannel=ideal\n"
-            <<"CONFIG retention_fragments="<<hc.retained_fragments<<" replay_pass_limit="<<hc.max_replay_passes
-            <<" pending_retries="<<hc.max_pending_retries<<" timeout_retries="<<hc.max_timeout_retries<<" retry_delay="<<hc.pending_retry_delay.value
-            <<" max_tick="<<limits.max_tick->value<<" event_limits="<<limits.events.total_events<<"/"
-            <<limits.events.events_per_tick<<"/"<<limits.events.rounds_per_tick<<"\n"
-            <<"STOP "<<to_string(report.status)<<" workload="<<(report.workload_success?"Success":"FailedOrUnfinished")
+        host.load(workload);
+        for(const auto& diagnostic:diagnose_workload(resolved,workload))std::cerr<<"WARNING "<<diagnostic<<"\n";
+        if(!cfg.output.effective_config.empty()){
+            std::ofstream effective(cfg.output.effective_config);
+            if(!effective)throw std::invalid_argument("cannot open effective configuration output");
+            write_effective_configuration(effective,resolved);effective.flush();
+            if(!effective)throw std::runtime_error("cannot flush effective configuration output");
+        }
+        std::ofstream statistics_output;
+        if(statistics_path){
+            statistics_output.open(*statistics_path);
+            if(!statistics_output)throw std::invalid_argument("cannot open statistics output");
+        }
+        std::cout<<"HBF EventLab | functional timing, NOT calibrated performance\n";
+        write_configuration_summary(std::cout,resolved);
+        host.start();SimulationRunner runner(events,host,device);const auto report=runner.run(limits);
+        if(statistics_path) {
+            measurements.write_json(statistics_output,report.at,to_string(report.status));statistics_output.flush();
+            if(!statistics_output)throw std::runtime_error("cannot flush statistics output");
+            std::cout<<"STATISTICS schema=1 file="<<*statistics_path<<" unit=tick (1 ps in CLI)\n";
+        }
+        std::cout            <<"STOP "<<to_string(report.status)<<" workload="<<(report.workload_success?"Success":"FailedOrUnfinished")
             <<" tick="<<report.at.value<<" events="<<report.events<<" reason="<<report.explanation<<"\n";
         for(auto& item:host.results()){auto&r=item.second;std::cout<<"GLOBAL "<<r.id.value<<" "<<result(r.state)
             <<" remaining="<<r.remaining<<" failed_fragments="<<r.failed<<" reason="<<r.reason<<"\n";}

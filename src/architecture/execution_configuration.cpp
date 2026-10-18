@@ -1,28 +1,38 @@
 #include "hbf_eventlab/architecture/execution_configuration.hpp"
 namespace hbf_eventlab {
 void ExecutionConfiguration::validate(const StaticDeviceDescription& d) const {
-    if(!sense.value || !program.value || !erase.value || !cache_access.value || !effective_gbytes_per_second ||
-       !request_control_bytes || !response_control_bytes || !ingress.entries || !egress.entries ||
-       egress.payload_bytes<host_unit_bytes || ingress.payload_bytes<(d.capabilities().write_burst?dlu_bytes:host_unit_bytes))
-        throw std::invalid_argument("invalid timing/buffer profile; RX must fit advertised largest transaction");
-    if(!core_channels_per_ucie || core_channels_per_ucie>d.geometry().dies_per_channel)
-        throw std::invalid_argument("invalid Core Channel count");
-    if(!die_to_core_channel.empty() && die_to_core_channel.size()!=d.geometry().dies_per_channel)
-        throw std::invalid_argument("Core route must name every existing die exactly once");
-    for(auto ch:die_to_core_channel) if(ch>=core_channels_per_ucie) throw std::invalid_argument("Core route out of range");
+    const auto& speed=ucie_speed_profile(ucie.speed_grade);
+    if(d.geometry().host_channels>speed.max_modules)
+        throw std::invalid_argument("device.geometry.host_channels: exceeds selected UCIe speed grade module limit");
+    if(d.geometry().dies_per_channel>speed.max_stack_height)
+        throw std::invalid_argument("device.geometry.dies_per_channel: exceeds selected UCIe speed grade stack limit");
+    if(d.capabilities().read_burst)
+        throw std::invalid_argument("device.capabilities.read_burst: current DeviceDriver supports only 64B reads");
+    if(!media_timing.sense.value) throw std::invalid_argument("execution.media_timing.sense_ps: must be positive");
+    if(!media_timing.program.value) throw std::invalid_argument("execution.media_timing.program_ps: must be positive");
+    if(!media_timing.erase.value) throw std::invalid_argument("execution.media_timing.erase_ps: must be positive");
+    if(!media_timing.cache_access.value) throw std::invalid_argument("execution.media_timing.cache_access_ps: must be positive");
+    if(!ucie.overhead.request_control_bytes) throw std::invalid_argument("execution.ucie.request_control_bytes: must be positive");
+    if(!ucie.overhead.response_control_bytes) throw std::invalid_argument("execution.ucie.response_control_bytes: must be positive");
+    if(!buffers.ingress.entries) throw std::invalid_argument("execution.buffers.ingress_entries: must be positive");
+    if(!buffers.egress.entries) throw std::invalid_argument("execution.buffers.egress_entries: must be positive");
+    if(buffers.egress.payload_bytes<host_unit_bytes)
+        throw std::invalid_argument("execution.buffers.egress_payload_bytes: must fit one 64B read result");
+    if(buffers.ingress.payload_bytes<(d.capabilities().write_burst?dlu_bytes:host_unit_bytes))
+        throw std::invalid_argument("execution.buffers.ingress_payload_bytes: must fit largest advertised write transaction");
+    try {
+        const auto largest_write=d.capabilities().write_burst?dlu_bytes:host_unit_bytes;
+        const auto request=ucie.serialization(checked_add(ucie.overhead.request_control_bytes,largest_write));
+        const auto response=ucie.serialization(checked_add(ucie.overhead.response_control_bytes,host_unit_bytes));
+        (void)checked_add(request.value,ucie.overhead.request_fixed_latency.value);
+        (void)checked_add(response.value,ucie.overhead.response_fixed_latency.value);
+    } catch(const std::overflow_error&) {
+        throw std::invalid_argument("execution.ucie: service bytes or transfer duration overflow");
+    }
 }
-Tick ExecutionConfiguration::serialization(std::uint64_t bytes) const {
-    if(!effective_gbytes_per_second) throw std::invalid_argument("zero link bandwidth");
+Tick UcieExecutionConfiguration::serialization(std::uint64_t bytes) const {
+    const auto bandwidth=effective_gbytes_per_second();
     const auto ps=checked_mul(bytes,1000);
-    return Tick{ps/effective_gbytes_per_second+(ps%effective_gbytes_per_second!=0)};
+    return Tick{ps/bandwidth+(ps%bandwidth!=0)};
 }
-CoreChannelTopology::CoreChannelTopology(const Geometry& g,const ExecutionConfiguration& c)
-    :count_(c.core_channels_per_ucie),route_(c.die_to_core_channel) {
-    if(!count_ || count_>g.dies_per_channel || (!route_.empty() && route_.size()!=g.dies_per_channel))
-        throw std::invalid_argument("invalid Core Channel topology");
-    for(auto core:route_) if(core>=count_) throw std::invalid_argument("invalid Core route");
-    if(route_.empty()) for(std::uint32_t die=0;die<g.dies_per_channel;++die) route_.push_back(die%count_);
 }
-std::uint32_t CoreChannelTopology::core_channel(std::uint32_t die) const { return route_.at(die); }
-}
-

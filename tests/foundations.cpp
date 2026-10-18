@@ -94,10 +94,11 @@ void admission() {
     auto no_burst = d.capabilities(); no_burst.write_burst = false;
     StaticDeviceDescription narrow(d.geometry(), no_burst, d.configuration());
     rejects([&] { normalize_command(command(1, 0, dlu_bytes), narrow); });
-    auto cfg = d.configuration(); cfg.outstanding_limit = 1;
-    rejects([&] { StaticDeviceDescription invalid(d.geometry(), no_burst, cfg); });
+    auto cfg = d.configuration(); cfg.mocs_selected = 1;
+    StaticDeviceDescription single_fragment(d.geometry(), no_burst, cfg);
+    check(single_fragment.configuration().mocs_selected==1, "small MOCS is legal; workload progress is diagnosed separately");
     StaticDeviceDescription single_burst(d.geometry(), d.capabilities(), cfg);
-    check(single_burst.configuration().outstanding_limit == 1, "single-credit full-burst model can progress");
+    check(single_burst.configuration().mocs_selected == 1, "single-credit full-burst model can progress");
 }
 void write_lifecycle() {
     const auto d = demonstration_profile();

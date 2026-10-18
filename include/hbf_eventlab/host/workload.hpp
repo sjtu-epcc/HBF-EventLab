@@ -2,9 +2,6 @@
 #include "hbf_eventlab/interfaces/host_port.hpp"
 #include <string>
 namespace hbf_eventlab {
-using GlobalRequestId=Quantity<struct GlobalRequestTag>;
-using LogicalWorkId=Quantity<struct LogicalWorkTag>;
-using SendUnitId=Quantity<struct SendUnitTag>;
 enum class ReadHintMode { AllRegular, TailBatch };
 enum class WriteCommandMode { Fragment64, Burst4096 };
 struct GlobalRequest {
@@ -31,7 +28,6 @@ struct Fragment {
     LogicalNandAddress logical;
     DataToken data;
 };
-enum class LogicalResult { Pending, Success, Failed };
 struct WorkResult {
     GlobalRequestId id;
     LogicalResult state=LogicalResult::Pending;
@@ -43,6 +39,8 @@ inline DataToken token_for(std::uint64_t content,GlobalByteAddress a) {
     return DataToken{(content*0x9e3779b97f4a7c15ULL)^(a.value/host_unit_bytes)};
 }
 struct HostConfiguration {
+    std::string send_policy="fcfs"; // strategy selection; API injection records "custom"
+    void validate() const;
     WriteCommandMode writes=WriteCommandMode::Fragment64;
     ReadHintMode hints=ReadHintMode::TailBatch;
     std::size_t max_open_dlus_per_channel=2;

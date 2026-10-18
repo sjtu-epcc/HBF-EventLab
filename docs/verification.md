@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-下列结果对应项目版本 **0.5.0**，共 **187 项**；回归日期为 **2026-10-10**。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节。
+当前测试集共 **281 项**；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
-| 配置 | 测试结果 | CTest墙钟耗时 |
-|---|---|---:|
-| Debug | 187/187通过，0失败 | 41.66s |
-| Release | 187/187通过，0失败 | 29.17s |
+| 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
+|---|---|---|---:|
+| Debug | 2026-10-18 | 281/281通过，0失败 | 45.33s |
+| Release | 2026-10-18 | 281/281通过，0失败 | 10.28s |
 
 上述 CTest 使用 4 个并行作业。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-187项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、65个Host行为场景和8个CLI场景组成。分类表示验证职责，不表示规范章节数量。
+281项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、81个Host行为场景、32个统计场景、26个配置场景和28个CLI场景组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -31,7 +31,9 @@
 | Cache与结果存储 | cache_hit、miss_becomes_hit、tx_cache_pressure、rewrite_saved_read | 双槽保护、有限TX反压、旧结果不随重写改变。 |
 | 读窗口与组序 | window_batch_timer、batch_pending、batch_missing、ordered_late_error | Batch边界、主动timer、Pending提示与组内错误返回。 |
 | 链路与正式接受 | rx_reservation、mocs_ingress、link_latency、multi_channel_bandwidth | 在途RX预留、MOCS边界、序列化/传播分离。 |
-| Global与发送策略 | splitter、sixteen_channels、burst_cross_global、fill_open | 跨Global补DLU，burst归属与合法补片优先。 |
+| Global与发送策略 | splitter、sixteen_channels、host_send_fcfs、host_send_fill_open、host_send_blocked_open、host_send_channels | 跨Global补DLU；真实Device下两种策略次序不同，受阻请求可被合法补片越过，各channel独立前进。 |
+| Host入队身份与次序 | host_send_release_order、host_send_same_tick、host_send_dependency_age、host_send_not_taken、host_send_burst_mixed、host_send_cross_global_burst | 按释放与输入次序入队，依赖／背压保留队龄；burst等最后贡献片段，不受预加载构造顺序影响。 |
+| Host重试排序 | host_send_retry_tail、host_send_same_tick_retry、host_send_timeout_tail、host_send_timeout_unsent、host_send_replay_followers | 错误重发排到队尾，未发送补片保留原次序，同Tick可复现；稳定逻辑身份和统计释放时刻不被重置。 |
 | Host恢复 | recovery_once、follower_before_root、replay_merge、burst_recovery | 真正响应驱动、根因定位、任务合并和恢复终点。 |
 | Host命令重试 | pending_root_first、pending_follower_first、pending_late_followers、pending_burst | 根因或后继错误先到均可修复；只重发被拒绝命令，保留有效片段；burst仍按一条命令记账。 |
 | Host容量反馈 | pending_progress、real_pending | 容量进展早于迟到错误时不漏唤醒，无用timer取消；实际Pending名额释放后可继续写入。 |
@@ -44,8 +46,18 @@
 | 数据与预算 | retention_pins、missing_retention、persistent_failure、prior_success_retained | 恢复数据身份、有限失败、历史成功与独立工作。 |
 | 输入与停止 | input_validation、ordered_pending、runner_device_activity、cancelled_future_release | 能力诊断、双方排空、取消无用未来事件。 |
 | 运行限额 | time_limit、event_limit、same_tick_limit、round_limit | 分别触限、现场保留，不制造完成或额外Tick。 |
+| 统计时间与归属 | statistics_boundaries、statistics_ingress_wait、statistics_cross_global_burst、statistics_multi_channel | 五个时刻、credit持有时长、跨Global burst一次响应、跨channel最后逻辑结果决定Global完成。 |
+| 统计重试与终止 | statistics_pending_retry、statistics_timeout_retry、statistics_replay、statistics_partial_future_cancel、statistics_unfinished_resume | 重试不改逻辑分母/释放时刻；部分子工作提前取消、限额停止及恢复继续不丢失或伪造样本。 |
+| 统计观察与导出 | statistics_event_time、statistics_observational、statistics_zero_and_status、statistics_cli_normal、statistics_cli_limit | 使用事件时间；开关统计不改Tick/事件数；同数值读写状态分开；JSON结构、缺失时刻和输入保护。 |
+| Pending生命周期与归属 | pending_statistics_lifecycle、pending_statistics_rejected、pending_statistics_timeout_reuse、pending_statistics_failure、pending_statistics_identity | 真实片段数及四个时刻、拒绝不造上下文、generation分开重试、program失败与后继失败、命令ID复用后的attempt归属。 |
+| Pending曲线与阶段占用 | pending_statistics_occupancy、pending_statistics_curve_reconstruction、pending_statistics_same_tick_burst、pending_statistics_read_only | 各channel总量/阶段分区、峰值、满额时长、积分与均值；按变化点重建积分，同Tick零时长和纯读零曲线。 |
+| Pending提交与停止边界 | pending_statistics_commit_failure、pending_statistics_device_delivery、pending_statistics_snapshot、pending_statistics_device_limit、pending_statistics_teardown、statistics_cli_assembly_limit | program提交失败不退上下文；Pending释放早于响应/MOCS；中断保留活动尾段，继续运行不重复计数，析构不伪造终结。 |
+| 配置格式与装配 | configuration_parse_override、configuration_numeric、configuration_frozen、configuration_cli_precedence | 字段类型、未知／重复输入、覆盖优先级和解析后冻结。 |
+| Host策略配置 | configuration_cli_host_default、configuration_cli_host_fill_open、configuration_cli_host_override | 默认FCFS、文件选择fill_open、CLI覆盖及有效配置导出一致。 |
+| 配置合法性与运行 | configuration_grade_limits、configuration_mocs_ranges、configuration_small_read、configuration_small_write、configuration_small_burst、configuration_capacity | 档位上限、Supported／Selected、实际写模式诊断、真实超时／burst前进及预算传递。 |
+| 配置复现与保护 | configuration_roundtrip、configuration_default_equivalence、configuration_cli_roundtrip、configuration_cli_collision | 导出再载入保持结果／Tick／事件数；输入与输出不互相覆盖。 |
 
-场景名指测试函数或CLI案例名；同名案例按“生命周期 / Device / Host / CLI”区分。Host断言主要位于 [host.cpp](../tests/host.cpp) 和 [host_retry.cpp](../tests/host_retry.cpp)。实际CTest注册以[构建定义](../CMakeLists.txt)和`ctest -N`为准。设计表中的测试引用指向对应注册位置；需要查看断言时可在`tests/`中搜索函数，例如：
+场景名指测试函数或CLI案例名；同名案例按“生命周期 / Device / Host / CLI”区分。Host断言主要位于 [host.cpp](../tests/host.cpp)、[host_retry.cpp](../tests/host_retry.cpp) 和 [host_send_policy.cpp](../tests/host_send_policy.cpp)。实际CTest注册以[构建定义](../CMakeLists.txt)和`ctest -N`为准。设计表中的测试引用指向对应注册位置；需要查看断言时可在`tests/`中搜索函数，例如：
 
 ```text
 rg -n "void event_rounds" tests
@@ -75,6 +87,10 @@ ctest --test-dir build-verify -C Release --output-on-failure --parallel 4
 ctest --test-dir build-verify -C Release -N
 ctest --test-dir build-verify -C Release -R '(^|_)recovery_once$' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^host_retry_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^host_send_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^statistics_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^pending_statistics_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^configuration_' --output-on-failure
 ```
 
 Linux 的构建与全量回归命令见 [贡献指南](../CONTRIBUTING.md#testing-and-verification)，依赖安装见 [README 快速开始](../README.md#quick-start)。列出 Linux 测试使用 `ctest --test-dir build-linux-release -N`；详细日志由 CTest 保存在各构建目录的 `Testing/Temporary/LastTest.log`。
@@ -117,6 +133,10 @@ DEVICE programs=2 erases=2 senses=2 cache_hits=126 host_drained=1 device_drained
 
 上表八类CLI案例均通过退出码和输出检查。写重试的额外计数含义见[使用说明](usage.md#写重试统计)；可添加 `--pending-retries 0 --timeout-retries 0` 对比关闭资源重试的基线，此配置不关闭program-fail replay。直接运行示例的命令见 [README](../README.md#quick-start)。
 
+另外三项CLI统计用例启用`--stats-json`，分别解析完整运行、传输中停止及组装中停止的输出；断言Global/逻辑/尝试数量、时间顺序、缺失时间为null、Pending曲线与上下文一致，并检查输出路径不能覆盖输入。API的17项请求统计场景、15项Pending统计场景和三项CLI案例合计35项。接口、指标定义和导出示例见[统一统计](usage.md#统一统计)。
+
+17项CLI配置案例另行验证文件覆盖、非法配置诊断、导出重载、路径保护、Host策略选择，以及MOCS=1下纯读、64B写和完整burst三种不同结果。配置与参数语义见[参数说明](parameters.md)。
+
 ## 5. 验证边界
 
 - 针对性断言不能证明全部状态组合正确；有序Pending、完整AXI/ECC和广域异步故障不在支持范围内。
@@ -134,8 +154,8 @@ DEVICE programs=2 erases=2 senses=2 cache_hits=126 host_drained=1 device_drained
 |---|---|
 | <a id="t01"></a>T01 | [address_mapping()](../tests/foundations.cpp#L27) |
 | <a id="t02"></a>T02 | [admission()](../tests/foundations.cpp#L74) |
-| <a id="t03"></a>T03 | [write_lifecycle()](../tests/foundations.cpp#L102) |
-| <a id="t04"></a>T04 | [events_dispatch()](../tests/foundations.cpp#L156) |
+| <a id="t03"></a>T03 | [write_lifecycle()](../tests/foundations.cpp#L103) |
+| <a id="t04"></a>T04 | [events_dispatch()](../tests/foundations.cpp#L157) |
 | <a id="t05"></a>T05 | [capacity_compensation()](../tests/capacity_retirement.cpp#L67) |
 | <a id="t06"></a>T06 | [capacity_density()](../tests/capacity_retirement.cpp#L93) |
 | <a id="t07"></a>T07 | [capacity_atomicity()](../tests/capacity_retirement.cpp#L113) |

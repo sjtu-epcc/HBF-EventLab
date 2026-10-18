@@ -1,12 +1,17 @@
 #include "hbf_eventlab/host/host_driver.hpp"
 #include <algorithm>
 namespace hbf_eventlab {
+void HostDriver::set_statistics_sink(IStatisticsSink& sink) {
+    if(loaded_||started_||statistics_sink_)throw std::logic_error("attach Host statistics once before load");
+    statistics_sink_=&sink;
+}
 HostDriver::HostDriver(IHostPort& p,EventQueue& e,const IHostInterleaver& i,HostConfiguration c,std::unique_ptr<IHostSendPolicy> policy)
     :port_(p),events_(e),splitter_(i,p.layout()),config_(c),policy_(std::move(policy)),
      retention_(c.retained_fragments),recovery_(c.max_replay_passes),channels_(p.description().geometry().host_channels) {
-    if(&p.notifications().events()!=&e || !policy_ || !c.max_open_dlus_per_channel || !c.max_logical_fragments ||
-       (c.max_pending_retries && !c.pending_retry_delay.value))
-        throw std::invalid_argument("invalid Host configuration/clock");
+    c.validate();
+    if(&p.notifications().events()!=&e) throw std::invalid_argument("Host and Device must share event clock");
+    if(policy_) config_.send_policy="custom";
+    else policy_=make_host_send_policy(c.send_policy);
     if(c.writes==WriteCommandMode::Burst4096&&!p.description().capabilities().write_burst)
         throw std::invalid_argument("4KiB write burst unsupported by profile");
 }
@@ -63,9 +68,31 @@ SendUnitId HostDriver::add_unit(Op op,std::vector<Fragment> fragments,std::optio
     if(fragments.empty())throw std::logic_error("empty send unit");
     const SendUnitId id{++next_unit_};const auto ch=fragments.front().address.channel;
     Unit u{id,op,std::move(fragments),content,group};u.replay=replay;u.pass=pass;
+    auto arrival=std::make_pair(Tick{},std::uint64_t{});
+    if(!replay)for(const auto& f:u.fragments)
+        arrival=std::max(arrival,std::make_pair(requests_.at(f.parent).not_before,f.id.value));
+    u.queued_at=std::max(events_.now(),arrival.first);
     units_.emplace(id,std::move(u));channels_[ch].queue.insert(id);
+    if(replay)enqueue(units_.at(id),events_.now());
+    else initial_enqueues_[arrival.first].push_back({arrival.second,id});
     if(content&&!replay)versions_[*content].normal.push_back(id);
     return id;
+}
+void HostDriver::enqueue(Unit& u,Tick at) {
+    if(u.stage!=UnitStage::Queued)throw std::logic_error("enqueue of nonqueued Host unit");
+    next_enqueue_=checked_add(next_enqueue_,1);
+    u.enqueue_sequence=next_enqueue_;u.queued_at=at;
+    channels_[u.fragments.front().address.channel].queue.insert(u.id);
+}
+void HostDriver::release_units(Tick now) {
+    while(!initial_enqueues_.empty() && !(now<initial_enqueues_.begin()->first)) {
+        auto it=initial_enqueues_.begin();
+        for(const auto& item:it->second) {
+            auto& u=units_.at(item.second);
+            if(u.stage==UnitStage::Queued && !u.enqueue_sequence)enqueue(u,u.queued_at);
+        }
+        initial_enqueues_.erase(it);
+    }
 }
 void HostDriver::load(const std::vector<GlobalRequest>& input) {
     if(loaded_||started_)throw std::logic_error("Host workload already loaded");
@@ -74,8 +101,11 @@ void HostDriver::load(const std::vector<GlobalRequest>& input) {
     std::vector<PageKey> burst_order;
     for(const auto& r:input) {
         requests_.emplace(r.id,r);results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/64)});
+        if(statistics_sink_)statistics_sink_->observe(StatGlobalDefined{r.id,r.op,r.bytes,r.not_before});
         for(auto f:splitter_.split(r)) {
             f.id=LogicalWorkId{++next_work_};work_.emplace(f.id,Work{f});
+            if(statistics_sink_)statistics_sink_->observe(StatWorkDefined{f.id,r.id,f.address,
+                r.op==Op::Write?std::optional<std::uint64_t>{r.content}:std::nullopt});
             std::optional<ContentKey> content;
             if(r.op==Op::Write) {
                 content=ContentKey{f.logical.block,r.content};
@@ -98,6 +128,7 @@ void HostDriver::load(const std::vector<GlobalRequest>& input) {
         }
         for(const auto& item:tails)units_.at(item.second).hint=ReadHint::Batch;
     }
+    for(auto& release:initial_enqueues_)std::sort(release.second.begin(),release.second.end());
     loaded_=true;
 }
 EventId HostDriver::schedule(Tick at,std::function<void()> f) {
@@ -108,11 +139,26 @@ EventId HostDriver::schedule(Tick at,std::function<void()> f) {
 void HostDriver::start() {
     if(!loaded_||started_)throw std::logic_error("Host must load exactly once before start");
     started_=true;
-    std::set<Tick> releases;
-    for(const auto&r:requests_)if(events_.now()<r.second.not_before)releases.insert(r.second.not_before);
-    for(auto at:releases)release_events_[at]=schedule(at,[this,at]{
-        release_events_.erase(at);for(ChannelId ch=0;ch<channels_.size();++ch)request_pump(ch);
-    });
+    release_units(events_.now());
+    if(statistics_sink_)for(const auto& r:requests_)if(!(events_.now()<r.second.not_before))
+        statistics_sink_->observe(StatGlobalReleased{r.first,r.second.not_before});
+    std::map<Tick,std::vector<GlobalRequestId>> releases;
+    for(const auto& r:requests_)if(events_.now()<r.second.not_before) {
+        auto& ids=releases[r.second.not_before];
+        if(statistics_sink_)ids.push_back(r.first);
+    }
+    for(auto& entry:releases) {
+        const auto at=entry.first;
+        // Index once: observing releases must not scan the entire workload at
+        // every distinct arrival time. Same event count/order as the driver.
+        release_events_[at]=schedule(at,[this,at,ids=std::move(entry.second)]{
+            release_units(at);
+            if(statistics_sink_)for(auto id:ids)
+                if(results_.at(id).state==LogicalResult::Pending)
+                    statistics_sink_->observe(StatGlobalReleased{id,at});
+            release_events_.erase(at);for(ChannelId ch=0;ch<channels_.size();++ch)request_pump(ch);
+        });
+    }
     for(ChannelId ch=0;ch<channels_.size();++ch)request_pump(ch);
 }
 void HostDriver::request_pump(ChannelId ch) {
@@ -130,7 +176,7 @@ bool HostDriver::version_done(ContentKey key) const {
     return it==recovery_.tasks().end() || it->second.phase==RecoveryPhase::Completed || it->second.phase==RecoveryPhase::Failed;
 }
 bool HostDriver::eligible(const Unit& u) const {
-    if(u.stage!=UnitStage::Queued)return false;
+    if(u.stage!=UnitStage::Queued || !u.enqueue_sequence)return false;
     const auto& f=u.fragments.front();const auto ch=f.address.channel;
     if(!u.replay)for(const auto& fragment:u.fragments) {
         const auto& request=requests_.at(fragment.parent);
@@ -182,7 +228,7 @@ void HostDriver::pump(ChannelId ch) {
         for(auto uid:channel.queue) {
             const auto& u=units_.at(uid);if(tried.count(uid)||!eligible(u))continue;
             const bool open=u.content && channel.open.count({*u.content,u.fragments.front().logical.page});
-            candidates.push_back({uid,open,u.replay,uid.value});
+            candidates.push_back({uid,open,u.replay,u.enqueue_sequence});
         }
         if(candidates.empty())break;
         const auto chosen=policy_->select(candidates);
@@ -210,6 +256,12 @@ void HostDriver::pump(ChannelId ch) {
         else if(u.retry==RetryKind::Timeout && u.handoffs)++stats_.timeout_retry_commands;
         else if(u.retry==RetryKind::Order)++stats_.order_retry_commands;
         ++u.handoffs;
+        if(statistics_sink_) {
+            std::vector<LogicalWorkId> work;
+            if(!u.replay)for(const auto& fragment:u.fragments)work.push_back(fragment.id);
+            statistics_sink_->observe(StatAttemptLinked{*handoff.attempt,u.id,u.queued_at,u.handoffs,u.replay,u.pass,
+                u.content?std::optional<std::uint64_t>{u.content->content}:std::nullopt,std::move(work)});
+        }
         u.stage=UnitStage::Handed;channel.queue.erase(chosen);
         attempts_.emplace(command,Attempt{chosen,*handoff.attempt});
         unsettled_[f.logical.block].insert(command);
@@ -246,6 +298,11 @@ void HostDriver::finish_work(LogicalWorkId id,bool success,const std::string& re
     if(success)++stats_.logical_success;
     else {++stats_.logical_failed;++result.failed;if(result.reason.empty())result.reason=reason;}
     if(!result.remaining)result.state=result.failed?LogicalResult::Failed:LogicalResult::Success;
+    if(statistics_sink_) {
+        statistics_sink_->observe(StatWorkFinished{id,events_.now(),success,success?std::string{}:reason});
+        if(!result.remaining)statistics_sink_->observe(StatGlobalFinished{result.id,events_.now(),
+            result.state==LogicalResult::Success,result.reason});
+    }
 }
 void HostDriver::cancel_unit(Unit& u,const std::string& reason) {
     if(u.stage!=UnitStage::Queued)return;
@@ -317,6 +374,7 @@ void HostDriver::receive(CommandId id,const DeliveredResponse& response) {
         finish_work(u.fragments.front().id,success,rr.status==ReadStatus::Success?"DataMismatch":
                     "ReadStatus:"+std::to_string(static_cast<unsigned>(rr.status)));
     }
+    if(statistics_sink_)statistics_sink_->observe(StatAttemptAssessed{response.attempt,events_.now(),success});
     ++stats_.responses;if(!success)++stats_.attempt_errors;
     u.stage=UnitStage::Done;u.successful=success;
     if(u.content) {
@@ -370,10 +428,9 @@ bool HostDriver::advance_recovery(ContentKey key,RecoveryTask& t) {
             }
             if(u.stage==UnitStage::Queued) {channels_[key.block.channel].queue.erase(uid);u.stage=UnitStage::Done;}
         } else if(u.stage==UnitStage::Done&&!u.successful) {
-            u.stage=UnitStage::Queued;u.accepted=false;u.command.reset();
+            requeue(u);
             for(const auto& f:u.fragments) {work_.at(f.id).needs_recovery=false;work_.at(f.id).accepted=false;}
             version.accepted[u.fragments.front().logical.page].reset();
-            channels_[key.block.channel].queue.insert(uid);
         }
     }
     return true;
@@ -404,6 +461,7 @@ void HostDriver::advance() {
     if(settled) {
         for(const auto& event:release_events_) {events_.cancel(event.second);owned_events_.erase(event.second);}
         release_events_.clear();
+        initial_enqueues_.clear();
     }
     // Cancel passive source waits if no sendable work remains on that channel.
     for(auto& ch:channels_)if(ch.queue.empty()&&ch.wait) {port_.notifications().cancel(*ch.wait);ch.wait.reset();}

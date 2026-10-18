@@ -15,6 +15,12 @@ template<class Tag> struct Quantity {
 };
 using Tick = Quantity<struct TickTag>;
 using CommandId = Quantity<struct CommandIdTag>;
+// Shared identities for Host/Device observation; their owners remain separate.
+using TransferAttemptId = Quantity<struct TransferAttemptTag>;
+using GlobalRequestId = Quantity<struct GlobalRequestTag>;
+using LogicalWorkId = Quantity<struct LogicalWorkTag>;
+using SendUnitId = Quantity<struct SendUnitTag>;
+enum class LogicalResult { Pending, Success, Failed };
 using DataToken = Quantity<struct DataTokenTag>;
 using GlobalByteAddress = Quantity<struct GlobalByteTag>;
 // Zero-based BYTE OFFSET inside a channel Flash logical region, not an AXI port address.

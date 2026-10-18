@@ -7,6 +7,7 @@
 #include "hbf_eventlab/policies/retained_assembly_storage.hpp"
 #include "hbf_eventlab/infrastructure/event_queue.hpp"
 #include "hbf_eventlab/runtime/operation_candidate.hpp"
+#include "hbf_eventlab/interfaces/statistics_sink.hpp"
 
 namespace hbf_eventlab {
 enum class WriteDisposition { Supplement, NewPage, BeginBlock, RetryPage0, Deferred, Error };
@@ -43,6 +44,7 @@ public:
     ~WritePath();
     WritePath(const WritePath&) = delete;
     WritePath& operator=(const WritePath&) = delete;
+    void set_statistics_sink(IStatisticsSink&);
     WriteSubmission submit(const HostCommand&, const std::vector<DataToken>&);
     std::vector<EraseCandidate> pending_erases() const;
     std::optional<EraseCandidate> erase_candidate(CandidateId) const;

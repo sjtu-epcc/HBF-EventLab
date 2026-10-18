@@ -2,6 +2,10 @@
 
 HBF EventLab 是面向 OCP HBF v0.7.0 选定行为子集的离散事件模拟器。本文描述当前实现及所有权边界；规范依据与项目解释见[设计决策](design_decisions.md)，输入和运行方式见[使用说明](usage.md)，能力边界见[支持范围与限制](scope_and_limitations.md)。
 
+统一配置的装配顺序为：内建默认值 → INI文件 → 显式CLI覆盖 → `resolve_configuration()`校验与派生 → 冻结配置 → 构造运行组件。`SimulationConfiguration`按device、address、host、execution、faults、run、output分组；组件接收各自的类型化子配置，不读取配置文件，也不共享一个可修改的全局参数对象。
+
+`StaticDeviceDescription`持有几何、能力、设备选定参数、Core拓扑及容量补偿预算。`ExecutionConfiguration`组合介质时延、UCIe档位与开销、缓冲及读调度配置；Host保留自己的发送、恢复及输入限制。统一入口负责跨组校验和策略装配，合法性过滤仍由运行组件执行。具体参数与来源见[参数说明](parameters.md)。
+
 ## 1. 自动运行主线
 
 ```text
@@ -31,7 +35,7 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 | `StaticDeviceDescription`、`ExecutionConfiguration` | 冻结几何、能力和运行参数；保持参数校验与运行状态分离。 |
 | `IHostInterleaver`、`GlobalRequestSplitter` | Global 字节地址交织与范围拆分，保留逻辑片段的 Global 归属。 |
 | `HostDriver` | 输入校验、合法候选、发送与反馈、内容版本、页级资源重试、Global 最终结果。 |
-| `IHostSendPolicy` | 在 Host 已过滤的合法候选中选择发送优先级。 |
+| `IHostSendPolicy` | 在 Host 已过滤的合法候选中选择发送优先级；内建 `fcfs`（默认）与 `fill_open`。 |
 | `IHostPort` | 事务移交、异步正式接受通知、最终响应；读写响应类型分开。 |
 | `DeviceDriver` | 传输、正式接受、候选管理、资源占用和完成事件的统一协调。 |
 | `CommandAdmission` | 读写共用的每 channel command credit，正式接受时登记、交付时释放。 |
@@ -44,8 +48,11 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 | `RecoveryManager`、`WriteRetentionStore` | Host 恢复范围、每遍排空和预算；有限、版本化的恢复 token 保留。 |
 | `EventQueue`、`AdmissionWaitRegistry` | 时间与因果顺序、取消和限额；按原因/对象的异步唤醒。 |
 | `SimulationRunner` | 驱动事件并查询状态摘要，区分完成、停滞、限额和模型诊断。 |
+| `IStatisticsSink`、`StatisticsCollector` | 接收带事件时刻的观察记录，关联Global、逻辑片段和命令尝试，提供只读统计及JSON；不参与调度。 |
 
 overlap、写顺序、错误作用域、同组交付、同 Bank sense 顺序和所有权是固定正确性条件。策略可以改变合法候选的优先级，不能绕过这些条件。接口存在也不意味着所有替代实现均已通过验证。Core Channel 目前只有路由模型，Cache 替换也尚无独立策略插件。
+
+Host 将稳定发送单元身份 `SendUnitId` 与本次入队序号分开维护。FCFS 按每 channel 合法候选的入队序号选择，允许合法补片越过受阻请求；`fill_open` 先比较补齐／replay 优先级，再比较同一序号。初始入队依释放时间和输入次序登记，错误重试重新排队，`NotTaken` 保留队龄。入队序号只影响 Host 选择，不改变 Device 的接收、介质调度或 UCIe 仲裁规则。
 
 ## 3. 地址与映射
 
@@ -137,7 +144,7 @@ Pending 可见性先于 Cache；缺失片段不能从旧 NAND 或旧 Cache 补�
 
 | 所有者 | 关键状态 | 更新或释放边界 |
 |---|---|---|
-| 静态描述 | geometry、capability、配置 | 单次模拟冻结。 |
+| 静态描述 | geometry、capability、选定参数、Core拓扑、容量预算 | 单次模拟冻结。 |
 | 容量协调器及映射组件 | zone映射、替换、RetiredHoleMap、逻辑退役、内容代次、lease | 排空、失效与一致提交。 |
 | `NandMediaState` | 物理页符号内容、不可用状态、擦除历史 | 介质操作完成。 |
 | `CommandAdmission` / `ReadOrderTracker` | command账本与组内命令队列 | 接受／响应交付。 |
@@ -183,3 +190,11 @@ Runner只查询各所有者摘要。有未来timeout、窗口或完成事件就�
 低层组件测试可以显式构造路径与有界结果替身；正式闭环由Device安排完成，Host不得直接调用finish或response_delivered来代替反馈。回调异步执行，析构仅用于关闭模拟实例，不是运行时撤回已开始NAND操作的协议。
 
 容量协调器提交前检查排空、数据可丢弃、健康资源与密度，准备候选后同步失效，再一致提交。失效回调不可重入修改或获取新pin；异常保留旧映射与quiesce，已经发生的物理损坏不回滚。附着的映射组件不能绕过协调器修改。
+
+## 11. 统计观察边界
+
+Host与Device通过`IStatisticsSink`发布已经发生的生命周期事实；`StatisticsCollector`只保存观察历史及汇总，不参与发送、组装或资源调度。请求统计与Pending统计共用一个sink；默认不挂接，开启后也不添加采样事件或模拟Tick。
+
+`WriteAssembly`仍唯一拥有Pending上下文、received bitmap和阶段。其`accept`、`queue_program`、`start_program`、`retire`在状态提交后发布只包含值的`AssemblyObservation`；`WritePath::set_statistics_sink`补上`EventQueue::now()`，`DeviceDriver`负责装配。program提交失败抛出异常时，不发布虚假的retired。析构仅释放宿主资源，不属于模拟终结事件。
+
+统计按`(channel, local_dlu, generation)`保存上下文历史；按channel聚合Collecting、Ready/ProgramQueued、Programming及总数，输出变化点曲线和占用积分。观测记录内的命令成员只包含真正加入Assembly的命令；通过传输尝试连接Host逻辑工作。统计历史是模拟器的分析存储，不增加被模拟的组装容量。完整字段、终结原因、活动记录和曲线重建规则见[Pending统计说明](usage.md#pending曲线与dlu上下文)。

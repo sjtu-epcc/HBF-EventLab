@@ -7,10 +7,6 @@
 #include <set>
 
 namespace hbf_eventlab {
-struct CapacityPolicy {
-    // Per-channel floor(nominal logical blocks * permille / 1000). No implicit minimum.
-    std::uint32_t max_hole_permille = 50;
-};
 enum class CapacityResult { Ready, Replaced, InFlight, Retired, AlreadyRetired };
 // Single simulator-thread transaction owner. Dependencies must outlive it; it
 // must outlive WritePath/AddressResolver. Attached low-level mutations are blocked.
