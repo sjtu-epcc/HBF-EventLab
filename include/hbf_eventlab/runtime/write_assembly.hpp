@@ -1,12 +1,12 @@
 #pragma once
 #include "hbf_eventlab/runtime/command_admission.hpp"
 #include "hbf_eventlab/interfaces/assembly_storage.hpp"
+#include "hbf_eventlab/common/write_observation.hpp"
 #include <bitset>
 #include <functional>
 #include <optional>
 
 namespace hbf_eventlab {
-enum class WritePhase { Collecting, Ready, ProgramQueued, Programming };
 struct PendingWriteContext {
     DluKey key;
     Generation generation;
@@ -38,6 +38,9 @@ public:
     WriteAssembly(const WriteAssembly&) = delete;
     WriteAssembly& operator=(const WriteAssembly&) = delete;
     ~WriteAssembly();
+    // Attach once before the first context. Synchronous observation only: no
+    // reentry, state mutation, or scheduled events. Teardown is not retirement.
+    void set_observer(std::function<void(const AssemblyObservation&)>);
     // Caller has validated command and Host block order BEFORE mutation here.
     AssemblyResult accept(const CommandFragment&, DataToken, Tick now);
     // Preflight the ENTIRE normalized command before any fragment mutates the table.
@@ -57,11 +60,13 @@ public:
 private:
     PendingWriteContext& require(DluKey, Generation);
     DluCompletion retire(DluKey, WriteStatus, std::uint8_t info);
+    void publish(AssemblyChange,const PendingWriteContext&,std::optional<CommandId> = {});
     std::uint64_t channel_dlus_, next_generation_ = 0;
     std::uint32_t limit_;
     Tick timeout_;
     IAssemblyStorage& storage_;
     std::vector<std::size_t> counts_;
     std::map<DluKey, PendingWriteContext> contexts_;
+    std::function<void(const AssemblyObservation&)> observer_;
 };
 } // namespace hbf_eventlab

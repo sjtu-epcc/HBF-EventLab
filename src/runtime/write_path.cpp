@@ -18,6 +18,13 @@ WritePath::~WritePath() {
     for (const auto& item : bindings_) if (item.second.timeout) events_.cancel(*item.second.timeout);
     for (const auto& item : parents_) admission_.abandon_on_shutdown(item.first.first, item.first.second);
 }
+void WritePath::set_statistics_sink(IStatisticsSink& sink) {
+    // Assembly owns all transitions. Only this clock-aware bridge adds time;
+    // observation does not enqueue callbacks or change path readiness.
+    assembly_.set_observer([this,&sink](const AssemblyObservation& e){sink.observe(StatDluObserved{events_.now(),e});});
+    for(ChannelId ch=0;ch<description_.geometry().host_channels;++ch)
+        sink.observe(StatPendingInitialized{ch,description_.capabilities().max_pending_write_dlus,events_.now()});
+}
 WritePath::Block& WritePath::block(LogicalBlockKey k) {
     return blocks_.try_emplace(k, description_.geometry().pages_per_block).first->second;
 }

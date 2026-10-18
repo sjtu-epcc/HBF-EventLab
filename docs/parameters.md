@@ -98,7 +98,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 
 | 完整配置键 | 默认值 | 含义、范围与零值语义 |
 |---|---|---|
-| `host.send_policy` | `fill_open` | 当前配置入口只提供补齐活跃 DLU 优先策略；Host FCFS 尚未实现，填写 fcfs 会报错。 |
+| `host.send_policy` | `fcfs` | `fcfs`：每 channel 当前合法候选中先入队者优先，受阻者可被越过；`fill_open`：补齐已打开 DLU 优先，其次 replay，再按入队顺序。 |
 | `host.write_mode` | `fragment64` | `fragment64` 或 `burst4096`；后者要求设备支持 write burst，且输入能覆盖完整 local DLU。不自动改变组包。 |
 | `host.read_hint_mode` | `tail_batch` | `tail_batch` 或 `all_regular`；前者在每 Global、每 channel 的最后一条读使用 Batch。 |
 | `host.max_open_dlus_per_channel` | `2` | 正数。Host 活跃写 DLU 数：从首条命令 Taken 到该 DLU 已移交命令全部收到响应；不是 Device Pending 数。 |
@@ -110,6 +110,8 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `host.retry.pending_delay_ps` | `1000000` | 0x4 后兜底等待间隔；启用 Pending 重试时必须为正，相关完成反馈可提前唤醒。 |
 
 这些 Host 默认策略与预算是项目选择，不是 OCP 指定的 Host 算法。重试次数的三种计数单位不能互换。
+
+`fcfs` 的“先来”由本次入队序号确定，稳定的 `SendUnitId` 只标识发送单元。普通请求按 `at` 释放时间、输入行及行内片段次序登记；显式 4KiB burst 等所有贡献片段释放后，按最后一个贡献片段的位置入队。依赖或资源等待、`NotTaken` 背压均保留原序号；错误尝试终结且满足现有重试门控后，重发单元重新排到队尾。新建 replay 单元同样取得新序号。规则不改变原逻辑工作的释放时间和统计分母，也不添加人为 Tick。详见[Host 行为](usage.md#host-send-policy)。
 
 ## execution：执行模型与策略
 
@@ -170,7 +172,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `run.events_per_tick` | `100000` | 同 Tick callback 上限；0 不限制。 |
 | `run.rounds_per_tick` | `100000` | 同 Tick 因果轮次上限；0 不限制。 |
 | `output.trace` | `false` | 是否输出 Host／Device 事件日志。 |
-| `output.statistics_json` | 空字符串 | 统一统计 JSON 路径；空字符串关闭记录。 |
+| `output.statistics_json` | 空字符串 | 统一统计 JSON 路径（schema 2），包含请求延迟、Pending曲线和DLU上下文历史；空字符串关闭记录。精确历史有宿主内存开销，详见[统计说明](usage.md#统一统计)。 |
 | `output.effective_config` | 空字符串 | 有效配置 INI 导出路径；空字符串关闭文件导出。 |
 
 这些运行限额不属于设备资源。基础 EventQueue 单独使用时默认总事件数不限；统一入口使用本表 RunLimits 作为程序级默认值。

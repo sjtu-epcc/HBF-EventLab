@@ -94,6 +94,7 @@ void StatisticsCollector::record(const StatGlobalFinished& e) {
 }
 void StatisticsCollector::record(const StatAttemptStarted& e) {
     require(attempts_.emplace(e.id,AttemptTiming{e.id,e.command,e.at}).second,"statistics: duplicate attempt");note(e.at);
+    command_attempts_[{e.command.address.channel,e.command.id}]=e.id;
 }
 void StatisticsCollector::record(const StatAttemptLinked& e) {
     auto& a=attempts_.at(e.id);require(!a.unit && e.unit_attempt,"statistics: duplicate/invalid attempt origin");
@@ -135,6 +136,7 @@ void StatisticsCollector::record(const StatAttemptAssessed& e) {
 StatisticsSummary StatisticsCollector::summarize(Tick at) const {
     require(!(at<latest_),"statistics: snapshot predates observed events");
     StatisticsSummary s;s.at=at;
+    s.pending_channels=pending_summary(at);
     for(auto op:{Op::Read,Op::Write}) {s.globals[op];s.logical_work[op];s.attempts[op];}
     std::map<std::string,std::vector<std::uint64_t>> samples;
     std::map<LogicalWorkId,Tick> first_handoff;
@@ -167,6 +169,16 @@ StatisticsSummary StatisticsCollector::summarize(Tick at) const {
         if(handoff!=first_handoff.end()&&g.released&&!w.cancelled_before_release)
             samples[prefix+"initial_host_wait"].push_back(elapsed(handoff->second,*g.released));
     }
+    for(const auto& entry:dlus_) {
+        const auto& d=entry.second;
+        const std::string prefix=std::string("dlu_context.")+(d.termination?to_string(*d.termination):"active")+".";
+        if(d.ready_at)samples[prefix+"assembly"].push_back(elapsed(*d.ready_at,d.opened_at));
+        if(d.program_started_at)samples[prefix+"ready_wait"].push_back(elapsed(*d.program_started_at,*d.ready_at));
+        if(d.retired_at) {
+            samples[prefix+"residence"].push_back(elapsed(*d.retired_at,d.opened_at));
+            if(d.program_started_at)samples[prefix+"program"].push_back(elapsed(*d.retired_at,*d.program_started_at));
+        }
+    }
     for(auto& entry:samples)s.latency.emplace(entry.first,summarize_samples(entry.second));
     return s;
 }
@@ -174,7 +186,7 @@ void StatisticsCollector::write_json(std::ostream& destination,Tick at,const std
     const auto s=summarize(at);
     // Keep serialization independent of the caller's locale/format flags.
     std::ostringstream out;out.imbue(std::locale::classic());out<<std::setprecision(17);
-    out<<"{\"schema_version\":1,\"time_unit\":\"tick\",\"at\":"<<at.value<<",\"stop_reason\":"<<quote(stop)
+    out<<"{\"schema_version\":2,\"time_unit\":\"tick\",\"at\":"<<at.value<<",\"stop_reason\":"<<quote(stop)
        <<",\"summary\":{\"globals\":";counts_json(out,s.globals);
     out<<",\"logical_work\":";counts_json(out,s.logical_work);out<<",\"attempts\":";counts_json(out,s.attempts);
     out<<",\"replay_attempts\":"<<s.replay_attempts<<",\"retried_unit_attempts\":"<<s.retried_unit_attempts
@@ -225,7 +237,7 @@ void StatisticsCollector::write_json(std::ostream& destination,Tick at,const std
         out<<",\"host_success\":";if(a.host_success)out<<(*a.host_success?"true":"false");else out<<"null";
         out<<",\"work_ids\":[";bool sep=false;for(auto id:a.work){if(sep)out<<',';sep=true;out<<id.value;}out<<"]}";
     }
-    out<<"]}\n";destination<<out.str();
+    out<<']';write_pending_json(out,at);out<<"}\n";destination<<out.str();
     if(!destination)throw std::runtime_error("statistics: JSON output failed");
 }
 } // namespace hbf_eventlab

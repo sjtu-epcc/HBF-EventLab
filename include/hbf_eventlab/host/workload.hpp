@@ -39,7 +39,7 @@ inline DataToken token_for(std::uint64_t content,GlobalByteAddress a) {
     return DataToken{(content*0x9e3779b97f4a7c15ULL)^(a.value/host_unit_bytes)};
 }
 struct HostConfiguration {
-    std::string send_policy="fill_open"; // strategy selection; API injection records "custom"
+    std::string send_policy="fcfs"; // strategy selection; API injection records "custom"
     void validate() const;
     WriteCommandMode writes=WriteCommandMode::Fragment64;
     ReadHintMode hints=ReadHintMode::TailBatch;

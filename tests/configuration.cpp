@@ -25,6 +25,7 @@ Result run(SimulationConfiguration c,const std::vector<GlobalRequest>& input) {
 SimulationConfiguration one_channel() {SimulationConfiguration c;c.device.geometry.host_channels=1;return c;}
 void defaults(){
     const auto r=resolve_configuration({});const auto& c=r.values();
+    check(c.host.send_policy=="fcfs","FCFS is the default Host policy");
     check(c.device.selected.zone_size_dlus==8&&c.device.topology.die_to_core_channel==std::vector<std::uint32_t>{0},"automatic values resolved");
     check(c.execution.ucie.effective_gbytes_per_second()==48&&c.device.capabilities.mocs_supported==256,"baseline retained");
     check(r.description().geometry().channel_bytes()==131072,"derived channel capacity");
@@ -148,6 +149,10 @@ void zeros(){
     c.host.max_pending_retries=1;rejects([&]{resolve_configuration(c);},"pending_delay_ps");
 }
 void policies(){
+    for(const auto& name:{"fcfs","fill_open"}){
+        auto c=one_channel();apply_configuration_override(c,"host.send_policy",name);
+        check(resolve_configuration(c).values().host.send_policy==name,"built-in Host policies are selectable");
+    }
     for(const auto& key:{"host.send_policy","execution.read_dispatch.policy","execution.nand_scheduler.policy","execution.ucie_scheduler.policy"}){
         auto c=one_channel();apply_configuration_override(c,key,"not_implemented");rejects([&]{resolve_configuration(c);},key);
     }

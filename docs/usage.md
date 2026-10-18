@@ -87,7 +87,7 @@ Debug 使用独立的 `build-linux-debug` 目录和 `-DCMAKE_BUILD_TYPE=Debug`�
 | `--max-tick N` | 默认1000000000000，绝对模拟时间上限，单位ps。 |
 | `--max-events N` | 默认10000000，累计callback上限；0关闭该项限额。 |
 | `--trace` | 默认关闭；输出Host/Device事件及命令身份。 |
-| `--stats-json FILE` | 默认关闭；导出统一统计汇总及Global/逻辑片段/命令尝试明细。父目录须已存在；禁止覆盖输入workload。 |
+| `--stats-json FILE` | 默认关闭；导出统一统计汇总、Global/逻辑片段/命令尝试明细、Pending曲线和DLU上下文历史。父目录须已存在；禁止覆盖输入workload。 |
 
 覆盖顺序为内建默认值 → 配置文件 → 显式CLI选项；`--config`的位置不影响优先级，同一字段的多个CLI覆盖按从左到右最后一次生效。未知字段／策略及非法组合在运行前报错。参数调整不需要重新编译。
 
@@ -122,9 +122,29 @@ READ 3 0 8192 after=1,2 expect=1 group=7
 
 DataToken 由内容身份和原 Global 地址确定，仅验证符号身份，不是真实字节或无碰撞数据完整性证明。恢复从有限保留区取原 Global 地址和 token，再经同一 interleaver/splitter 转换，不从物理地址反推数据。
 
+<a id="host-send-policy"></a>
+
 ## Host 基线与可替换边界
 
-每 channel 一个待发集合；IHostSendPolicy 只在 HostDriver 过滤的合法候选中选择。默认 FillOpenDluPolicy 优先级：补齐已打开 DLU、replay、稳定 SendUnitId。策略不能取消接受顺序、版本依赖或恢复屏障。
+每 channel 一个待发集合；`IHostSendPolicy` 只在 `HostDriver` 过滤的合法候选中选择。`host.send_policy` 支持两种策略：
+
+| 策略 | 选择顺序 |
+|---|---|
+| `fcfs`（默认） | 当前合法候选中本次入队最早者优先。受阻者允许被其他合法候选越过，不强制队首阻塞。 |
+| `fill_open` | 优先补齐已打开 DLU，其次 replay，再按本次入队顺序。 |
+
+普通发送单元按 `at` 释放时间进入候选管理，同 Tick 按输入行／行内片段次序登记；Global ID 数值不表示优先级。显式 burst 等全部贡献片段释放后才入队，位置取最后一个贡献片段，避免预加载时的对象构造顺序改变发送次序。合法性检查、版本依赖、同组读及恢复屏障仍优先于策略，等待这些条件时保留原入队序号。
+
+`NotTaken` 不改变入队序号，也不增加命令尝试次数；真正的错误重试在旧尝试终结且满足重试门控后取得新序号，排到已有候选之后。重试保留 `SendUnitId` 和原逻辑工作身份，使用新的 `CommandId`。新生成的 replay 单元按生成时刻入队，恢复后重发的失败后继也重新排队。同 Tick 的后续重试按实际事件处理次序登记，不通过增加 Tick 制造排序。两种策略共用这些入队规则；`fill_open` 仍可因补齐／replay 优先级选择后入队者。
+
+例如，固定输入和其他参数，对比两种发送策略并导出有效配置：
+
+```powershell
+.\build\Release\hbf_eventlab_cli.exe examples\workloads\normal.txt --set host.send_policy=fcfs --dump-config build\fcfs.ini
+.\build\Release\hbf_eventlab_cli.exe examples\workloads\normal.txt --set host.send_policy=fill_open --dump-config build\fill-open.ini
+```
+
+这些策略不保证超载 workload 能成功。FCFS 可能同时留下更多未收齐 DLU，结果还取决于 MOCS、Pending 上限、Host 打开上限、数据到达次序和重试预算。
 
 打开 DLU 上限默认每 channel 2；Host 从首条 Taken 到该 DLU 已移交命令全部收到最终响应，保守占用自己的打开名额。这不是 Device Pending 数。MOCS=1 不能同时容纳 64 个等待整页完成的写命令，该配置允许真实走到 timeout；显式 burst 可以前进。
 
@@ -218,7 +238,8 @@ host.load(workload);
 host.start();
 const auto report = runner.run();
 const auto summary = statistics.summarize(report.at);
-// globals() / logical_work() / attempts() 提供只读明细。
+// globals() / logical_work() / attempts() 提供请求明细。
+// pending_timeline() / dlu_contexts() 提供占用变化及组装上下文明细。
 ```
 
 五个时刻均为模拟事件时间，“释放”指workload释放，不是资源释放：
@@ -248,17 +269,58 @@ const auto summary = statistics.summarize(report.at);
 
 每个分布给出`count/min/max/mean/p50/p95/p99`，分位数用nearest-rank；没有样本的键不生成。未交付尝试只有已经结束的分段，归入pending，不把当前等待年龄当作完整响应延迟。零延迟有效；缺失时刻用JSON `null`。
 
-JSON schema为1，时间单位为Tick（CLI中1ps），包含`summary`、`globals`、`logical_work`、`attempts`。64B逻辑工作与真实移交事务分别计数：完整4KiB burst只计一条尝试，但可关联多个Global的64个片段；replay通过channel/local地址/content关联原始工作，不创建新的逻辑分母，不重复完成历史成功。明细的`work_ids`、`unit`、`unit_attempt`和`replay_pass`支持继续细分。`replay_attempts`与`retried_unit_attempts`可能交叉，不能相加。
+JSON schema为2，时间单位为Tick（CLI中1ps）。顶层包含`summary`、`globals`、`logical_work`、`attempts`、`pending_channels`、`pending_timeline`和`dlu_contexts`；原有请求统计字段保留。64B逻辑工作与真实移交事务分别计数：完整4KiB burst只计一条尝试，但可关联多个Global的64个片段；replay通过channel/local地址/content关联原始工作，不创建新的逻辑分母，不重复完成历史成功。明细的`work_ids`、`unit`、`unit_attempt`和`replay_pass`支持继续细分。`replay_attempts`与`retried_unit_attempts`可能交叉，不能相加。
 
 尝试success/failed按Device协议状态划分；`responses`以`op + status`为键，读写同数值状态不合并。Host的DataToken检查失败另计`host_verification_failures`，因此协议成功不必然表示逻辑成功。逻辑记录保留失败`reason`。
 
 `Stalled`、`LimitReached`及运行中的模型诊断也导出已观察记录与停止原因。未完成项保留pending；尚未释放就取消的工作计入failed及其`cancelled_before_release`子集，不计算负的端到端延迟。输入校验或输出文件创建失败时没有有效运行统计。时刻和ID应以64位整数读取，避免JavaScript浮点数在大值处丢精度。
 
-默认collector空间为O(原始工作数＋命令尝试数)，导出和分位数计算有宿主程序开销；这些记录不代表模拟硬件缓冲，不增加事件或Tick。未开启时不保存统计历史。当前统一输出尚不含DLU组装进度、Pending/Bank占用曲线、利用率及宿主程序墙钟耗时；时间结果仍是未校准的功能模型结果。
+默认collector空间为O(原始工作数＋命令尝试数＋组装状态变更数)，导出和分位数计算有宿主程序开销；这些记录不代表模拟硬件缓冲，不增加事件或Tick。未开启时不保存统计历史。当前统一输出尚不含Bank占用曲线、Bank利用率及宿主程序墙钟耗时；时间结果仍是未校准的功能模型结果。
 
 同一Global可能跨多个块，部分子工作在释放前被取消，其余子工作仍在以后释放、完成；因此`logical_work`单独保存`cancelled_before_release`和`released`，不能仅从父Global的最终状态推断。Global仍等剩余子工作结束后取得最终结果。
 
 实验记录还应保存输入文件、`--dump-config`导出的有效配置及CLI的CONFIG/STOP行；统计JSON不内含完整设备与Host配置。
+
+### Pending曲线与DLU上下文
+
+开启同一个`--stats-json`选项即可记录以下内容，无需额外采样参数。数据来自`WriteAssembly`已经提交的状态变化，片段数量直接取现有`received.count()`；统计层不维护第二份bitmap，不决定何时收齐、发射或超时。
+
+| 每channel计数 | 口径 |
+|---|---|
+| `total` | 当前真实Pending上下文数，占用每channel的Pending名额及组装槽。 |
+| `collecting` | `Collecting`，还未收到全部64个64B片段。 |
+| `ready_waiting` | `Ready`与`ProgramQueued`之和；数据已收齐，但尚未开始program。可能在等待erase、前页成功、Bank或调度，不能全部解释为Bank排队。 |
+| `programming` | 已开始program、尚未终结的DLU数；不包含erase或read占用，因此不等于Bank利用率。 |
+
+始终满足`total = collecting + ready_waiting + programming`。`pending_channels[]`给出各channel的`limit`、观测区间`observed_from/observed_until`、`current`、各维独立`peak`、`area_context_ticks`和`time_weighted_mean`，以及`at_limit_ticks`、累计`opened/retired`。均值等于占用积分除以观测时长，包括初始空闲和最后一条变化记录至导出时刻的尾段；零时长时均值为0。不同维度的峰值可能发生在不同时刻，不能相加推导总峰值。
+
+`pending_timeline[]`每条包含`at`、`sequence`、`channel`与变化**之后**的`counts`。每channel从挂接时的零样本开始，只在四项计数变化时追加；普通补片的数量变化保存在上下文`progress`中。重建曲线时：
+
+1. 按channel筛选，再按`(at, sequence)`排序。
+2. 每条计数保持到下一条样本，形成右连续阶梯曲线；相同Tick的中间状态持续时间为0，仍可用sequence还原次序。
+3. 最后一条延伸到JSON顶层`at`；不要延伸到配置的时间限制，因为Runner可能停在限制之前的最后一个事件。
+4. 对每段计算`count × ΔTick`并求和，即可复核占用积分。各channel曲线要在统一时间轴上对齐后才能相加。
+
+`dlu_contexts[]`以`(channel, local_dlu, generation)`唯一标识一次组装上下文。`generation`复用现有上下文身份，同一地址超时后重试或replay会形成不同记录，不能只按地址去重。
+
+| 字段 | 含义 |
+|---|---|
+| `received_fragments`、`progress[]` | 当前／终结时的唯一已收片段数，以及每次补片、阶段变化和终结的`at/sequence/change/phase/received_fragments/command`。完整页为64；4KiB burst仍产生64个片段进度。 |
+| `opened_at`、`deadline` | 首个有效片段建立上下文的时刻及组装期限；收齐后历史deadline仍保留，不表示之后会超时。 |
+| `ready_at`、`program_started_at`、`retired_at` | 数据收齐、实际开始program、上下文和组装槽释放；尚未发生则为`null`。 |
+| `phase`、`active` | 当前阶段，或已终结上下文的最后存活阶段；`active=false`由真实终结决定。 |
+| `termination`、`status`、`additional_info` | `program_success`、`program_fail`、`prior_program_fail`（0x6/info2）或`assembly_timeout`；活动上下文三项均为`null`。 |
+| `assembly_ticks` | `ready_at - opened_at`，只有收齐才有完整样本。 |
+| `ready_wait_ticks` | `program_started_at - ready_at`，不是纯Bank等待时间。 |
+| `program_ticks` | `retired_at - program_started_at`，只对真实开始且终结的program有值。 |
+| `residence_ticks`、`observed_residence_ticks` | 前者是终结减打开，未终结为`null`；后者允许活动上下文计算截至顶层`at`的已观测驻留时长。 |
+| `members[]` | 真正把片段加入此上下文的`command/attempt`。关联到`attempts[].work_ids`再到`logical_work`即可追溯Global、内容和重试；单独观察低层WritePath而没有传输尝试时，`attempt=null`。 |
+
+`summary.latency`中的`dlu_context.<终结原因或active>.assembly/ready_wait/program/residence`按上下文统计，只纳入起止时刻都存在的阶段；不会把未完成等待作为完成延迟。0x4、overlap等拒绝不建立虚假上下文，也不算旧上下文的终结。`retired`在这里仅指Pending释放，不是物理容量退役，也不是响应交付或MOCS释放。
+
+实验分母需明确：`opened`统计上下文尝试，包括超时重试和replay；未能建立上下文的0x4仍只能从命令响应统计中看到。逻辑成功比例应使用原始逻辑工作及其最终结果，不能用上下文成功数替代。在限额停止时，活动上下文保留，报告已终结样本和未完成数量；析构清理不伪造终结。
+
+时刻、计数、generation和sequence以整数导出；积分、均值和分位数均值使用浮点汇总，极大运行可能产生舍入。需要大整数精确积分时，可从整数时间线离线计算。
 
 ## 运行器与参数
 

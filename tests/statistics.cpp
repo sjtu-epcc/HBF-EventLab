@@ -63,6 +63,9 @@ void cross_global_burst() {
     const auto& l=s.latency.at("write.global.success.end_to_end");
     check(l.count==2 && l.max-l.min==20000,"Global latency uses own release");
     check(s.responses.at({Op::Write,0})==1,"shared response not duplicated");
+    const auto& context=f.stats.dlu_contexts().begin()->second;
+    check(f.stats.dlu_contexts().size()==1&&context.members.size()==1&&
+          context.members.begin()->second==a.id,"one assembly context links shared burst attempt and both Globals");
 }
 void multi_channel() {
     Fixture f({}, {},2);auto r=f.run({wr(1,0,8192)});
@@ -89,6 +92,9 @@ void pending_retry() {
     }
     check(retry,"real retry observed");
     check(s.latency.at("write.attempt.failed.accepted_response").count==s.attempts.at(Op::Write).failed,"error latencies not mixed into success");
+    check(f.stats.dlu_contexts().size()==2,"0x4 rejections create no extra Pending contexts");
+    for(const auto& entry:f.stats.dlu_contexts())for(const auto& member:entry.second.members)
+        check(f.stats.attempts().at(*member.second).status==0,"rejected attempt excluded from assembly membership");
 }
 void timeout_retry() {
     Fixture f({}, {},1,8,Tick{300000});
@@ -96,6 +102,15 @@ void timeout_retry() {
     check(s.responses.at({Op::Write,5})>0 && s.retried_unit_attempts>0,"timeout attempts included");
     check(s.logical_work.at(Op::Write).success==64 && s.globals.at(Op::Write).success==2,"whole DLU retry does not duplicate work");
     check(f.stats.globals().at(GlobalRequestId{1}).released==Tick{} && f.stats.globals().at(GlobalRequestId{2}).released==Tick{1000000},"later original fragment retains original release");
+    std::size_t expired=0,succeeded=0;std::set<LogicalWorkId> timeout_work,retry_work;
+    for(const auto& entry:f.stats.dlu_contexts()) {
+        const auto& d=entry.second;const bool timeout=d.termination==DluTermination::AssemblyTimeout;
+        expired+=timeout;succeeded+=d.termination==DluTermination::ProgramSuccess;
+        for(const auto& member:d.members)for(auto id:f.stats.attempts().at(*member.second).work)
+            (timeout?timeout_work:retry_work).insert(id);
+    }
+    check(expired>0&&succeeded==1&&!timeout_work.empty(),"real timeout has separate retired and successful context records");
+    for(auto id:timeout_work)check(retry_work.count(id)==1,"new context retry still links original logical work");
 }
 void replay() {
     Fixture f;f.device.set_program_outcome([step=0](const auto& op)mutable {
@@ -113,6 +128,14 @@ void replay() {
     }
     check(passes.size()==2,"multiple passes remain one logical workload");
     check(s.latency.at("write.logical.success.end_to_end").count==128,"earlier successes not counted again by replay");
+    std::size_t failed=0,replayed_contexts=0;
+    for(const auto& entry:f.stats.dlu_contexts()) {
+        const auto& d=entry.second;failed+=d.termination==DluTermination::ProgramFail;
+        check(d.retired_at.has_value(),"recovery ends all contexts");
+        bool replayed=false;for(const auto& member:d.members)replayed|=f.stats.attempts().at(*member.second).replay;
+        replayed_contexts+=replayed;
+    }
+    check(failed==2&&replayed_contexts>0,"repeated program failures and replay contexts individually observable");
 }
 void unfinished_resume() {
     Fixture f;f.host.load({wr(1,0)});f.host.start();RunLimits limits;limits.max_tick=Tick{100};
@@ -167,15 +190,18 @@ void backpressure() {
     check(s.attempts.at(Op::Read).failed==1 && s.responses.at({Op::Read,7})==1,"Device-only measurement supports standalone users");
 }
 void observational() {
-    Fixture on,off({}, {},1,8,Tick{10000000},256,false);
-    auto read=rd(2,0,4096,{GlobalRequestId{1}});read.not_before=Tick{10000};
-    const std::vector<GlobalRequest> input{wr(1,0,4096,Tick{5000}),read};
-    const auto a=on.run(input),b=off.run(input);
-    check(a.at==b.at && a.events==b.events,"statistics add no events or simulated latency");
-    check(on.device.statistics().programs==off.device.statistics().programs &&
-          on.device.statistics().cache_hits==off.device.statistics().cache_hits &&
-          on.host.statistics().handed==off.host.statistics().handed,"no behavior changes with collection");
-    check(off.stats.attempts().empty(),"disabled collection stores no history");
+    for(const auto& name:{"fcfs","fill_open"}) {
+        HostConfiguration c;c.send_policy=name;
+        Fixture on(c),off(c, {},1,8,Tick{10000000},256,false);
+        auto read=rd(2,0,4096,{GlobalRequestId{1}});read.not_before=Tick{10000};
+        const std::vector<GlobalRequest> input{wr(1,0,4096,Tick{5000}),read};
+        const auto a=on.run(input),b=off.run(input);
+        check(a.at==b.at && a.events==b.events,"statistics add no events or simulated latency");
+        check(on.device.statistics().programs==off.device.statistics().programs &&
+              on.device.statistics().cache_hits==off.device.statistics().cache_hits &&
+              on.host.statistics().handed==off.host.statistics().handed,"no behavior changes with collection");
+        check(off.stats.attempts().empty(),"disabled collection stores no history");
+    }
 }
 void event_time() {
     StatisticsCollector s;

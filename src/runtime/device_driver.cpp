@@ -4,6 +4,7 @@
 namespace hbf_eventlab {
 void DeviceDriver::set_statistics_sink(IStatisticsSink& sink) {
     if(next_attempt_||statistics_sink_)throw std::logic_error("attach Device statistics once before handoff");
+    writes_.set_statistics_sink(sink);
     statistics_sink_=&sink;
 }
 namespace {

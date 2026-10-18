@@ -1,5 +1,6 @@
 #include "hbf_eventlab/configuration/simulation_configuration.hpp"
 #include "hbf_eventlab/policies/round_robin_interleaver.hpp"
+#include "hbf_eventlab/policies/host_send_policy.hpp"
 #include <algorithm>
 #include <charconv>
 #include <iomanip>
@@ -183,7 +184,7 @@ ResolvedSimulationConfiguration resolve_configuration(SimulationConfiguration c)
     d.topology.die_to_core_channel=d.topology.resolved_routes(g);
     StaticDeviceDescription description(g,d.capabilities,d.selected,d.topology,d.capacity_policy);
     c.execution.validate(description);c.host.validate();
-    policy("host.send_policy",c.host.send_policy,"fill_open");
+    validate_host_send_policy(c.host.send_policy);
     policy("execution.read_dispatch.policy",c.execution.read_dispatch.policy,"window");
     policy("execution.nand_scheduler.policy",c.execution.nand_scheduler,"fcfs");
     policy("execution.ucie_scheduler.policy",c.execution.ucie_scheduler,"fifo");

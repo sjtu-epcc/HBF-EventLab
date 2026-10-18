@@ -11,10 +11,7 @@ HostDriver::HostDriver(IHostPort& p,EventQueue& e,const IHostInterleaver& i,Host
     c.validate();
     if(&p.notifications().events()!=&e) throw std::invalid_argument("Host and Device must share event clock");
     if(policy_) config_.send_policy="custom";
-    else {
-        if(c.send_policy!="fill_open") throw std::invalid_argument("host.send_policy: unsupported policy: "+c.send_policy);
-        policy_=std::make_unique<FillOpenDluPolicy>();
-    }
+    else policy_=make_host_send_policy(c.send_policy);
     if(c.writes==WriteCommandMode::Burst4096&&!p.description().capabilities().write_burst)
         throw std::invalid_argument("4KiB write burst unsupported by profile");
 }
@@ -71,12 +68,31 @@ SendUnitId HostDriver::add_unit(Op op,std::vector<Fragment> fragments,std::optio
     if(fragments.empty())throw std::logic_error("empty send unit");
     const SendUnitId id{++next_unit_};const auto ch=fragments.front().address.channel;
     Unit u{id,op,std::move(fragments),content,group};u.replay=replay;u.pass=pass;
-    u.queued_at=events_.now();
+    auto arrival=std::make_pair(Tick{},std::uint64_t{});
     if(!replay)for(const auto& f:u.fragments)
-        if(u.queued_at<requests_.at(f.parent).not_before)u.queued_at=requests_.at(f.parent).not_before;
+        arrival=std::max(arrival,std::make_pair(requests_.at(f.parent).not_before,f.id.value));
+    u.queued_at=std::max(events_.now(),arrival.first);
     units_.emplace(id,std::move(u));channels_[ch].queue.insert(id);
+    if(replay)enqueue(units_.at(id),events_.now());
+    else initial_enqueues_[arrival.first].push_back({arrival.second,id});
     if(content&&!replay)versions_[*content].normal.push_back(id);
     return id;
+}
+void HostDriver::enqueue(Unit& u,Tick at) {
+    if(u.stage!=UnitStage::Queued)throw std::logic_error("enqueue of nonqueued Host unit");
+    next_enqueue_=checked_add(next_enqueue_,1);
+    u.enqueue_sequence=next_enqueue_;u.queued_at=at;
+    channels_[u.fragments.front().address.channel].queue.insert(u.id);
+}
+void HostDriver::release_units(Tick now) {
+    while(!initial_enqueues_.empty() && !(now<initial_enqueues_.begin()->first)) {
+        auto it=initial_enqueues_.begin();
+        for(const auto& item:it->second) {
+            auto& u=units_.at(item.second);
+            if(u.stage==UnitStage::Queued && !u.enqueue_sequence)enqueue(u,u.queued_at);
+        }
+        initial_enqueues_.erase(it);
+    }
 }
 void HostDriver::load(const std::vector<GlobalRequest>& input) {
     if(loaded_||started_)throw std::logic_error("Host workload already loaded");
@@ -112,6 +128,7 @@ void HostDriver::load(const std::vector<GlobalRequest>& input) {
         }
         for(const auto& item:tails)units_.at(item.second).hint=ReadHint::Batch;
     }
+    for(auto& release:initial_enqueues_)std::sort(release.second.begin(),release.second.end());
     loaded_=true;
 }
 EventId HostDriver::schedule(Tick at,std::function<void()> f) {
@@ -122,6 +139,7 @@ EventId HostDriver::schedule(Tick at,std::function<void()> f) {
 void HostDriver::start() {
     if(!loaded_||started_)throw std::logic_error("Host must load exactly once before start");
     started_=true;
+    release_units(events_.now());
     if(statistics_sink_)for(const auto& r:requests_)if(!(events_.now()<r.second.not_before))
         statistics_sink_->observe(StatGlobalReleased{r.first,r.second.not_before});
     std::map<Tick,std::vector<GlobalRequestId>> releases;
@@ -134,6 +152,7 @@ void HostDriver::start() {
         // Index once: observing releases must not scan the entire workload at
         // every distinct arrival time. Same event count/order as the driver.
         release_events_[at]=schedule(at,[this,at,ids=std::move(entry.second)]{
+            release_units(at);
             if(statistics_sink_)for(auto id:ids)
                 if(results_.at(id).state==LogicalResult::Pending)
                     statistics_sink_->observe(StatGlobalReleased{id,at});
@@ -157,7 +176,7 @@ bool HostDriver::version_done(ContentKey key) const {
     return it==recovery_.tasks().end() || it->second.phase==RecoveryPhase::Completed || it->second.phase==RecoveryPhase::Failed;
 }
 bool HostDriver::eligible(const Unit& u) const {
-    if(u.stage!=UnitStage::Queued)return false;
+    if(u.stage!=UnitStage::Queued || !u.enqueue_sequence)return false;
     const auto& f=u.fragments.front();const auto ch=f.address.channel;
     if(!u.replay)for(const auto& fragment:u.fragments) {
         const auto& request=requests_.at(fragment.parent);
@@ -209,7 +228,7 @@ void HostDriver::pump(ChannelId ch) {
         for(auto uid:channel.queue) {
             const auto& u=units_.at(uid);if(tried.count(uid)||!eligible(u))continue;
             const bool open=u.content && channel.open.count({*u.content,u.fragments.front().logical.page});
-            candidates.push_back({uid,open,u.replay,uid.value});
+            candidates.push_back({uid,open,u.replay,u.enqueue_sequence});
         }
         if(candidates.empty())break;
         const auto chosen=policy_->select(candidates);
@@ -409,11 +428,9 @@ bool HostDriver::advance_recovery(ContentKey key,RecoveryTask& t) {
             }
             if(u.stage==UnitStage::Queued) {channels_[key.block.channel].queue.erase(uid);u.stage=UnitStage::Done;}
         } else if(u.stage==UnitStage::Done&&!u.successful) {
-            u.stage=UnitStage::Queued;u.accepted=false;u.command.reset();
-            u.queued_at=events_.now();
+            requeue(u);
             for(const auto& f:u.fragments) {work_.at(f.id).needs_recovery=false;work_.at(f.id).accepted=false;}
             version.accepted[u.fragments.front().logical.page].reset();
-            channels_[key.block.channel].queue.insert(uid);
         }
     }
     return true;
@@ -444,6 +461,7 @@ void HostDriver::advance() {
     if(settled) {
         for(const auto& event:release_events_) {events_.cancel(event.second);owned_events_.erase(event.second);}
         release_events_.clear();
+        initial_enqueues_.clear();
     }
     // Cancel passive source waits if no sendable work remains on that channel.
     for(auto& ch:channels_)if(ch.queue.empty()&&ch.wait) {port_.notifications().cancel(*ch.wait);ch.wait.reset();}

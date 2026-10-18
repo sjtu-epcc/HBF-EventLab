@@ -20,6 +20,7 @@ The project supports research into **Host–HBF coordination, access organizatio
 | Fault recovery | The Host automatically replays requests based on responses, merges recovery endpoints, drains old attempts, and explicitly terminates affected work when the recovery budget is exhausted or recovery data is insufficient. |
 | Addressing and capacity | Component APIs provide Zone swaps, replacement with spare blocks in the same Bank, sparse compensation, and permanent logical retirement; CLI commands are not available for all of these capabilities. |
 | Run results | Completion, stalls, run limits, and model errors are distinguished, with separate checks that transient Host and Device activity has drained. |
+| Statistics | Optional JSON records request/attempt latency, per-channel Pending occupancy curves, fragment progress, and DLU context lifecycles, including timeouts, retries, and unfinished work. See [Statistics](docs/usage.md#统一统计). |
 
 The media model uses `DataToken` to represent symbolic content. It does not store actual user bytes or NAND cell charge. Core Channel currently uses an ideal model with infinite bandwidth and zero latency; the fixed NAND latencies and buffer parameters cannot be used directly to predict real product performance.
 

@@ -11,6 +11,14 @@ WriteAssembly::WriteAssembly(const StaticDeviceDescription& d, IAssemblyStorage&
 WriteAssembly::~WriteAssembly() {
     for (const auto& item : contexts_) storage_.release(item.second.data_slot);
 }
+void WriteAssembly::set_observer(std::function<void(const AssemblyObservation&)> observer) {
+    if(next_generation_ || observer_ || !observer)throw std::logic_error("attach assembly observer once before first context");
+    observer_=std::move(observer);
+}
+void WriteAssembly::publish(AssemblyChange change,const PendingWriteContext& ctx,std::optional<CommandId> command) {
+    if(observer_)observer_({change,ctx.key,ctx.generation,ctx.phase,
+        static_cast<std::uint32_t>(ctx.received.count()),ctx.first_arrival,ctx.deadline,command,{}});
+}
 const PendingWriteContext* WriteAssembly::find(DluKey k) const {
     auto it = contexts_.find(k); return it == contexts_.end() ? nullptr : &it->second;
 }
@@ -69,6 +77,7 @@ AssemblyResult WriteAssembly::accept(const CommandFragment& f, DataToken data, T
     ctx.received.set(f.slot);
     const bool ready = ctx.received.all();
     if (ready) ctx.phase = WritePhase::Ready;
+    publish(opened?AssemblyChange::Opened:AssemblyChange::Progress,ctx,f.parent);
     return {WriteStatus::Success, ctx.generation, opened, ready, ctx.deadline};
 }
 ForwardResult WriteAssembly::forward(DluKey k, std::uint32_t slot) const {
@@ -87,19 +96,24 @@ void WriteAssembly::queue_program(DluKey k, Generation gen) {
     auto& ctx = require(k, gen);
     if (ctx.phase != WritePhase::Ready) throw std::logic_error("DLU not Ready");
     ctx.phase = WritePhase::ProgramQueued;
+    publish(AssemblyChange::PhaseChanged,ctx);
 }
 void WriteAssembly::start_program(DluKey k, Generation gen) {
     auto& ctx = require(k, gen);
     if (ctx.phase != WritePhase::ProgramQueued) throw std::logic_error("DLU not ProgramQueued");
     ctx.phase = WritePhase::Programming;
+    publish(AssemblyChange::PhaseChanged,ctx);
 }
 DluCompletion WriteAssembly::retire(DluKey k, WriteStatus status, std::uint8_t info) {
     auto it = contexts_.find(k);
     auto& ctx = it->second;
+    const AssemblyObservation observation{AssemblyChange::Retired,ctx.key,ctx.generation,ctx.phase,
+        static_cast<std::uint32_t>(ctx.received.count()),ctx.first_arrival,ctx.deadline,{},status,info};
     DluCompletion out{k, ctx.generation, status, info, std::move(ctx.awaiting_completion)};
     storage_.release(ctx.data_slot);
     contexts_.erase(it);
     --counts_[k.channel];
+    if(observer_)observer_(observation);
     return out;
 }
 DluCompletion WriteAssembly::commit_program(DluKey k, Generation gen, const std::function<void(const PageData&)>& sink) {

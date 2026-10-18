@@ -29,7 +29,7 @@ struct Fixture {
     std::vector<Log> trace;
     Fixture(HostConfiguration hc={},ExecutionConfiguration ec={},unsigned ch=1,unsigned mocs=256,
             Tick deadline=Tick{10000000},std::unique_ptr<IUcieArbitrationPolicy> link=std::make_unique<FifoUciePolicy>(),
-            std::unique_ptr<IHostSendPolicy> policy=std::make_unique<FillOpenDluPolicy>())
+            std::unique_ptr<IHostSendPolicy> policy={})
       :device(profile(ch,mocs,deadline),ec,events,std::make_unique<FcfsNandPolicy>(),std::move(link)),
        interleaver(GlobalByteAddress{},ch,device.description().geometry().channel_bytes()),
        host(device,events,interleaver,hc,std::move(policy)),runner(events,host,device) {
@@ -126,7 +126,7 @@ void open_limit(){
     check(f.device.statistics().programs==4,"one open DLU still progresses sequentially");
 }
 void fill_open(){
-    HostConfiguration c;c.max_open_dlus_per_channel=1;Fixture f(c);
+    HostConfiguration c;c.send_policy="fill_open";c.max_open_dlus_per_channel=1;Fixture f(c);
     f.run({wr(1,0,2048),wr(2,32768,4096,2),wr(3,2048,2048)});
     auto second=std::find_if(f.trace.begin(),f.trace.end(),[](auto&e){return e.action=="handoff"&&e.block.block==1;});
     std::size_t prior=0;for(auto it=f.trace.begin();it!=second;++it)prior+=it->action=="handoff"&&it->block.block==0;

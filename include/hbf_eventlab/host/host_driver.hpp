@@ -69,7 +69,8 @@ private:
         std::uint64_t handoffs=0;
         std::uint64_t capacity_at_handoff=0;
         Tick retry_at{};
-        Tick queued_at{}; // observation only; does not alter candidate ordering
+        Tick queued_at{}; // logical enqueue boundary, also exported to statistics
+        std::uint64_t enqueue_sequence=0; // 0: preloaded but not released yet
     };
     struct Version {
         std::vector<SendUnitId> normal;
@@ -93,6 +94,8 @@ private:
     struct Attempt {SendUnitId unit;TransferAttemptId transfer;bool accepted=false;};
     void validate(const std::vector<GlobalRequest>&) const;
     SendUnitId add_unit(Op,std::vector<Fragment>,std::optional<ContentKey>,std::optional<ReadGroup>,bool replay=false,std::uint64_t pass=0);
+    void enqueue(Unit&,Tick);
+    void release_units(Tick);
     bool dependencies_ready(GlobalRequestId) const;
     bool eligible(const Unit&) const;
     bool version_done(ContentKey) const;
@@ -132,12 +135,16 @@ private:
     std::map<LogicalBlockKey,std::set<CommandId>> unsettled_;
     std::set<EventId> owned_events_;
     std::map<Tick,EventId> release_events_;
+    // Preindexed initial releases: (last contributing input-fragment ordinal, unit).
+    // Burst creation order and arbitrary Global IDs must not define FCFS order.
+    std::map<Tick,std::vector<std::pair<std::uint64_t,SendUnitId>>> initial_enqueues_;
     std::optional<EventId> retry_wakeup_;
     std::optional<Tick> retry_wakeup_at_;
     std::map<ChannelId,std::uint64_t> capacity_progress_;
     std::set<std::tuple<ContentKey,PageId,std::uint64_t,std::uint32_t>> capacity_completions_;
     std::shared_ptr<bool> alive_=std::make_shared<bool>(true);
     std::uint64_t next_work_=0,next_unit_=0,next_command_=0;
+    std::uint64_t next_enqueue_=0;
     bool loaded_=false,started_=false;
     HostStatistics stats_;
     IStatisticsSink* statistics_sink_=nullptr;

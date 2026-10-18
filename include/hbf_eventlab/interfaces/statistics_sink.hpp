@@ -1,5 +1,6 @@
 #pragma once
 #include "hbf_eventlab/common/host_protocol.hpp"
+#include "hbf_eventlab/common/write_observation.hpp"
 #include <string>
 #include <vector>
 #include <variant>
@@ -32,9 +33,11 @@ struct StatAttemptDelivered {
 };
 // Host verification can fail even when the device returned ReadStatus::Success.
 struct StatAttemptAssessed { TransferAttemptId id; Tick at; bool success; };
+struct StatPendingInitialized { ChannelId channel; std::uint32_t limit; Tick at; };
+struct StatDluObserved { Tick at; AssemblyObservation observation; };
 using StatisticsEvent=std::variant<StatGlobalDefined,StatWorkDefined,StatGlobalReleased,
     StatWorkFinished,StatGlobalFinished,StatAttemptStarted,StatAttemptLinked,
-    StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed>;
+    StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed,StatPendingInitialized,StatDluObserved>;
 class IStatisticsSink {
 public:
     virtual ~IStatisticsSink()=default;
