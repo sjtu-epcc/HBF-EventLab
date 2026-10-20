@@ -333,15 +333,19 @@ void DeviceDriver::execute_media(ChannelId ch) {
             const auto operation=writes_.issue_erase(*choice.erase);
             if(!operation) {runtime_.release(bank,ticket);throw std::logic_error("erase readiness changed during commit");}
             channels_[ch]->erases.erase(*choice.erase); ++stats_.erases;
+            if(statistics_sink_)statistics_sink_->observe(StatBankOperationStarted{ticket,MediaOperationKind::Erase,choice.view.target,events_.now()});
             emit("erase-issue",ch,ticket,choice.view.target);
             schedule(after(events_.now(),config_.media_timing.erase),EventPhase::Completion,[this,op=*operation,bank,ticket] {
                 cache_.invalidate(op.physical); writes_.finish_erase(op.id);
-                runtime_.release(bank,ticket); notify_bank(bank); notify_cache(bank);
+                runtime_.release(bank,ticket);
+                if(statistics_sink_)statistics_sink_->observe(StatBankOperationFinished{ticket,events_.now()});
+                notify_bank(bank); notify_cache(bank);
                 emit("erase-finish",bank.channel,ticket,page_address(op.physical)); request_pump(bank.channel);
             });
         } else if(choice.program) {
             const auto operation=writes_.issue_program(*choice.program);
             if(!operation) {runtime_.release(bank,ticket);throw std::logic_error("program readiness changed during commit");}
+            if(statistics_sink_)statistics_sink_->observe(StatBankOperationStarted{ticket,MediaOperationKind::Program,operation->physical,events_.now()});
             ++stats_.programs; emit("program-issue",ch,ticket,operation->physical);
             schedule(after(events_.now(),config_.media_timing.program),EventPhase::Completion,[this,op=*operation,bank,ticket] {
                 const auto outcome=outcome_(op);
@@ -349,7 +353,9 @@ void DeviceDriver::execute_media(ChannelId ch) {
                 if(outcome==ProgramOutcome::Success) cache_.invalidate_page(op.physical);
                 else cache_.invalidate(block_of(op.physical));
                 writes_.finish_program(op.id,outcome);
-                runtime_.release(bank,ticket); notify_bank(bank); notify_cache(bank);
+                runtime_.release(bank,ticket);
+                if(statistics_sink_)statistics_sink_->observe(StatBankOperationFinished{ticket,events_.now()});
+                notify_bank(bank); notify_cache(bank);
                 emit("program-finish",bank.channel,ticket,op.physical); request_pump(bank.channel);
             });
         } else {
@@ -359,10 +365,13 @@ void DeviceDriver::execute_media(ChannelId ch) {
             const auto operation=reads_.issue_reserved(*choice.read,std::move(result));
             if(!operation) {cache_.cancel_fill(*fill);runtime_.release(bank,ticket);continue;}
             auto& tx=transactions_.at(choice.transaction); remove_window(tx); tx.read.reset(); notify_sense_order(tx);
+            if(statistics_sink_)statistics_sink_->observe(StatBankOperationStarted{ticket,MediaOperationKind::Read,operation->physical,events_.now()});
             ++stats_.senses; emit("sense-issue",ch,ticket,operation->physical);
             schedule(after(events_.now(),config_.media_timing.sense),EventPhase::Completion,[this,op=*operation,fill=*fill,bank,ticket] {
                 cache_.finish_fill(fill); reads_.finish_read(op.id);
-                runtime_.release(bank,ticket); notify_bank(bank); notify_cache(bank);
+                runtime_.release(bank,ticket);
+                if(statistics_sink_)statistics_sink_->observe(StatBankOperationFinished{ticket,events_.now()});
+                notify_bank(bank); notify_cache(bank);
                 emit("sense-finish",bank.channel,ticket,op.physical); request_pump(bank.channel);
             });
         }

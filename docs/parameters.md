@@ -172,7 +172,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `run.events_per_tick` | `100000` | 同 Tick callback 上限；0 不限制。 |
 | `run.rounds_per_tick` | `100000` | 同 Tick 因果轮次上限；0 不限制。 |
 | `output.trace` | `false` | 是否输出 Host／Device 事件日志。 |
-| `output.statistics_json` | 空字符串 | 统一统计 JSON 路径（schema 2），包含请求延迟、Pending曲线和DLU上下文历史；空字符串关闭记录。精确历史有宿主内存开销，详见[统计说明](usage.md#统一统计)。 |
+| `output.statistics_json` | 空字符串 | 统一统计 JSON 路径（schema 2），包含请求延迟、Pending曲线、DLU上下文历史和Bank介质操作区间；空字符串关闭记录。精确历史有宿主内存开销，详见[统计说明](usage.md#统一统计)。 |
 | `output.effective_config` | 空字符串 | 有效配置 INI 导出路径；空字符串关闭文件导出。 |
 
 这些运行限额不属于设备资源。基础 EventQueue 单独使用时默认总事件数不限；统一入口使用本表 RunLimits 作为程序级默认值。
@@ -186,3 +186,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 C++ 装配流程位于 [统一配置实现](../src/configuration/simulation_configuration.cpp)。运行组件接收各自的类型化子配置，不解析 INI，也不共享可变的全局配置对象。Core 拓扑与退役预算进入 StaticDeviceDescription；ExecutionConfiguration 由介质、UCIe、缓冲和读调度子配置组合。旧扁平 ExecutionConfiguration 字段已迁移，Supported／Selected 字段分别命名为 mocs_supported／mocs_selected；外部 C++ 调用者需要按新头文件调整。
 
 固定协议粒度64B／4KiB、每 Bank 同时一项介质操作和双 Page Cache 不通过本入口任意修改；引入新的微架构模型需要相应实现和验证。新增参数时同步维护参数定义／默认值、字段绑定、校验、本文及测试。只新增一个能解析却不被任何组件使用的字段不算完成接入。
+
+容量交互实验的扫描轴和固定条件见[实验参数](../experiments/capacity/README.md#固定条件与扫描变量)。计划JSON是实验工具的矩阵入口，由工具生成此处定义的标准配置；未引入另一套设备参数解释。每组`effective.ini`保留全部默认值和派生值。
+
+[交织与到达间隔实验](../experiments/interleave_arrival/README.md#固定条件与矩阵)同样生成标准配置；计划中的`delta_ps`用于生成workload的`at`，不是新增设备时延参数。固定MOCS/Pending预算，扫描交织粒度和Host端释放间隔，保留实际链路、接收与组装等待。

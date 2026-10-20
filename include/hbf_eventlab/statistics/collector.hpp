@@ -73,6 +73,10 @@ struct DluTiming {
     std::map<CommandId,std::optional<TransferAttemptId>> members;
     std::vector<DluProgress> progress;
 };
+struct BankTiming {
+    std::uint64_t ticket; MediaOperationKind kind; PhysicalNandAddress target;
+    Tick issued_at; std::optional<Tick> completed_at;
+};
 struct StatisticsSummary {
     Tick at;
     std::map<Op,ResultCounts> globals,logical_work,attempts;
@@ -87,12 +91,14 @@ struct StatisticsSummary {
 // Missing milestones stay optional (JSON null); zero is a valid measured time.
 class StatisticsCollector final : public IStatisticsSink {
 public:
+    static constexpr unsigned schema_version=2;
     void observe(const StatisticsEvent&) override;
     const auto& globals() const {return globals_;}
     const auto& logical_work() const {return work_;}
     const auto& attempts() const {return attempts_;}
     const auto& pending_timeline() const {return pending_timeline_;}
     const auto& dlu_contexts() const {return dlus_;}
+    const auto& bank_operations() const {return bank_operations_;}
     StatisticsSummary summarize(Tick at) const;
     // Schema 2, ticks (not wall-clock time). The caller supplies run stop metadata.
     void write_json(std::ostream&,Tick at,const std::string& stop_reason) const;
@@ -105,6 +111,10 @@ private:
     void record(const StatPendingInitialized&); void record(const StatDluObserved&);
     std::map<ChannelId,PendingSummary> pending_summary(Tick) const;
     void write_pending_json(std::ostream&,Tick) const;
+    void record(const StatBankOperationStarted&); void record(const StatBankOperationFinished&);
+    void write_bank_json(std::ostream&,Tick) const;
+    std::map<std::uint64_t,BankTiming> bank_operations_;
+    std::map<std::tuple<ChannelId,std::uint32_t,std::uint32_t>,std::uint64_t> active_banks_;
     void note(Tick);
     std::map<GlobalRequestId,GlobalTiming> globals_;
     std::map<LogicalWorkId,LogicalTiming> work_;

@@ -275,7 +275,7 @@ JSON schema为2，时间单位为Tick（CLI中1ps）。顶层包含`summary`、`
 
 `Stalled`、`LimitReached`及运行中的模型诊断也导出已观察记录与停止原因。未完成项保留pending；尚未释放就取消的工作计入failed及其`cancelled_before_release`子集，不计算负的端到端延迟。输入校验或输出文件创建失败时没有有效运行统计。时刻和ID应以64位整数读取，避免JavaScript浮点数在大值处丢精度。
 
-默认collector空间为O(原始工作数＋命令尝试数＋组装状态变更数)，导出和分位数计算有宿主程序开销；这些记录不代表模拟硬件缓冲，不增加事件或Tick。未开启时不保存统计历史。当前统一输出尚不含Bank占用曲线、Bank利用率及宿主程序墙钟耗时；时间结果仍是未校准的功能模型结果。
+默认collector空间为O(原始工作数＋命令尝试数＋组装状态变更数＋介质操作数)，导出和分位数计算有宿主程序开销；这些记录不代表模拟硬件缓冲，不增加事件或Tick。未开启时不保存统计历史。Bank操作区间由统一接口导出，可离线计算忙闲曲线与利用率。核心JSON不含宿主程序墙钟耗时；容量实验脚本另行记录CLI进程耗时。所有模拟时间结果仍是未校准的功能模型结果。
 
 同一Global可能跨多个块，部分子工作在释放前被取消，其余子工作仍在以后释放、完成；因此`logical_work`单独保存`cancelled_before_release`和`released`，不能仅从父Global的最终状态推断。Global仍等剩余子工作结束后取得最终结果。
 
@@ -321,6 +321,18 @@ JSON schema为2，时间单位为Tick（CLI中1ps）。顶层包含`summary`、`
 实验分母需明确：`opened`统计上下文尝试，包括超时重试和replay；未能建立上下文的0x4仍只能从命令响应统计中看到。逻辑成功比例应使用原始逻辑工作及其最终结果，不能用上下文成功数替代。在限额停止时，活动上下文保留，报告已终结样本和未完成数量；析构清理不伪造终结。
 
 时刻、计数、generation和sequence以整数导出；积分、均值和分位数均值使用浮点汇总，极大运行可能产生舍入。需要大整数精确积分时，可从整数时间线离线计算。
+
+### Bank操作观察与容量实验
+
+同一个`--stats-json`输出增加`bank_operations[]`：`ticket`、`kind`（`sense/program/erase`）、物理`channel/die/bank/block/page`、`issued_at`、`completed_at`和`observed_busy_ticks`。ticket来自真实`DeviceRuntimeState`，只在发射提交成功后登记；候选查询、Bank预留后的回滚、Cache命中不虚构介质操作。结束在介质完成且Bank释放时记录，不等Host收到响应。
+
+每个Bank的操作区间为`[issued_at, completed_at)`；活动操作的`completed_at=null`，仅观测到JSON顶层`at`。按物理Bank分别累积区间长度，再除以明确的观测时长，即可得到利用率；跨Bank允许并行，不能把忙时长直接相加后仍除以单Bank时长。此字段为schema 2的向后兼容扩展；旧schema 2文件可能没有该数组，分析程序应显式检查而非假定零占用。
+
+[容量实验工具](../experiments/capacity/README.md)提供单channel/die/Bank合成trace、配置矩阵、逐DLU结果及资源曲线。其生成与分析只依赖Python标准库，绘图可选matplotlib。扫描分别报告逻辑失败、限额停止和工具错误，并保存完整有效配置；不从AcceptedNotice推断已收片段，也不重新实现组装逻辑。
+
+[交织与到达间隔实验](../experiments/interleave_arrival/README.md)提供多channel的连续Global写入、`interleave_bytes × at间隔`扫描、逐页计划释放与实际组装对照，以及逐channel资源曲线。相同输入大小和间隔共用相同trace；实际超时上下文与因同块取消而失败的原始DLU分别统计。`at`仍表示Host输入释放，不是Device接受时刻。
+
+[到达形态与Host策略最小例子](../experiments/arrival_policy/README.md)固定两个独立block的首页，对同一份成批trace分别运行`fcfs`和`fill_open`，另用稀疏到达作对照。工具核对输入及资源配置一致，记录真实移交次序、组装和Bank执行；更早完成某个DLU与缩短整份workload时间分别报告。
 
 ## 运行器与参数
 

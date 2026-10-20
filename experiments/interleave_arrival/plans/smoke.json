@@ -1,0 +1,6 @@
+{
+  "channels": 4,
+  "sizes_bytes": [16384],
+  "interleave_bytes": [64, 4096],
+  "delta_ps": [0, 50000]
+}

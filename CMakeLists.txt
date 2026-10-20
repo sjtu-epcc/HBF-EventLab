@@ -7,6 +7,7 @@ add_library(hbf_eventlab
     src/architecture/ucie_profile.cpp
     src/statistics/collector.cpp
     src/statistics/pending.cpp
+    src/statistics/media.cpp
     src/host/global_request_splitter.cpp
     src/host/retention_store.cpp
     src/host/recovery_manager.cpp
@@ -51,6 +52,28 @@ add_executable(hbf_eventlab_cli examples/minimal_loop.cpp)
 target_link_libraries(hbf_eventlab_cli PRIVATE hbf_eventlab_workload_io)
 include(CTest)
 if(BUILD_TESTING)
+    # Python is optional for the C++ core; the experiment harness uses only the standard library.
+    find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME experiment_capacity_unit COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_capacity_experiment.py")
+        add_test(NAME experiment_capacity_integration COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_capacity_experiment.py"
+            --cli "$<TARGET_FILE:hbf_eventlab_cli>" --output "${CMAKE_CURRENT_BINARY_DIR}/capacity-test-$<CONFIG>")
+        set_tests_properties(experiment_capacity_unit experiment_capacity_integration PROPERTIES TIMEOUT 120)
+        add_test(NAME experiment_interleave_arrival_unit COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_interleave_arrival_experiment.py")
+        add_test(NAME experiment_interleave_arrival_integration COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_interleave_arrival_experiment.py"
+            --cli "$<TARGET_FILE:hbf_eventlab_cli>" --output "${CMAKE_CURRENT_BINARY_DIR}/interleave-arrival-test-$<CONFIG>")
+        set_tests_properties(experiment_interleave_arrival_unit experiment_interleave_arrival_integration PROPERTIES TIMEOUT 180)
+        add_test(NAME experiment_arrival_policy_unit COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_arrival_policy_experiment.py")
+        add_test(NAME experiment_arrival_policy_integration COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_arrival_policy_experiment.py"
+            --cli "$<TARGET_FILE:hbf_eventlab_cli>" --output "${CMAKE_CURRENT_BINARY_DIR}/arrival-policy-test-$<CONFIG>")
+        set_tests_properties(experiment_arrival_policy_unit experiment_arrival_policy_integration PROPERTIES TIMEOUT 180)
+    endif()
     add_executable(hbf_eventlab_pending_statistics_tests tests/pending_statistics.cpp)
     target_link_libraries(hbf_eventlab_pending_statistics_tests PRIVATE HBFEventLab::core)
     foreach(scenario lifecycle occupancy rejected timeout_reuse failure same_tick_burst commit_failure
@@ -85,7 +108,7 @@ if(BUILD_TESTING)
     target_link_libraries(hbf_eventlab_statistics_tests PRIVATE HBFEventLab::core)
     foreach(scenario boundaries cross_global_burst multi_channel pending_retry timeout_retry replay
             unfinished_resume ingress_wait cancelled_future partial_future_cancel mismatch backpressure observational
-            event_time zero_and_status guards_empty stalled)
+            event_time zero_and_status guards_empty stalled bank_lifetime bank_limit bank_guards)
         add_test(NAME statistics_${scenario} COMMAND hbf_eventlab_statistics_tests ${scenario})
         set_tests_properties(statistics_${scenario} PROPERTIES TIMEOUT 30)
     endforeach()

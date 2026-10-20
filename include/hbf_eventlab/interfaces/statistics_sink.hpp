@@ -1,6 +1,7 @@
 #pragma once
 #include "hbf_eventlab/common/host_protocol.hpp"
 #include "hbf_eventlab/common/write_observation.hpp"
+#include "hbf_eventlab/interfaces/execution_policy.hpp"
 #include <string>
 #include <vector>
 #include <variant>
@@ -35,9 +36,12 @@ struct StatAttemptDelivered {
 struct StatAttemptAssessed { TransferAttemptId id; Tick at; bool success; };
 struct StatPendingInitialized { ChannelId channel; std::uint32_t limit; Tick at; };
 struct StatDluObserved { Tick at; AssemblyObservation observation; };
+// Bank ticket identity is owned by DeviceRuntimeState; observe only successful issues.
+struct StatBankOperationStarted { std::uint64_t ticket; MediaOperationKind kind; PhysicalNandAddress target; Tick at; };
+struct StatBankOperationFinished { std::uint64_t ticket; Tick at; };
 using StatisticsEvent=std::variant<StatGlobalDefined,StatWorkDefined,StatGlobalReleased,
     StatWorkFinished,StatGlobalFinished,StatAttemptStarted,StatAttemptLinked,
-    StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed,StatPendingInitialized,StatDluObserved>;
+    StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed,StatPendingInitialized,StatDluObserved,StatBankOperationStarted,StatBankOperationFinished>;
 class IStatisticsSink {
 public:
     virtual ~IStatisticsSink()=default;

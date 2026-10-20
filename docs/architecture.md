@@ -198,3 +198,5 @@ Host与Device通过`IStatisticsSink`发布已经发生的生命周期事实；`S
 `WriteAssembly`仍唯一拥有Pending上下文、received bitmap和阶段。其`accept`、`queue_program`、`start_program`、`retire`在状态提交后发布只包含值的`AssemblyObservation`；`WritePath::set_statistics_sink`补上`EventQueue::now()`，`DeviceDriver`负责装配。program提交失败抛出异常时，不发布虚假的retired。析构仅释放宿主资源，不属于模拟终结事件。
 
 统计按`(channel, local_dlu, generation)`保存上下文历史；按channel聚合Collecting、Ready/ProgramQueued、Programming及总数，输出变化点曲线和占用积分。观测记录内的命令成员只包含真正加入Assembly的命令；通过传输尝试连接Host逻辑工作。统计历史是模拟器的分析存储，不增加被模拟的组装容量。完整字段、终结原因、活动记录和曲线重建规则见[Pending统计说明](usage.md#pending曲线与dlu上下文)。
+
+Bank状态仍由`DeviceRuntimeState`唯一维护。`DeviceDriver::execute_media`在成功发射与实际释放Bank后发布`StatBankOperationStarted/Finished`，复用执行ticket和事件时刻；`StatisticsCollector`保存`bank_operations`历史，供离线积分。准备失败／回滚不记发射，析构不伪造完成。统计仅保存观察事实，不能作为Scheduler判断Bank可用性的依据。容量实验工具直接消费这些记录和原有Pending／命令历史，相关口径见[实验说明](../experiments/capacity/README.md)。

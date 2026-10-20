@@ -237,6 +237,56 @@ void guards_empty() {
     std::ostringstream out;f.stats.write_json(out,f.events.now(),"a\"b\nc");
     check(out.str().find("a\\\"b\\nc")==std::string::npos && out.str().find("a\\\"b\\u000ac")!=std::string::npos,"JSON quotes and control characters escaped");
 }
+void bank_lifetime() {
+    HostConfiguration hc;hc.writes=WriteCommandMode::Burst4096;Fixture f(hc);
+    f.run({wr(1,0),rd(2,0,64,{GlobalRequestId{1}})});
+    const auto& ops=f.stats.bank_operations();check(ops.size()==3,"erase, program and sense observed");
+    std::map<MediaOperationKind,std::uint64_t> duration;
+    Tick previous{};
+    for(const auto& entry:ops) {
+        const auto& op=entry.second;
+        check(op.completed_at&&!(op.issued_at<previous),"one Bank serial and every operation completed");
+        check(op.target.channel==0&&op.target.die==0&&op.target.bank==0,"physical Bank identity retained");
+        duration[op.kind]+=op.completed_at->value-op.issued_at.value;previous=*op.completed_at;
+    }
+    const auto& t=f.device.configuration().media_timing;
+    check(duration[MediaOperationKind::Erase]==t.erase.value&&duration[MediaOperationKind::Program]==t.program.value&&
+          duration[MediaOperationKind::Read]==t.sense.value,"Bank service durations equal executed media operations");
+    std::ostringstream json;f.stats.write_json(json,f.events.now(),"Completed");
+    check(json.str().find("\"bank_operations\":[{")!=std::string::npos&&json.str().find("\"kind\":\"sense\"")!=std::string::npos,
+          "bank lifecycle exported through unified JSON");
+}
+void bank_limit() {
+    HostConfiguration hc;hc.writes=WriteCommandMode::Burst4096;Fixture f(hc);
+    f.host.load({wr(1,0)});f.host.start();RunLimits limits;limits.max_tick=Tick{1000000};
+    auto limited=f.runner.run(limits);
+    check(limited.status==RunStatus::LimitReached&&f.stats.bank_operations().size()==1,"limit leaves real erase in flight");
+    const auto first=f.stats.bank_operations().begin()->first;
+    check(!f.stats.bank_operations().at(first).completed_at,"limit does not fabricate Bank completion");
+    std::ostringstream a,b;f.stats.write_json(a,limited.at,"LimitReached");f.stats.write_json(b,limited.at,"LimitReached");
+    check(a.str()==b.str()&&a.str().find("\"completed_at\":null")!=std::string::npos,"repeat snapshot is observational");
+    const auto done=f.runner.run();
+    check(done.workload_success&&f.stats.bank_operations().size()==2&&f.stats.bank_operations().at(first).completed_at,
+          "resume completes same erase identity then program");
+}
+void bank_guards() {
+    StatisticsCollector s;const PhysicalNandAddress a{0,0,0,0,0,0},b{0,0,1,0,0,0};
+    rejects([&]{s.observe(StatBankOperationStarted{0,MediaOperationKind::Erase,a,Tick{10}});});
+    s.observe(StatBankOperationStarted{1,MediaOperationKind::Erase,a,Tick{10}});
+    rejects([&]{s.observe(StatBankOperationStarted{1,MediaOperationKind::Program,b,Tick{10}});});
+    rejects([&]{s.observe(StatBankOperationStarted{2,MediaOperationKind::Program,a,Tick{10}});});
+    s.observe(StatBankOperationStarted{2,MediaOperationKind::Program,b,Tick{10}});
+    rejects([&]{s.observe(StatBankOperationFinished{1,Tick{9}});});
+    rejects([&]{s.observe(StatBankOperationFinished{99,Tick{20}});});
+    s.observe(StatBankOperationFinished{1,Tick{20}});
+    rejects([&]{s.observe(StatBankOperationFinished{1,Tick{20}});});
+    s.observe(StatBankOperationFinished{2,Tick{25}});
+    s.observe(StatBankOperationStarted{3,MediaOperationKind::Read,a,Tick{25}});
+    s.observe(StatBankOperationFinished{3,Tick{25}});
+    rejects([&]{s.observe(StatBankOperationStarted{4,static_cast<MediaOperationKind>(99),a,Tick{25}});});
+    check(s.bank_operations().size()==3,"different Banks may overlap; invalid observations do not create history");
+    check(s.bank_operations().at(3).completed_at==Tick{25},"zero duration distinct from unfinished");
+}
 void stalled() {
     Fixture f;f.host.load({wr(1,4096)});f.host.start();auto r=f.runner.run();auto s=f.stats.summarize(r.at);
     check(r.status==RunStatus::Stalled && s.globals.at(Op::Write).pending==1 && s.attempts.at(Op::Write).total==0,"stalled logical work not silently lost");
@@ -249,7 +299,7 @@ int main(int argc,char** argv) {
         {"multi_channel",multi_channel},{"pending_retry",pending_retry},{"timeout_retry",timeout_retry},{"replay",replay},
         {"unfinished_resume",unfinished_resume},{"ingress_wait",ingress_wait},{"cancelled_future",cancelled_future},
         {"mismatch",mismatch},{"partial_future_cancel",partial_future_cancel},{"backpressure",backpressure},{"observational",observational},{"event_time",event_time},
-        {"zero_and_status",zero_and_status},{"guards_empty",guards_empty},{"stalled",stalled}};
+        {"zero_and_status",zero_and_status},{"guards_empty",guards_empty},{"stalled",stalled},{"bank_lifetime",bank_lifetime},{"bank_limit",bank_limit},{"bank_guards",bank_guards}};
     try {if(argc!=2||!tests.count(argv[1]))throw std::invalid_argument("unknown test");
         tests.at(argv[1])();std::cout<<"PASS "<<argv[1]<<" ("<<checks<<" checks)\n";return 0;
     } catch(const std::exception& e){std::cerr<<"FAIL "<<(argc>1?argv[1]:"")<<": "<<e.what()<<'\n';return 1;}

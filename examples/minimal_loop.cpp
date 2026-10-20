@@ -117,7 +117,7 @@ int main(int argc,char**argv){
         if(statistics_path) {
             measurements.write_json(statistics_output,report.at,to_string(report.status));statistics_output.flush();
             if(!statistics_output)throw std::runtime_error("cannot flush statistics output");
-            std::cout<<"STATISTICS schema=1 file="<<*statistics_path<<" unit=tick (1 ps in CLI)\n";
+            std::cout<<"STATISTICS schema="<<StatisticsCollector::schema_version<<" file="<<*statistics_path<<" unit=tick (1 ps in CLI)\n";
         }
         std::cout            <<"STOP "<<to_string(report.status)<<" workload="<<(report.workload_success?"Success":"FailedOrUnfinished")
             <<" tick="<<report.at.value<<" events="<<report.events<<" reason="<<report.explanation<<"\n";

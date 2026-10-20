@@ -186,7 +186,7 @@ void StatisticsCollector::write_json(std::ostream& destination,Tick at,const std
     const auto s=summarize(at);
     // Keep serialization independent of the caller's locale/format flags.
     std::ostringstream out;out.imbue(std::locale::classic());out<<std::setprecision(17);
-    out<<"{\"schema_version\":2,\"time_unit\":\"tick\",\"at\":"<<at.value<<",\"stop_reason\":"<<quote(stop)
+    out<<"{\"schema_version\":"<<schema_version<<",\"time_unit\":\"tick\",\"at\":"<<at.value<<",\"stop_reason\":"<<quote(stop)
        <<",\"summary\":{\"globals\":";counts_json(out,s.globals);
     out<<",\"logical_work\":";counts_json(out,s.logical_work);out<<",\"attempts\":";counts_json(out,s.attempts);
     out<<",\"replay_attempts\":"<<s.replay_attempts<<",\"retried_unit_attempts\":"<<s.retried_unit_attempts
@@ -237,7 +237,7 @@ void StatisticsCollector::write_json(std::ostream& destination,Tick at,const std
         out<<",\"host_success\":";if(a.host_success)out<<(*a.host_success?"true":"false");else out<<"null";
         out<<",\"work_ids\":[";bool sep=false;for(auto id:a.work){if(sep)out<<',';sep=true;out<<id.value;}out<<"]}";
     }
-    out<<']';write_pending_json(out,at);out<<"}\n";destination<<out.str();
+    out<<']';write_pending_json(out,at);write_bank_json(out,at);out<<"}\n";destination<<out.str();
     if(!destination)throw std::runtime_error("statistics: JSON output failed");
 }
 } // namespace hbf_eventlab

@@ -109,6 +109,9 @@ The C++ namespace is `hbf_eventlab`, public headers are in [include/hbf_eventlab
 | [Usage](docs/usage.md) | Building, workload format, CLI, configuration, exit codes, and examples. |
 | [Verification](docs/verification.md) | Test matrix, verified environments, results, and reproduction commands. |
 | [Scope and Limitations](docs/scope_and_limitations.md) | Supported response subset, input restrictions, unimplemented features, and performance model boundaries. |
+| [Synthetic Capacity Experiment](experiments/capacity/README.md) | Reproducible trace generation, parameter sweeps, DLU outcomes, resource curves, and optional plots. |
+| [Interleave and Arrival Experiment](experiments/interleave_arrival/README.md) | Timed Global writes, interleave sweeps, per-channel assembly and Bank observations, and reproducible plots. |
+| [Host Policy Minimal Example](experiments/arrival_policy/README.md) | Identical timed traces compare FCFS and fill-open sending, with a sparse-arrival control. |
 | [Contributing Guide](CONTRIBUTING.md) | Issue reporting, development workflow, testing, and documentation synchronization requirements. |
 
 ## Contributing and Reproducing Experiments

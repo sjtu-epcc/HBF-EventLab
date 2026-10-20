@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-当前测试集共 **281 项**；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+当前测试集在找到Python 3.10+时共 **290 项**（284项核心测试＋6项可选实验测试入口，本次使用Python 3.14）；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-18 | 281/281通过，0失败 | 45.33s |
-| Release | 2026-10-18 | 281/281通过，0失败 | 10.28s |
+| Debug | 2026-10-20 | 290/290通过，0失败 | 75.04s |
+| Release | 2026-10-20 | 290/290通过，0失败 | 12.96s |
 
 上述 CTest 使用 4 个并行作业。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-281项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、81个Host行为场景、32个统计场景、26个配置场景和28个CLI场景组成。分类表示验证职责，不表示规范章节数量。
+290项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、81个Host行为场景、35个统计场景、26个配置场景、28个CLI场景和6个实验工具入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -52,6 +52,10 @@
 | Pending生命周期与归属 | pending_statistics_lifecycle、pending_statistics_rejected、pending_statistics_timeout_reuse、pending_statistics_failure、pending_statistics_identity | 真实片段数及四个时刻、拒绝不造上下文、generation分开重试、program失败与后继失败、命令ID复用后的attempt归属。 |
 | Pending曲线与阶段占用 | pending_statistics_occupancy、pending_statistics_curve_reconstruction、pending_statistics_same_tick_burst、pending_statistics_read_only | 各channel总量/阶段分区、峰值、满额时长、积分与均值；按变化点重建积分，同Tick零时长和纯读零曲线。 |
 | Pending提交与停止边界 | pending_statistics_commit_failure、pending_statistics_device_delivery、pending_statistics_snapshot、pending_statistics_device_limit、pending_statistics_teardown、statistics_cli_assembly_limit | program提交失败不退上下文；Pending释放早于响应/MOCS；中断保留活动尾段，继续运行不重复计数，析构不伪造终结。 |
+| Bank统计 | statistics_bank_lifetime、statistics_bank_limit、statistics_bank_guards | sense／program／erase的实际发射与释放；在途快照、继续执行、独立Bank并行及非法／重复观察。 |
+| 合成容量实验 | experiment_capacity_unit、experiment_capacity_integration | 9项Python单元检查；真实CLI下credit分散边界、Pending拒绝、运行限额、重复运行一致性、坏记录与覆盖保护。 |
+| 交织与到达间隔实验 | experiment_interleave_arrival_unit、experiment_interleave_arrival_integration | 11项Python单元检查；完整local页覆盖、共享trace、解析释放跨度、真实超时与取消、deadline精确边界、单channel退化、多Bank利用率、限额停止及损坏统计拒绝。 |
+| 到达形态与Host策略 | experiment_arrival_policy_unit、experiment_arrival_policy_integration | 6项Python单元检查；相同trace与资源预算、真实策略选择、稀疏无竞争对照、局部与整体完成时间区分、重复确定性、覆盖保护及损坏记录拒绝。 |
 | 配置格式与装配 | configuration_parse_override、configuration_numeric、configuration_frozen、configuration_cli_precedence | 字段类型、未知／重复输入、覆盖优先级和解析后冻结。 |
 | Host策略配置 | configuration_cli_host_default、configuration_cli_host_fill_open、configuration_cli_host_override | 默认FCFS、文件选择fill_open、CLI覆盖及有效配置导出一致。 |
 | 配置合法性与运行 | configuration_grade_limits、configuration_mocs_ranges、configuration_small_read、configuration_small_write、configuration_small_burst、configuration_capacity | 档位上限、Supported／Selected、实际写模式诊断、真实超时／burst前进及预算传递。 |
@@ -187,3 +191,40 @@ DEVICE programs=2 erases=2 senses=2 cache_hits=126 host_drained=1 device_drained
 | <a id="t33"></a>T33 | [read_issue_snapshot()](../tests/read_path.cpp#L300) |
 | <a id="t34"></a>T34 | [ingress_scope()](../tests/read_path.cpp#L312) |
 | <a id="t35"></a>T35 | [read_teardown()](../tests/read_path.cpp#L325) |
+
+## 7. 合成容量实验复现
+
+[容量实验说明](../experiments/capacity/README.md)提供8组smoke、32组pilot和648组完整计划。8组smoke及32组pilot已完成扫描和统计核对，均无工具错误；其中逻辑失败是实验观察结果，不等于测试失败。完整648组计划不作为此次已完成实验报告。
+
+固定8个原始DLU、Pending上限8、program 0.5μs时：逐页发送均成功；轮转发送在Host打开上限4／MOCS 256时成功8/8，在上限5／MOCS 256时成功3/8、产生10个超时上下文；MOCS提高到512后成功8/8。失败格实际打开13个上下文，因此超时比例为10/13，不能写成5/8。链路／RX中旧片段的迟到处理可能再打开上下文，关闭自动重试并不保证上下文数等于原始页数。
+
+pilot还覆盖Pending上限2与program 8μs；这些结果只验证当前有限输入和功能参数的行为，不能据此宣称真实HBF吞吐或通用最优策略。完整输入、有效参数、原始JSON、逐格退出状态和CSV由扫描脚本自动保存。可选绘图与CTest分离；图形依赖和命令见实验说明。
+
+```powershell
+python experiments/capacity/run.py --cli build/Release/hbf_eventlab_cli.exe --plan experiments/capacity/plans/pilot.json --output out/capacity-pilot
+ctest --test-dir build -C Release -R "statistics_bank_|experiment_capacity_" --output-on-failure
+```
+
+## 8. 交织与到达间隔实验复现
+
+[交织与到达间隔实验说明](../experiments/interleave_arrival/README.md)提供4组smoke及64组完整小矩阵，固定4 channel、FCFS、64B写、每channel MOCS 1024/Pending 16，扫描两种输入大小、四种交织粒度和八种释放间隔。64组均已完成并通过地址覆盖、时间与资源积分核对；44组所有原始DLU成功，20组出现预期逻辑失败，没有工具错误。每channel的实际MOCS/Pending峰值分别不超过512/8。
+
+Δ=50ns时，16KiB输入在64B交织下4个上下文超时、0/4原始DLU成功；4096B交织下4/4成功。128KiB输入在64B交织下仍只有4个上下文超时，但Host取消同块后续工作，最终0/32成功；4096B交织下32/32成功。不能将取消的后续页计成独立超时，也不能将提前失败排空视作更短的成功完成时间。
+
+计划释放跨度是独立对照量，实际组装和Bank操作来自统一统计观察。结果是当前功能参数下的有限输入实验，图表和复现方法见实验说明。
+
+```powershell
+python experiments/interleave_arrival/run.py --cli build/Release/hbf_eventlab_cli.exe --output out/interleave-arrival-round1
+ctest --test-dir build -C Release -R '^experiment_interleave_arrival_' --output-on-failure
+```
+
+## 9. 到达形态与Host策略最小对照
+
+[最小例子说明](../experiments/arrival_policy/README.md)固定一个channel/Bank、两个独立block的首页，提供成批和稀疏两种输入，每种输入分别运行`fcfs`与`fill_open`。四次运行均成功，输入哈希一致性和有效配置差异检查通过；没有修改模拟器的组装、调度或统计行为。
+
+成批输入在2μs同时提供B的前半页和A的后半页，文件中B在前。FCFS观察到`A32 B32 A32 B32`的移交次序，`fill_open`为`A64 B64`。后者使A的program完成时间从3.501767μs提前到2.553444μs；由于B的后半页仍需等到4μs，两者整体逻辑完成时间同为4.574920μs。稀疏输入的两种策略结果一致。更早补齐一页不等于缩短整份workload的完成时间。
+
+```powershell
+python experiments/arrival_policy/run.py --cli build/Release/hbf_eventlab_cli.exe --output out/arrival-policy-minimal
+ctest --test-dir build -C Release -R '^experiment_arrival_policy_' --output-on-failure
+```
