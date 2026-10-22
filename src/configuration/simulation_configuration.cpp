@@ -186,7 +186,8 @@ ResolvedSimulationConfiguration resolve_configuration(SimulationConfiguration c)
     c.execution.validate(description);c.host.validate();
     validate_host_send_policy(c.host.send_policy);
     policy("execution.read_dispatch.policy",c.execution.read_dispatch.policy,"window");
-    policy("execution.nand_scheduler.policy",c.execution.nand_scheduler,"fcfs");
+    if(c.execution.nand_scheduler!="read_priority")
+        policy("execution.nand_scheduler.policy",c.execution.nand_scheduler,"fcfs");
     policy("execution.ucie_scheduler.policy",c.execution.ucie_scheduler,"fifo");
     if(c.host.writes==WriteCommandMode::Burst4096 && !d.capabilities.write_burst)
         throw std::invalid_argument("host.write_mode=burst4096 requires device.capabilities.write_burst=true");

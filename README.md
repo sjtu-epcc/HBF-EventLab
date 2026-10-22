@@ -35,13 +35,17 @@ The project uses C++17 and CMake 3.20 or later. The core library has no third-pa
 
 See [Verification](docs/verification.md#evidence) for complete toolchain details and regression results.
 
+The full test suite requires **Python 3.10+**. Experiment tests are enabled by default; configuration fails clearly if Python is missing. For C++-only testing, explicitly configure with `-DHBF_EVENTLAB_EXPERIMENT_TESTS=OFF`. To select an interpreter, use `-DPython3_EXECUTABLE=/path/to/python`. Disabling `BUILD_TESTING` does not require Python.
+
+Experiment generation, execution, analysis, and tests use only the Python standard library. Plotting dependencies are optional: `python -m pip install -e ".[plots]"`. See the [experiment infrastructure guide](experiments/README.md) for configuration checks, dependencies, and reproducibility.
+
 ### Linux (Ubuntu / Debian)
 
 1. **Install the build tools.** You need a compiler that supports C++17, CMake, and Ninja. On Ubuntu / Debian, install them with the following commands, then use `cmake --version` to confirm that the version is at least 3.20:
 
    ```sh
    sudo apt-get update
-   sudo apt-get install -y build-essential cmake ninja-build
+   sudo apt-get install -y build-essential cmake ninja-build python3
    ```
 
 2. **Configure, build, and test.** The following commands build Release and run the full CTest suite:
@@ -112,6 +116,7 @@ The C++ namespace is `hbf_eventlab`, public headers are in [include/hbf_eventlab
 | [Synthetic Capacity Experiment](experiments/capacity/README.md) | Reproducible trace generation, parameter sweeps, DLU outcomes, resource curves, and optional plots. |
 | [Interleave and Arrival Experiment](experiments/interleave_arrival/README.md) | Timed Global writes, interleave sweeps, per-channel assembly and Bank observations, and reproducible plots. |
 | [Host Policy Minimal Example](experiments/arrival_policy/README.md) | Identical timed traces compare FCFS and fill-open sending, with a sparse-arrival control. |
+| [Read Window and NAND Scheduling](experiments/read_scheduling/README.md) | Cold-read/write contention, FCFS versus read priority, timer/count release, non-preemption and Cache controls. |
 | [Contributing Guide](CONTRIBUTING.md) | Issue reporting, development workflow, testing, and documentation synchronization requirements. |
 
 ## Contributing and Reproducing Experiments

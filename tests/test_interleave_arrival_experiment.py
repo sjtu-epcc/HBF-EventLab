@@ -16,7 +16,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from experiments.interleave_arrival.analyze import analyze
-from experiments.interleave_arrival.io_utils import interval_curve
+from experiments.common.intervals import interval_curve
 from experiments.interleave_arrival.plan import case_name, cases, configuration, validate_plan
 from experiments.interleave_arrival.run import run_case
 from experiments.interleave_arrival.workload import footprint, records, release_span, write_workload
@@ -112,8 +112,8 @@ class UnitTests(unittest.TestCase):
 
     def test_intervals_and_censoring(self):
         curve, area = interval_curve([(1, 5), (5, 9), (5, 5)], 10)
-        self.assertEqual((curve, area), ({0: 0, 1: 1, 5: 1, 9: 0, 10: 0}, 8))
-        self.assertEqual(interval_curve([(2, None)], 5), ({0: 0, 2: 1, 5: 1}, 3))
+        self.assertEqual((curve, area["area"]), ({0: 0, 1: 1, 5: 1, 9: 0, 10: 0}, 8))
+        self.assertEqual(interval_curve([(2, None)], 5)[1]["area"], 3)
         for intervals in ([(-1, 3)], [(2, 1)], [(2, 6)]):
             with self.assertRaises(ValueError):
                 interval_curve(intervals, 5)
@@ -186,7 +186,7 @@ def integration(cli: Path, output: Path) -> None:
             elif change == "pending_area": bad["pending_channels"][0]["area_context_ticks"]["total"] += 1
             else: bad["dlu_contexts"][0]["members"].pop()
             try:
-                analyze(bad, p, runs["dense"][2], 0, root)
+                analyze(bad, p, runs["dense"][2], 0, runs["dense"][1])
             except ValueError:
                 pass
             else:

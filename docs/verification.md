@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-当前测试集在找到Python 3.10+时共 **290 项**（284项核心测试＋6项可选实验测试入口，本次使用Python 3.14）；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+默认完整测试集共 **304 项**（294项核心测试＋10项实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为294项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-20 | 290/290通过，0失败 | 75.04s |
-| Release | 2026-10-20 | 290/290通过，0失败 | 12.96s |
+| Debug | 2026-10-22 | 304/304通过，0失败 | 472.55s |
+| Release | 2026-10-22 | 304/304通过，0失败 | 199.94s |
 
-上述 CTest 使用 4 个并行作业。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
+上述两个配置各按串行CTest运行，同时执行了其他验证工作；耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-290项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、81个Host行为场景、35个统计场景、26个配置场景、28个CLI场景和6个实验工具入口组成。分类表示验证职责，不表示规范章节数量。
+304项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、81个Host行为场景、35个统计场景、26个配置场景、28个CLI场景、10个读调度/窗口观察场景和10个实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -53,6 +53,10 @@
 | Pending曲线与阶段占用 | pending_statistics_occupancy、pending_statistics_curve_reconstruction、pending_statistics_same_tick_burst、pending_statistics_read_only | 各channel总量/阶段分区、峰值、满额时长、积分与均值；按变化点重建积分，同Tick零时长和纯读零曲线。 |
 | Pending提交与停止边界 | pending_statistics_commit_failure、pending_statistics_device_delivery、pending_statistics_snapshot、pending_statistics_device_limit、pending_statistics_teardown、statistics_cli_assembly_limit | program提交失败不退上下文；Pending释放早于响应/MOCS；中断保留活动尾段，继续运行不重复计数，析构不伪造终结。 |
 | Bank统计 | statistics_bank_lifetime、statistics_bank_limit、statistics_bank_guards | sense／program／erase的实际发射与释放；在途快照、继续执行、独立Bank并行及非法／重复观察。 |
+| 读调度与窗口观察 | read_scheduling_policy_order、read_scheduling_window_reasons、read_scheduling_window_stale、read_scheduling_cache_bypass、read_scheduling_cache_removal | 非抢占读优先排序；数量／timer／Batch原因；失效timer；Cache绕过或移出窗口。 |
+| 读观察边界 | read_scheduling_terminal_read、read_scheduling_snapshot、read_scheduling_observational、read_scheduling_guards、read_scheduling_custom_reason | 立即错误不造介质操作；暂停继续；开关统计不改事件/时间/结果；非法观察诊断；自定义策略兼容。 |
+| 读窗口与NAND调度实验 | experiment_read_scheduling_unit、experiment_read_scheduling_integration | 7项Python单元检查；14例真实CLI重复运行一致，比较候选竞争／未释放／不抢占、末尾单读和Cache转换；输入公平性、覆盖保护和损坏统计拒绝。 |
+| 实验公共层与测试依赖 | experiment_common_unit、experiment_python_configuration | 8项Python检查：实际配置／请求一致性、重复键、几何与预算派生、区间语义、输出及公共源码哈希；CMake验证Python可用、缺失及显式关闭三种路径。 |
 | 合成容量实验 | experiment_capacity_unit、experiment_capacity_integration | 9项Python单元检查；真实CLI下credit分散边界、Pending拒绝、运行限额、重复运行一致性、坏记录与覆盖保护。 |
 | 交织与到达间隔实验 | experiment_interleave_arrival_unit、experiment_interleave_arrival_integration | 11项Python单元检查；完整local页覆盖、共享trace、解析释放跨度、真实超时与取消、deadline精确边界、单channel退化、多Bank利用率、限额停止及损坏统计拒绝。 |
 | 到达形态与Host策略 | experiment_arrival_policy_unit、experiment_arrival_policy_integration | 6项Python单元检查；相同trace与资源预算、真实策略选择、稀疏无竞争对照、局部与整体完成时间区分、重复确定性、覆盖保护及损坏记录拒绝。 |
@@ -78,7 +82,7 @@ rg -n "void event_rounds" tests
 ```powershell
 git rev-parse HEAD
 cmake --version
-cmake -S . -B build-verify -G "Visual Studio 17 2022" -A x64
+cmake -S . -B build-verify -G "Visual Studio 17 2022" -A x64 -DHBF_EVENTLAB_EXPERIMENT_TESTS=ON
 cmake --build build-verify --config Debug
 ctest --test-dir build-verify -C Debug --output-on-failure --parallel 4
 cmake --build build-verify --config Release
@@ -228,3 +232,21 @@ ctest --test-dir build -C Release -R '^experiment_interleave_arrival_' --output-
 python experiments/arrival_policy/run.py --cli build/Release/hbf_eventlab_cli.exe --output out/arrival-policy-minimal
 ctest --test-dir build -C Release -R '^experiment_arrival_policy_' --output-on-failure
 ```
+
+
+## 读窗口与 NAND 调度受控实验
+
+[实验说明](../experiments/read_scheduling/README.md)提供14个有限案例，均完成并通过观测一致性检查。测量前正常写入读目标，Host固定FCFS，64B命令；两种NAND策略与不同窗口配置共享输入。
+
+在窗口50ns的同Bank竞争中，FCFS先program后sense，读端到端延迟1.403534μs；读优先先sense后program，读延迟0.903534μs，同时W的program完成延后0.1μs。窗口1000ns时，读尚未释放，两个策略均先program。晚到读对照同样不抢占已发射program。
+
+同一份四冷读输入下，阈值4在10.120434μs释放，固定200ns的timer在10.200434μs释放；尾部三个读及单读不依赖后续输入，也能定时释放。同页Cache对照仅一次sense，两次Cache服务，其中一条读在新窗口释放前被Cache服务并移出。数据初始化不计入上述测量；这些是未校准功能模型结果。
+
+```powershell
+python experiments/read_scheduling/run.py --cli build/Release/hbf_eventlab_cli.exe --output out/read-scheduling-minimal
+python experiments/read_scheduling/plot.py out/read-scheduling-minimal
+```
+
+生成/运行/分析使用Python标准库；绘图需要matplotlib。输出目录必须是新目录。此实验报告逐请求延迟和最大值，不把少量样本的分位数作为真实workload的尾延迟结论。
+
+公共层重构的结果保持性检查：对已有32个容量案例、4个交织案例、4个Host策略案例、14个读调度案例，共54个案例的原始统计和有效配置进行独立副本重分析，全部已有汇总指标一致（不比较CLI进程墙钟耗时）。四组绘图入口均成功导出；共享层未改变C++执行语义。重分析副本保留原始来源并单独记录新源码哈希，不覆盖历史结果。

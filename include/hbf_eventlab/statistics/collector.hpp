@@ -86,6 +86,12 @@ struct StatisticsSummary {
     std::map<ChannelId,PendingSummary> pending_channels;
     std::uint64_t replay_attempts=0,retried_unit_attempts=0,host_verification_failures=0;
 };
+struct ReadTiming {
+    std::optional<Tick> window_entered_at,window_left_at,service_at;
+    std::optional<ReadReleaseReason> release_reason; // null for cache/terminal removal
+    std::optional<ReadServiceKind> service; // null: no Cache/Sense service observed
+    std::optional<std::uint64_t> bank_ticket;
+};
 // Exact finite-workload collector. Stores O(work + attempts + assembly changes); this is
 // measurement storage in the simulator, not modeled device buffering.
 // Missing milestones stay optional (JSON null); zero is a valid measured time.
@@ -99,6 +105,8 @@ public:
     const auto& pending_timeline() const {return pending_timeline_;}
     const auto& dlu_contexts() const {return dlus_;}
     const auto& bank_operations() const {return bank_operations_;}
+    const auto& read_paths() const {return read_paths_;}
+    const auto& read_window_releases() const {return read_window_releases_;}
     StatisticsSummary summarize(Tick at) const;
     // Schema 2, ticks (not wall-clock time). The caller supplies run stop metadata.
     void write_json(std::ostream&,Tick at,const std::string& stop_reason) const;
@@ -113,6 +121,11 @@ private:
     void write_pending_json(std::ostream&,Tick) const;
     void record(const StatBankOperationStarted&); void record(const StatBankOperationFinished&);
     void write_bank_json(std::ostream&,Tick) const;
+    void record(const StatReadWindowEntered&); void record(const StatReadWindowRemoved&);
+    void record(const StatReadWindowReleased&); void record(const StatReadServed&);
+    void write_read_json(std::ostream&) const;
+    std::map<TransferAttemptId,ReadTiming> read_paths_;
+    std::vector<StatReadWindowReleased> read_window_releases_;
     std::map<std::uint64_t,BankTiming> bank_operations_;
     std::map<std::tuple<ChannelId,std::uint32_t,std::uint32_t>,std::uint64_t> active_banks_;
     void note(Tick);

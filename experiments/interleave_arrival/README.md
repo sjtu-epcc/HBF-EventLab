@@ -93,10 +93,10 @@ CLI exit 0/2/3/4 分别保存为成功排空、失败排空、停滞、达到限
 
 ## 绘图
 
-绘图是独立后处理，需要 matplotlib（其依赖包含 NumPy）；不影响核心构建和 CTest：
+绘图是独立后处理，需要可选绘图依赖 matplotlib 和 NumPy；不影响核心构建和 CTest：
 
 ```powershell
-python -m pip install matplotlib
+python -m pip install -e ".[plots]"
 python experiments/interleave_arrival/plot.py out/interleave-arrival-round1 --case n16384-i64-d50000 --case n16384-i4096-d50000 --case n131072-i64-d0 --case n131072-i4096-d50000
 ```
 
@@ -133,3 +133,5 @@ ctest --test-dir build -C Release -R '^experiment_interleave_arrival_' --output-
 ```
 
 11 项 Python 单元测试覆盖矩阵合法性、固定预算、地址覆盖、释放公式、共享 trace、区间积分与缺失字段。真实 CLI 集成检查覆盖正常／超时、完整块取消传播、单 channel 退化对照、同 deadline 补齐及 1ps 越界、限额中止、多 Bank 并行利用率、确定性、损坏统计拒绝和输出覆盖保护。完整项目回归记录见[验证说明](../../docs/verification.md)。
+
+公共工具、实际配置核对、可选绘图依赖和测试开关见[实验基础设施](../README.md)。

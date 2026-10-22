@@ -2,6 +2,7 @@
 #include "hbf_eventlab/interfaces/read_dispatch.hpp"
 #include <optional>
 #include <vector>
+#include <functional>
 
 namespace hbf_eventlab {
 // threshold=0: fixed timer; threshold>0: queue depth OR timer (prevents starvation).
@@ -10,6 +11,7 @@ public:
     explicit WindowDispatchPolicy(Tick wait, std::size_t threshold = 0) : wait_(wait), threshold_(threshold) {}
     bool ready(ReadWindowView, Tick now) const override;
     Tick deadline(ReadWindowView) const override;
+    ReadReleaseReason release_reason(ReadWindowView, Tick) const override;
 private:
     Tick wait_;
     std::size_t threshold_;
@@ -29,12 +31,16 @@ public:
     std::optional<Tick> next_wakeup() const;
     std::optional<ReadWindowWakeup> wakeup() const;
     std::size_t size() const { return pending_.size(); }
+    using ReleaseObserver=std::function<void(const DispatchBatch&,ReadReleaseReason,Tick,Tick,Tick)>;
+    // Observe actual release: members, reason, first arrival, deadline, now.
+    void set_release_observer(ReleaseObserver observer) { observer_=std::move(observer); }
 private:
-    DispatchBatch take();
+    DispatchBatch take(ReadReleaseReason,Tick);
     ReadWindowView view() const { return {pending_.size(), first_}; }
     const IReadDispatchPolicy& policy_;
     DispatchBatch pending_;
     Tick first_, last_;
     Generation window_;
+    ReleaseObserver observer_;
 };
 } // namespace hbf_eventlab

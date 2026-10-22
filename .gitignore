@@ -7,6 +7,8 @@
 # Python experiment bytecode
 __pycache__/
 *.pyc
+*.egg-info/
+/.venv/
 
 # 默认忽略日志
 *.log

@@ -13,11 +13,11 @@ import uuid
 from contextlib import contextmanager
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "experiments" / "capacity"))
-from analyze import analyze, interval_curve, ratio
-from plan import case_name, cases, configuration, validate_plan
-from run import run_case
-from workload import records, validate_coverage, write_workload
+sys.path.insert(0, str(ROOT))
+from experiments.capacity.analyze import analyze, interval_curve, ratio
+from experiments.capacity.plan import case_name, cases, configuration, validate_plan
+from experiments.capacity.run import run_case
+from experiments.capacity.workload import records, validate_coverage, write_workload
 
 
 @contextmanager
@@ -154,7 +154,7 @@ def integration(cli: Path, output: Path) -> None:
             else:
                 bad["bank_operations"].append(bad["bank_operations"][0])
             try:
-                analyze(bad, 8, 256, 2, root)
+                analyze(bad, 8, 256, 2, sample_dir)
             except ValueError:
                 pass
             else:

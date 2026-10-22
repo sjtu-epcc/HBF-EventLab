@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import itertools
-from workload import ORDERS, PAGES_PER_BLOCK
+from experiments.capacity.workload import ORDERS, PAGES_PER_BLOCK
+from experiments.common.model import FRAGMENT_BYTES, FRAGMENTS
 
 DEFAULTS = {
     "dlus": 64,
@@ -77,13 +78,13 @@ assembly_timeout_ps = {p['assembly_timeout_ps']}
 zone_size_dlus = auto
 [address]
 global_base = 0
-interleave_bytes = 64
+interleave_bytes = {FRAGMENT_BYTES}
 [host]
 send_policy = fcfs
 write_mode = fragment64
 max_open_dlus_per_channel = {c['open_dlus']}
-retained_fragments = {p['dlus'] * 64}
-max_logical_fragments = {p['dlus'] * 64}
+retained_fragments = {p['dlus'] * FRAGMENTS}
+max_logical_fragments = {p['dlus'] * FRAGMENTS}
 [host.retry]
 max_pending_retries = 0
 max_timeout_retries = 0

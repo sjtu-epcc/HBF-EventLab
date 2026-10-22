@@ -19,7 +19,7 @@ Linux／单配置构建将 `--cli` 改为实际可执行路径，例如 `build/h
 可选静态绘图需要 `matplotlib`（其依赖包括 `numpy`）：
 
 ```powershell
-python -m pip install matplotlib
+python -m pip install -e ".[plots]"
 python experiments/capacity/plot.py out/capacity-smoke --case fragment_round_robin-o5-c256-p8-t500000
 ```
 
@@ -105,3 +105,5 @@ ctest --test-dir build -C Release -R "statistics_bank_|experiment_capacity_" --o
 ```
 
 CMake找到Python 3.10+时自动注册两个实验CTest入口；没有Python时核心C++构建与测试仍可运行。实验集成测试覆盖256-credit的4／5页边界、顺序对照、Pending拒绝、运行限额、重复运行一致性、输出完整性、损坏记录拒绝和结果目录保护。Bank观察测试覆盖读／写／擦除、未完成快照与继续执行、并行Bank身份及重复／非法观察。统计不改变模拟事件和资源决定。
+
+公共工具、实际配置核对、可选绘图依赖和测试开关见[实验基础设施](../README.md)。

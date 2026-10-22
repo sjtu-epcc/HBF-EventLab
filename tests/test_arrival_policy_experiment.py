@@ -137,7 +137,7 @@ def integration(cli: Path, parent: Path) -> None:
         bad = copy.deepcopy(data); bad["bank_operations"][1]["issued_at"] = 0; variants.append(bad)
         bad = copy.deepcopy(data); bad["stop_reason"] = "LimitReached"; variants.append(bad)
         for i, bad in enumerate(variants):
-            try: analyze(bad, "batched", root)
+            try: analyze(bad, "batched", first / "batched/fcfs")
             except ValueError: pass
             else: raise AssertionError(f"corrupt observation {i} accepted")
         print("PASS arrival-policy integration: fair pairs, policy choice, sparse control, media lifetimes, determinism and guards")

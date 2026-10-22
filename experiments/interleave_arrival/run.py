@@ -16,25 +16,14 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(ROOT))
 
 from experiments.interleave_arrival.analyze import analyze
-from experiments.interleave_arrival.io_utils import csv_rows, digest, write_json
+from experiments.common.provenance import git_info, script_hashes
+from experiments.common.io import csv_rows, digest, write_json
 from experiments.interleave_arrival.plan import case_name, cases, configuration, validate_plan
 from experiments.interleave_arrival.workload import write_workload
 
 
 def trace_name(case: dict) -> str:
     return f'n{case["size_bytes"]}-d{case["delta_ps"]}.txt'
-
-
-def git_info() -> dict:
-    try:
-        def git(*args: str) -> str:
-            return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True,
-                                           stderr=subprocess.DEVNULL, timeout=10).strip()
-        if Path(git("rev-parse", "--show-toplevel")).resolve() != ROOT:
-            return {"commit": None, "branch": None, "dirty": None}
-        return dict(commit=git("rev-parse", "HEAD"), branch=git("branch", "--show-current"), dirty=bool(git("status", "--porcelain")))
-    except (OSError, subprocess.SubprocessError):
-        return {"commit": None, "branch": None, "dirty": None}
 
 
 def run_case(cli: Path, directory: Path, trace: Path, plan: dict, case: dict, timeout: float) -> dict:
@@ -94,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     manifest = dict(experiment="interleave-arrival-v1", created_utc=datetime.now(timezone.utc).isoformat(),
                     plan=plan, total_cases=len(matrix), selected_cases=len(selected), scan_complete=False,
                     cli=str(cli), cli_sha256=digest(cli), git=git_info(), python=sys.version, platform=platform.platform(),
-                    script_sha256={p.name: digest(p) for p in sorted(HERE.glob("*.py"))},
+                    script_sha256=script_hashes(HERE),
                     workload_sha256={p.name: digest(p) for p in sorted(traces.glob("*.txt"))})
     write_json(output / "manifest.json", manifest)
     rows = []

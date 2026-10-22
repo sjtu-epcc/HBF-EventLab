@@ -268,11 +268,14 @@
 | [ADR-STAT-04](#adr-stat-04) | 直接观察真实Pending上下文，以现有generation区分重试，记录片段进度、阶段和终结原因。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
 | [ADR-STAT-05](#adr-stat-05) | 每channel输出占用阶梯曲线与时间加权汇总，未完成尾段积分到观测时刻。 | 无直接规定 | 模型／输入假设；实现保障 | 已实现；V1 |
 | [ADR-STAT-06](#adr-stat-06) | 观察真实Bank操作的发射与释放，复用执行ticket，保留未完成区间供离线积分。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
+| [ADR-STAT-07](#adr-stat-07) | 观察真实读窗口成员的进出、集合释放原因及实际Cache/Sense服务，并关联attempt与Bank ticket。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
+| [ADR-SCHED-01](#adr-sched-01) | 可选非抢占式读优先，仅在Device给出的合法候选中仲裁，默认仍为FCFS。 | 受规范约束，机制未指定 | 可配置策略 | 已实现；V1 |
 
 | [ADR-CFG-01](#adr-cfg-01) | 统一配置按默认值、文件、显式CLI覆盖装配，校验后冻结并向组件传递子配置。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
 | [ADR-CFG-02](#adr-cfg-02) | Speed Grade派生有效带宽和结构上限；控制服务量及固定传播延迟单列为模型假定。 | 档位表直接规定；模型档位与几何维度关联、事务计费机制由项目选择 | 行为要求；模型／输入假设；实现保障 | 已实现；V1 |
 | [ADR-CFG-03](#adr-cfg-03) | 策略名称与参数统一配置；仅装配已实现策略，不忽略未知或不适用的设置。 | 策略受规范约束；配置机制无直接规定 | 可配置策略；实现机制；实现保障 | 已实现；V1 |
 | [ADR-CFG-04](#adr-cfg-04) | 有效配置可导出并重载；Core拓扑、容量预算和派生容量使用同一组冻结参数。 | 无直接规定 | 实现机制；模型／输入假设；实现保障 | 已实现；V1 |
+| [ADR-EXP-01](#adr-exp-01) | 实验公共层统一读取实际配置，显式保证验证范围。 | 无直接规定 | 实现组织；实现保障 | 已实现；V1 |
 
 ### 3.1 跨组件决策关系
 
@@ -3131,6 +3134,40 @@
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | Cache命中不作为NAND sense；不提供Core Channel争用、校准时延或逐拍Bank内部状态。schema 2旧文件可能缺少新增数组，消费者须检查字段存在。采集空间随实际介质操作数增长。 |
 
+<a id="adr-stat-07"></a>
+
+#### ADR-STAT-07｜读窗口与服务统计观察实际状态转换，不重建一套窗口或Cache逻辑。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；实现保障 |
+| 规范依据／无直接依据说明 | 规范不规定统计API或JSON格式；被观察的行为沿用既有读窗口、Cache与顺序契约。 |
+| 关联要求／条目 | [ADR-STAT-03](#adr-stat-03)；[ADR-STAT-06](#adr-stat-06)；[ADR-LOOP-R03](#adr-loop-r03) |
+| 选择理由 | 区分输入释放、正式接受、窗口等待、资源等待、实际服务和响应交付；到达时miss不代表最终一定sense。 |
+| 模型假设／参数依据 | 使用实际事件Tick；窗口集合在take时报告成员、原因及deadline。内建同次触发原因按Batch、零等待、数量、timer报告，不改变原资格规则。未到达的里程碑为null。 |
+| 实现位置（函数／成员） | [ReadDispatchWindow::take / WindowDispatchPolicy::release_reason](../src/policies/read_dispatch.cpp)；[DeviceDriver::set_statistics_sink / admit / remove_window / try_cache / execute_media](../src/runtime/device_driver.cpp)；[StatReadWindowEntered/Removed/Released、StatReadServed](../include/hbf_eventlab/interfaces/statistics_sink.hpp)；[StatisticsCollector::record / write_read_json](../src/statistics/reads.cpp)。 |
+| 验证测试与覆盖 | [read_scheduling.cpp](../tests/read_scheduling.cpp)：window_reasons、window_stale、cache_bypass、cache_removal、terminal_read、snapshot、observational、guards、custom_reason；[实验集成测试](../tests/test_read_scheduling_experiment.py)：成员、时间、Bank关联、确定性和损坏记录。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | schema 2旧文件可能缺少新字段。service=null表示没有观察到Cache/Sense服务，不能等同Pending转发或错误；最终响应另查attempt。统计保存历史有宿主内存开销，不是硬件结果缓冲容量。 |
+
+<a id="adr-sched-01"></a>
+
+#### ADR-SCHED-01｜read_priority是合法候选上的非抢占式读优先对照策略。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 受规范约束，机制未指定 |
+| 条目性质 | 可配置策略 |
+| 规范依据／无直接依据说明 | 沿用[ADR-LOOP-R03](#adr-loop-r03)的调度自由度及顺序、资源约束；规范未要求本项目的读优先算法。 |
+| 关联要求／条目 | [ADR-LOOP-R03](#adr-loop-r03)；[ADR-STAT-07](#adr-stat-07) |
+| 选择理由 | 提供可解释的读延迟／写等待对照，明确区分窗口资格与就绪候选优先级。 |
+| 模型假设／参数依据 | `execution.nand_scheduler.policy=read_priority`，默认仍为fcfs；读优先，同类按现有sequence/identity排序，program/erase之间保留FCFS。已发射操作不抢占，不绕过同Bank sense顺序、窗口、Cache槽或写依赖。 |
+| 实现位置（函数／成员） | [ReadPriorityNandPolicy::select](../include/hbf_eventlab/policies/execution_policies.hpp)；[DeviceDriver构造与execute_media](../src/runtime/device_driver.cpp)；[resolve_configuration](../src/configuration/simulation_configuration.cpp)。 |
+| 验证测试与覆盖 | [read_scheduling.cpp](../tests/read_scheduling.cpp)：policy_order、observational；[configuration.cpp](../tests/configuration.cpp)：policies；[实验测试](../tests/test_read_scheduling_experiment.py)：同时就绪的读写竞争、晚到读不抢占、未释放读不可选、同trace与资源预算。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 持续读可能使写饥饿；未实现aging或连续读上限。有限合成例子只验证机制，不证明真实workload下普遍收益。 |
+
 ### 配置装配与参数边界
 
 <a id="adr-cfg-01"></a>
@@ -3181,7 +3218,7 @@
 | 规范依据／无直接依据说明 | 无直接条款规定配置格式；合法候选、顺序与资源约束沿用各路径决策。 |
 | 关联要求／条目 | [ADR-LOOP-R03](#adr-loop-r03)；[ADR-LOOP-H06](#adr-loop-h06) |
 | 选择理由 | 使策略实验可复现，避免文件看似启用了某策略但实际仍运行默认实现。 |
-| 模型假设／参数依据 | Host支持fcfs（默认）与fill_open，读窗口为window，NAND为fcfs，UCIe返回为fifo；窗口wait=0不等待，threshold=0关闭数量触发。C++自定义对象仍可注入，内部配置视图标custom。 |
+| 模型假设／参数依据 | Host支持fcfs（默认）与fill_open，读窗口为window，NAND为fcfs或非抢占read_priority，UCIe返回为fifo；窗口wait=0不等待，threshold=0关闭数量触发。C++自定义对象仍可注入，内部配置视图标custom。 |
 | 实现位置（函数／成员） | [resolve_configuration()策略校验](../src/configuration/simulation_configuration.cpp)；[validate_host_send_policy / make_host_send_policy](../include/hbf_eventlab/policies/host_send_policy.hpp#L26)；[HostDriver构造函数](../src/host/host_driver.cpp)；[DeviceDriver构造函数](../src/runtime/device_driver.cpp)。 |
 | 验证测试与覆盖 | [configuration.cpp](../tests/configuration.cpp)：defaults、policies、custom_policy、zeros；[CLI测试](../tests/check_configuration_cli.cmake)：policy、host_default、host_fill_open、host_override。 |
 | 实现状态／验证状态 | 已实现；V1。 |
@@ -3204,6 +3241,24 @@
 | 验证测试与覆盖 | [configuration.cpp](../tests/configuration.cpp)：topology、capacity、roundtrip、all_keys、default_equivalence；[CLI测试](../tests/check_configuration_cli.cmake)：roundtrip、collision、workload_guard、config_guard。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 快照仅包含运行参数，不嵌入workload、程序版本或统计；完整复现需共同保存这些材料。 |
+
+<a id="adr-exp-01"></a>
+
+#### ADR-EXP-01｜实验公共层统一读取实际配置，显式保证验证范围。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现组织；实现保障 |
+| 分类边界说明 | 属于实验复现和软件测试机制，不代表HBF硬件结构或新增规范行为。 |
+| 规范依据／无直接依据说明 | OCP不规定Python模块、依赖安装或测试注册方式。 |
+| 关联要求／条目 | [ADR-CFG-04](#adr-cfg-04)；[实验公共基础设施](../experiments/README.md) |
+| 选择理由 | 避免多个实验重复工具、分析读取过期预算、环境缺少Python时测试数量静默缩减。 |
+| 模型假设／参数依据 | 当前固定模型语义独立于实验可调条件；分析与绘图读取有效几何和预算，并核对实验请求。固定案例的预期行为仍由各实验维护。 |
+| 实现位置（函数／成员） | [load_run_configuration](../experiments/common/config.py)、[interval_curve](../experiments/common/intervals.py)、[script_hashes](../experiments/common/provenance.py)、[Python依赖检查](../cmake/ExperimentPython.cmake)。 |
+| 验证测试与覆盖 | [公共层测试](../tests/test_experiment_common.py)、[配置路径测试](../tests/check_experiment_python.cmake)及四组真实CLI实验集成；已有54案例重分析指标一致。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | Python模型契约不是完整CLI元数据接口；固定案例分析器不能直接用于任意大型trace。依赖范围不等于精确环境锁定。 |
 
 ## 5. 参数与模型假设
 

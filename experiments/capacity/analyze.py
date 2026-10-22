@@ -2,59 +2,22 @@
 from __future__ import annotations
 
 import bisect
-import csv
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from workload import FRAGMENTS, PAGE_BYTES, PAGES_PER_BLOCK
-
-
-def ratio(n: int | float, d: int | float) -> float | None:
-    return n / d if d else None
-
-
-def csv_rows(path: Path, rows: list[dict], fields: list[str] | None = None) -> None:
-    fields = fields or list(dict.fromkeys(key for row in rows for key in row))
-    with path.open("w", encoding="utf-8", newline="") as output:
-        writer = csv.DictWriter(output, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def interval_curve(intervals: list[tuple[int, int | None]], stop: int) -> tuple[dict, dict]:
-    """Half-open occupancy, collapsed at equal Ticks; no fabricated instantaneous peaks."""
-    changes = Counter({0: 0, stop: 0})
-    area = 0
-    for start, finish in intervals:
-        end = stop if finish is None else finish
-        if not 0 <= start <= end <= stop:
-            raise ValueError("invalid interval or observation boundary")
-        changes[start] += 1
-        if finish is not None:
-            changes[finish] -= 1
-        area += end - start
-    current, peak, full_ticks, integral = 0, 0, 0, 0
-    curve = {}
-    last = 0
-    for at in sorted(changes):
-        integral += current * (at - last)
-        if current:
-            full_ticks += at - last
-        current += changes[at]
-        if current < 0:
-            raise ValueError("negative occupancy")
-        curve[at] = current
-        peak = max(peak, current)
-        last = at
-    if integral != area:
-        raise ValueError("occupancy integral mismatch")
-    return curve, {"peak_tick_boundary": peak, "area": area, "mean": ratio(area, stop),
-                   "busy_ticks": full_ticks, "current": current}
+from experiments.common.model import FRAGMENTS, PAGE_BYTES, FRAGMENT_BYTES
+from experiments.common.io import csv_rows
+from experiments.common.intervals import interval_curve, ratio
+from experiments.common.config import load_run_configuration
 
 
 def analyze(data: dict, dlus: int, selected: int, exit_code: int, directory: Path) -> dict:
     if data.get("schema_version") != 2 or "bank_operations" not in data:
         raise ValueError("need schema 2 statistics including bank_operations; rebuild the simulator")
+    cfg = load_run_configuration(directory)
+    if cfg.selected_mocs != selected or cfg.channels != 1:
+        raise ValueError("actual capacity settings disagree with experiment plan")
+    pages_per_block = cfg.pages_per_block
     stop = data["at"]
     if type(stop) is not int or stop < 0 or data.get("time_unit") != "tick":
         raise ValueError("invalid statistics time unit/boundary")
@@ -69,11 +32,11 @@ def analyze(data: dict, dlus: int, selected: int, exit_code: int, directory: Pat
     seen = set()
     for w in data["logical_work"]:
         address = w["local_byte"]
-        if w["channel"] != 0 or w["content"] != 1 or address % 64 or address in seen:
+        if w["channel"] != 0 or w["content"] != 1 or address % FRAGMENT_BYTES or address in seen:
             raise ValueError("unexpected or duplicated logical footprint")
         seen.add(address)
         dlu = address // PAGE_BYTES
-        if dlu % PAGES_PER_BLOCK or dlu // PAGES_PER_BLOCK >= dlus:
+        if dlu % pages_per_block or dlu // pages_per_block >= dlus:
             raise ValueError("logical footprint is not page 0 of the planned blocks")
         if w["result"] not in ("success", "failed", "pending"):
             raise ValueError("unknown logical outcome")
@@ -98,7 +61,7 @@ def analyze(data: dict, dlus: int, selected: int, exit_code: int, directory: Pat
     csv_rows(directory / "dlus.csv", pages)
     attempts = data["attempts"]
     statuses = Counter(a["status"] for a in attempts if a["delivered"] is not None)
-    if any(a["op"] != "write" or a["channel"] != 0 or a["bytes"] != 64 for a in attempts):
+    if any(a["op"] != "write" or a["channel"] != 0 or a["bytes"] != FRAGMENT_BYTES for a in attempts):
         raise ValueError("expected only single-channel fragment64 writes")
     mocs, m = interval_curve([(a["accepted"], a["delivered"]) for a in attempts if a["accepted"] is not None], stop)
     if m["peak_tick_boundary"] > selected:
@@ -120,6 +83,8 @@ def analyze(data: dict, dlus: int, selected: int, exit_code: int, directory: Pat
     if len(data["pending_channels"]) != 1 or data["pending_channels"][0]["channel"] != 0:
         raise ValueError("expected one Pending channel")
     pending = data["pending_channels"][0]
+    if pending["limit"] != cfg.pending_limit or pending["peak"]["total"] > cfg.pending_limit:
+        raise ValueError("Pending statistics disagree with actual configuration")
     timeline = data["pending_timeline"]
     if not timeline or any(x["channel"] != 0 or not 0 <= x["at"] <= stop for x in timeline):
         raise ValueError("invalid Pending timeline")

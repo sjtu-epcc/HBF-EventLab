@@ -34,6 +34,8 @@ The concrete contracts for these principles are defined in the architecture and 
 
 Run all commands below from the repository root. See the [README Quick Start](README.md#quick-start) for dependencies and installation steps, and [Verification](docs/verification.md) for the test matrix, environments, and interpretation of results.
 
+Full verification requires Python 3.10+ and `HBF_EVENTLAB_EXPERIMENT_TESTS=ON` (the default). Missing Python is a configuration error; explicitly using `OFF` selects core-only verification and must be reported as such. Experiment tests use `unittest` and the standard library; plotting packages are not required. Shared Python helpers belong in `experiments/common/`; do not import another experiment's runner to reuse utilities. Check requested settings against `effective.ini` before deriving metrics, and keep fixed-case regression assertions separate from general workload analysis. See [experiment infrastructure](experiments/README.md).
+
 ### Linux
 
 1. **Build and run the full regression suite.** Use Ninja to configure, build, and verify Debug and Release separately:
