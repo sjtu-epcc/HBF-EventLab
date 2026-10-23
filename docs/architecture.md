@@ -42,7 +42,7 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 | `WritePath`、`WriteAssembly`、`BlockWriteOrder` | 固定写合法性、完整组装、接收/program 顺序、erase/program 生命周期。 |
 | `ReadPath` | 接受侧观察、逻辑依赖、候选重查、物理绑定、结果及响应生命周期。 |
 | `ReadDispatchWindow`、`IReadDispatchPolicy` | 每 channel 的读累积集合，以及 Batch、数量和 timer 释放规则。 |
-| `INandSchedulingPolicy` | 从合法且资源允许的介质操作中选择优先级，不改写同 Bank sense 顺序。 |
+| `INandSchedulingPolicy` | 从合法且资源允许的介质操作中选择优先级；内建默认 `fcfs` 和可选 `read_priority`，均不抢占、不改写同 Bank sense 顺序。 |
 | `IUcieArbitrationPolicy` | 独立的传输选择接口；响应侧仲裁可传输结果，请求侧待发顺序由 Host 选择。 |
 | `CapacityRetirementCoordinator` | Zone remap、备用块替换、补偿表和永久逻辑退役的一致提交入口。 |
 | `RecoveryManager`、`WriteRetentionStore` | Host 恢复范围、每遍排空和预算；有限、版本化的恢复 token 保留。 |
@@ -53,6 +53,8 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 overlap、写顺序、错误作用域、同组交付、同 Bank sense 顺序和所有权是固定正确性条件。策略可以改变合法候选的优先级，不能绕过这些条件。接口存在也不意味着所有替代实现均已通过验证。Core Channel 目前只有路由模型，Cache 替换也尚无独立策略插件。
 
 Host 将稳定发送单元身份 `SendUnitId` 与本次入队序号分开维护。FCFS 按每 channel 合法候选的入队序号选择，允许合法补片越过受阻请求；`fill_open` 先比较补齐／replay 优先级，再比较同一序号。初始入队依释放时间和输入次序登记，错误重试重新排队，`NotTaken` 保留队龄。入队序号只影响 Host 选择，不改变 Device 的接收、介质调度或 UCIe 仲裁规则。
+
+读统计复用真实窗口及Device状态转换：`ReadDispatchWindow`在释放时报告成员和触发原因，Device关联为稳定attempt身份；Cache pin和成功sense提交分别记录。统计接收器不管理窗口，也不产生事件。读优先只改变已就绪合法候选的选择，窗口尚未释放的读不能因优先级高而提前发射。
 
 ## 3. 地址与映射
 

@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 from itertools import product
+from experiments.common.model import PAGE_BYTES, FRAGMENT_BYTES
+
+PAGES_PER_BLOCK = 8
+MOCS_SELECTED = 1024
+PENDING_LIMIT = 16
 
 DEFAULTS = {
     "channels": 4,
@@ -29,12 +34,12 @@ def validate_plan(value: dict) -> dict:
             raise ValueError(f"{key}: expected nonempty integer list")
         if len(set(xs)) != len(xs):
             raise ValueError(f"{key}: duplicate values")
-    group = p["channels"] * 4096
-    if any(n == 0 or n % group or n > group * 8 for n in p["sizes_bytes"]):
+    group = p["channels"] * PAGE_BYTES
+    if any(n == 0 or n % group or n > group * PAGES_PER_BLOCK for n in p["sizes_bytes"]):
         raise ValueError("size must cover whole channel/page groups, at most one 8-page block per channel")
     if any(i not in (64, 128, 256, 512, 1024, 2048, 4096) for i in p["interleave_bytes"]):
         raise ValueError("interleave must be a power of two from 64 through 4096 bytes")
-    if (max(p["sizes_bytes"]) // 64 - 1) * max(p["delta_ps"]) >= 2**63:
+    if (max(p["sizes_bytes"]) // FRAGMENT_BYTES - 1) * max(p["delta_ps"]) >= 2**63:
         raise ValueError("release schedule exceeds the harness integer bound")
     return p
 
@@ -58,16 +63,16 @@ ucie_speed_grade = 1
 host_channels = {p['channels']}
 dies_per_channel = 1
 banks_per_die = 1
-pages_per_block = 8
+pages_per_block = {PAGES_PER_BLOCK}
 blocks_per_bank = 4
 spare_blocks_per_bank = 1
 [device.capabilities]
-mocs_supported = 1024
-max_pending_write_dlus = 16
+mocs_supported = {MOCS_SELECTED}
+max_pending_write_dlus = {PENDING_LIMIT}
 read_burst = false
 write_burst = false
 [device.selected]
-mocs_selected = 1024
+mocs_selected = {MOCS_SELECTED}
 assembly_timeout_ps = {p['assembly_timeout_ps']}
 zone_size_dlus = auto
 [address]
@@ -76,7 +81,7 @@ interleave_bytes = {c['interleave_bytes']}
 [host]
 send_policy = fcfs
 write_mode = fragment64
-max_open_dlus_per_channel = 16
+max_open_dlus_per_channel = {PENDING_LIMIT}
 retained_fragments = 65536
 max_logical_fragments = 65536
 [host.retry]

@@ -4,9 +4,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-PAGE_BYTES = 4096
-FRAGMENT_BYTES = 64
-FRAGMENTS = PAGE_BYTES // FRAGMENT_BYTES
+import sys
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiments.common.model import PAGE_BYTES, FRAGMENT_BYTES, FRAGMENTS
 PAGES_PER_BLOCK = 8
 ORDERS = ("dlu_major", "fragment_round_robin")
 
@@ -33,7 +34,7 @@ def write_workload(path: Path, dlus: int, order: str) -> None:
     rows = records(dlus, order)
     validate_coverage(rows, dlus)
     text = "HBF_EVENTLAB_WORKLOAD 1\n" + "".join(
-        f"WRITE {identity} {address} 64 content=1 at=0\n" for identity, address in rows)
+        f"WRITE {identity} {address} {FRAGMENT_BYTES} content=1 at=0\n" for identity, address in rows)
     path.write_text(text, encoding="utf-8", newline="\n")
 
 

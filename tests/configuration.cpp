@@ -149,6 +149,10 @@ void zeros(){
     c.host.max_pending_retries=1;rejects([&]{resolve_configuration(c);},"pending_delay_ps");
 }
 void policies(){
+    for(const auto& name:{"fcfs","read_priority"}){
+        auto c=one_channel();apply_configuration_override(c,"execution.nand_scheduler.policy",name);
+        check(resolve_configuration(c).values().execution.nand_scheduler==name,"built-in NAND policies selectable");
+    }
     for(const auto& name:{"fcfs","fill_open"}){
         auto c=one_channel();apply_configuration_override(c,"host.send_policy",name);
         check(resolve_configuration(c).values().host.send_policy==name,"built-in Host policies are selectable");

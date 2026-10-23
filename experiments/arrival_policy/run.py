@@ -15,8 +15,9 @@ ROOT = HERE.parents[1]
 if __package__ in (None, ""):
     sys.path.insert(0, str(ROOT))
 
-from experiments.interleave_arrival.io_utils import csv_rows, digest, write_json
-from experiments.interleave_arrival.run import git_info
+from experiments.common.config import normalized_configuration, OUTPUT_PATHS
+from experiments.common.io import csv_rows, digest, write_json
+from experiments.common.provenance import git_info, script_hashes
 from experiments.arrival_policy.analyze import analyze
 from experiments.arrival_policy.workload import POLICIES, SHAPES, configuration, records, write_workload
 
@@ -49,23 +50,7 @@ def run_case(cli: Path, directory: Path, trace: Path, shape: str, policy: str) -
 
 
 def normalized_effective(path: Path) -> dict:
-    """Compare canonical exports, excluding only the treatment and output paths."""
-    section, result = "", {}
-    ignored = {"host.send_policy", "output.statistics_json", "output.effective_config"}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("["):
-            section = line[1:-1]
-        else:
-            key, sep, value = line.partition("=")
-            if not sep:
-                raise ValueError("invalid effective configuration")
-            qualified = section + "." + key.strip()
-            if qualified not in ignored:
-                result[qualified] = value.strip()
-    return result
+    return normalized_configuration(path, OUTPUT_PATHS | {"host.send_policy"})
 
 
 def verify_comparisons(rows: list[dict], root: Path) -> None:
@@ -107,8 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     traces.mkdir()
     manifest = dict(experiment="arrival-policy-minimal-v1", created_utc=datetime.now(timezone.utc).isoformat(),
                     cli=str(cli), cli_sha256=digest(cli), git=git_info(), python=sys.version, platform=platform.platform(),
-                    script_sha256={str(p.relative_to(ROOT)): digest(p) for p in sorted(HERE.glob("*.py")) +
-                                   [ROOT / "experiments/interleave_arrival/io_utils.py", ROOT / "experiments/interleave_arrival/run.py"]},
+                    script_sha256=script_hashes(HERE),
                     complete=False)
     write_json(root / "manifest.json", manifest)
     rows = []

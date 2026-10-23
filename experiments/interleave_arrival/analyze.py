@@ -5,7 +5,10 @@ from bisect import bisect_right
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from .io_utils import csv_rows, interval_curve, ratio
+from experiments.common.io import csv_rows
+from experiments.common.intervals import interval_curve, ratio
+from experiments.common.config import load_run_configuration
+from experiments.common.model import PAGE_BYTES, FRAGMENT_BYTES, FRAGMENTS
 from .workload import footprint, release_span
 
 PHASES = ("total", "collecting", "ready_waiting", "programming")
@@ -28,7 +31,10 @@ def indexed(rows: list[dict], key: str) -> dict:
 
 def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path) -> dict:
     require(data.get("schema_version") == 2 and "bank_operations" in data, "need schema 2 with Bank observations")
-    stop, channels = data["at"], plan["channels"]
+    cfg = load_run_configuration(directory)
+    stop, channels = data["at"], cfg.channels
+    require(channels == plan["channels"] and cfg.integer("address.interleave_bytes") == case["interleave_bytes"], "actual address configuration differs from plan")
+    require(cfg.integer("device.selected.assembly_timeout_ps") == plan["assembly_timeout_ps"], "actual timeout differs from plan")
     require(type(stop) is int and stop >= 0 and data["time_unit"] == "tick", "invalid time unit or stop time")
     require(exit_code in (0, 2, 3, 4), "CLI input/model failure")
     require(data["stop_reason"] == {0: "Completed", 2: "Completed", 3: "Stalled", 4: "LimitReached"}[exit_code],
@@ -44,7 +50,7 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
         w, g = by_global[r["global_id"]], globals_[r["global_id"]]
         require((w["channel"], w["local_byte"], w["content"]) == (r["channel"], r["local_byte"], 1),
                 "simulator mapping/content disagrees with input oracle")
-        require(g["op"] == "write" and g["bytes"] == 64 and g["scheduled_release"] == r["scheduled_release"],
+        require(g["op"] == "write" and g["bytes"] == FRAGMENT_BYTES and g["scheduled_release"] == r["scheduled_release"],
                 "wrong source release schedule or command granularity")
         require(w["result"] in ("pending", "success", "failed"), "invalid logical outcome")
         require(w["released"] is None or w["released"] == r["scheduled_release"] <= stop, "invalid actual release")
@@ -54,7 +60,7 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
     attempts = indexed(data["attempts"], "id")
     by_work = {}
     for a in attempts.values():
-        require(a["op"] == "write" and a["bytes"] == 64 and not a["replay"] and a["unit_attempt"] == 1,
+        require(a["op"] == "write" and a["bytes"] == FRAGMENT_BYTES and not a["replay"] and a["unit_attempt"] == 1,
                 "expected original fragment64 writes only")
         require(len(a["work_ids"]) == 1, "attempt must reference exactly one original fragment")
         wid = a["work_ids"][0]
@@ -79,9 +85,9 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
                 "invalid context lifetime/deadline")
         require(d["active"] == (d["retired_at"] is None), "context activity mismatch")
         require(d["retired_at"] is None or d["opened_at"] <= d["retired_at"] <= stop, "invalid retirement")
-        require(0 < d["received_fragments"] <= 64, "invalid fragment progress")
+        require(0 < d["received_fragments"] <= FRAGMENTS, "invalid fragment progress")
         if d["ready_at"] is not None:
-            require(d["received_fragments"] == 64 and d["opened_at"] <= d["ready_at"] <= stop, "invalid Ready milestone")
+            require(d["received_fragments"] == FRAGMENTS and d["opened_at"] <= d["ready_at"] <= stop, "invalid Ready milestone")
             require(max(w["scheduled_release"] for w in groups[key]) <= d["ready_at"], "Ready before all input is available")
         members = set()
         for member in d["members"]:
@@ -89,7 +95,7 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
             require(aid in attempts and aid not in members, "invalid Assembly membership")
             members.add(aid)
             a = attempts[aid]
-            require((a["channel"], a["local_byte"] // 4096) == key and a["command"] == member["command"],
+            require((a["channel"], a["local_byte"] // PAGE_BYTES) == key and a["command"] == member["command"],
                     "Assembly member targets another DLU")
         require(len(members) == d["received_fragments"], "fragment64 membership/count mismatch")
         if d["termination"] == "assembly_timeout":
@@ -108,7 +114,7 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
     for key, ws in sorted(groups.items()):
         ds = context_groups[key]
         counts = Counter(w["result"] for w in ws)
-        outcome = "pending" if counts["pending"] else "success" if counts["success"] == 64 else "failed"
+        outcome = "pending" if counts["pending"] else "success" if counts["success"] == FRAGMENTS else "failed"
         lo, hi = min(w["scheduled_release"] for w in ws), max(w["scheduled_release"] for w in ws)
         pages.append(dict(channel=key[0], local_dlu=key[1], planned_first_release=lo, planned_last_release=hi,
                           release_span_ps=hi-lo, result=outcome, successful_fragments=counts["success"],
@@ -125,7 +131,7 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
             released, finish = w["released"], w["finished"]
             if released is not None:
                 queue_intervals[key[0]].append((released, handed if a else finish))
-            fragments.append(dict(global_id=w["global_id"], global_byte=(w["global_id"]-1)*64,
+            fragments.append(dict(global_id=w["global_id"], global_byte=(w["global_id"]-1)*FRAGMENT_BYTES,
                                   channel=key[0], local_dlu=key[1], local_byte=w["local_byte"],
                                   scheduled_release=w["scheduled_release"], released=released, handoff=handed,
                                   rx_arrival=a["rx_arrival"] if a else None, accepted=a["accepted"] if a else None,
@@ -160,19 +166,22 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
         pc, samples = pending_by_ch[ch], timeline_by_ch[ch]
         require(samples and samples[0]["at"] == 0 and samples == sorted(samples, key=lambda r: (r["at"], r["sequence"])),
                 "unordered/missing initial Pending timeline")
-        require(pc["limit"] == 16 and pc["observed_from"] == 0 and pc["observed_until"] == stop, "wrong Pending budget/window")
+        require(pc["limit"] == cfg.pending_limit and pc["observed_from"] == 0 and pc["observed_until"] == stop, "wrong Pending budget/window")
         pending = {r["at"]: r["counts"] for r in samples}
         for field in PHASES:
             require(max(s["counts"][field] for s in samples) == pc["peak"][field], "Pending peak mismatch")
-        require(samples[-1]["counts"] == pc["current"] and pc["peak"]["total"] <= 16, "Pending current/limit mismatch")
+        require(samples[-1]["counts"] == pc["current"] and pc["peak"]["total"] <= cfg.pending_limit, "Pending current/limit mismatch")
         aas = [a for a in attempts.values() if a["channel"] == ch]
         mocs, marea = interval_curve([(a["accepted"], a["delivered"]) for a in aas if a["accepted"] is not None], stop)
-        require(max(mocs.values()) <= 1024, "MOCS exceeded")
+        marea = marea["area"]
+        require(max(mocs.values()) <= cfg.selected_mocs, "MOCS exceeded")
         queue, qarea = interval_curve(queue_intervals[ch], stop)
+        qarea = qarea["area"]
         ops = sorted(ops_by_ch[ch], key=lambda op: op["issued_at"])
         for left, right in zip(ops, ops[1:]):
             require(left["completed_at"] is not None and left["completed_at"] <= right["issued_at"], "same-Bank overlap")
         bank, barea = interval_curve([(o["issued_at"], o["completed_at"]) for o in ops], stop)
+        barea = barea["area"]
         bank_curves.append(bank)
         curves = [mocs, queue, bank, pending]
         times = [sorted(curve) for curve in curves]
@@ -193,7 +202,7 @@ def analyze(data: dict, plan: dict, case: dict, exit_code: int, directory: Path)
                                  first_bank_issue_ps=first(o["issued_at"] for o in ops),
                                  first_program_success_ps=first(d["retired_at"] for d in chcontexts if d["termination"] == "program_success"),
                                  mocs_peak_tick_boundary=max(mocs.values()), mocs_mean=ratio(marea, stop),
-                                 mocs_full_ps=sum(a["mocs"] == 1024 and b["at_ps"]-a["at_ps"] or 0 for a, b in zip(rows, rows[1:])),
+                                 mocs_full_ps=sum(a["mocs"] == cfg.selected_mocs and b["at_ps"]-a["at_ps"] or 0 for a, b in zip(rows, rows[1:])),
                                  host_queued_peak_tick_boundary=max(queue.values()), host_queue_area_fragment_ps=qarea,
                                  pending_peak=pc["peak"]["total"], pending_full_ps=pc["at_limit_ticks"],
                                  collecting_mean=pc["time_weighted_mean"]["collecting"],

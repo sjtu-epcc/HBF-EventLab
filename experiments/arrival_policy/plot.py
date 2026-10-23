@@ -6,10 +6,15 @@ import csv
 import json
 from pathlib import Path
 
+import sys
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiments.common.config import load_run_configuration
+from experiments.common.model import FRAGMENTS, PAGE_BYTES, FRAGMENT_BYTES
+from experiments.common.io import read_csv
 
-def read_csv(path: Path) -> list[dict]:
-    with path.open(encoding="utf-8", newline="") as source:
-        return list(csv.DictReader(source))
+
+
 
 
 def main() -> None:
@@ -33,6 +38,9 @@ def main() -> None:
         fig, axes = plt.subplots(3, 2, figsize=(12, 8), sharex=True, sharey="row", constrained_layout=True)
         for col, policy in enumerate(("fcfs", "fill_open")):
             directory = root / shape / policy
+            cfg = load_run_configuration(directory)
+            if cfg.channels != 1 or cfg.integer("device.geometry.banks_per_die") != 1:
+                raise ValueError("this plot requires the one-channel/Bank example")
             row = next(r for r in summary if (r["shape"], r["policy"]) == (shape, policy))
             stop = row["simulation_end_ps"] / 1e6
             handoffs = read_csv(directory / "handoffs.csv")
@@ -55,7 +63,7 @@ def main() -> None:
             axes[0, col].set_title(f'{policy}\nA Ready: {row["A_ready_ps"]/1e6:.6f} us; '
                                    f'A programmed: {row["A_programmed_ps"]/1e6:.6f} us', fontsize=10)
             for ax in axes[:2, col]:
-                ax.set_ylim(-1, 68)
+                ax.set_ylim(-1, FRAGMENTS+4)
                 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend(loc="lower right", fontsize=8)
                 if shape == "batched":

@@ -6,10 +6,15 @@ import csv
 import json
 from pathlib import Path
 
+import sys
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiments.common.config import load_run_configuration
+from experiments.common.model import FRAGMENTS, PAGE_BYTES, FRAGMENT_BYTES
+from experiments.common.io import read_csv
 
-def read_csv(path: Path) -> list[dict]:
-    with path.open(encoding="utf-8", newline="") as source:
-        return list(csv.DictReader(source))
+
+
 
 
 def main() -> None:
@@ -28,6 +33,20 @@ def main() -> None:
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     rows = json.loads((root / "summary.json").read_text(encoding="utf-8"))
     plan = manifest["plan"]
+    configs = {r["case"]: load_run_configuration(root / "cases" / r["case"])
+               for r in rows if r["analysis_status"] == "ok"}
+    if not configs:
+        raise ValueError("no validated effective configuration to plot")
+    baseline = next(iter(configs.values()))
+    for cfg in configs.values():
+        if (cfg.channels, cfg.selected_mocs, cfg.pending_limit,
+            cfg.integer("device.selected.assembly_timeout_ps")) != (
+                baseline.channels, baseline.selected_mocs, baseline.pending_limit,
+                baseline.integer("device.selected.assembly_timeout_ps")):
+            raise ValueError("overview requires identical actual resource budgets")
+    for row in rows:
+        if row["case"] in configs and configs[row["case"]].integer("address.interleave_bytes") != row["interleave_bytes"]:
+            raise ValueError("summary interleave differs from actual configuration")
     output = root / "plots"
     output.mkdir(exist_ok=True)
 
@@ -66,15 +85,15 @@ def main() -> None:
             ax.set_ylabel("Interleave (bytes)")
             ax.set_title(title, fontsize=10)
             fig.colorbar(im, ax=ax, shrink=.8)
-        fig.suptitle(f'{size//1024} KiB; {plan["channels"]} channels; FCFS; MOCS=1024; Pending=16\n'
+        fig.suptitle(f'{size//1024} KiB; {baseline.channels} channels; FCFS; MOCS={baseline.selected_mocs}; Pending={baseline.pending_limit}\n'
                      'Functional, uncalibrated. N/A = absent milestone, unfinished run, or missing/error record.')
         save(fig, f"n{size}-overview")
 
     fig, ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
     for interleave in ys:
-        spans = [(64*plan["channels"]-(plan["channels"]-1)*(interleave//64)-1)*d/1e6 for d in xs]
+        spans = [(FRAGMENTS*baseline.channels-(baseline.channels-1)*(interleave//FRAGMENT_BYTES)-1)*d/1e6 for d in xs]
         ax.plot([d/1000 for d in xs], spans, marker="o", label=f"{interleave} B")
-    ax.axhline(plan["assembly_timeout_ps"]/1e6, color="red", linestyle="--", label="Assembly deadline duration")
+    ax.axhline(baseline.integer("device.selected.assembly_timeout_ps")/1e6, color="red", linestyle="--", label="Assembly deadline duration")
     ax.set_xlabel("Global 64B release interval (ns)")
     ax.set_ylabel("First-to-last planned release of one local DLU (us)")
     ax.set_title("Analytical input span (verified against each mapped footprint)\nNot an actual assembly duration or a sufficient timeout test")
@@ -88,17 +107,17 @@ def main() -> None:
             parser.error(f"case must identify one analyzed run: {name}")
         row, path = matching[0], root / "cases" / name
         points = [{k: int(v) for k, v in r.items()} for r in read_csv(path / "resources.csv")]
-        fig, axes = plt.subplots(4, plan["channels"], figsize=(max(7, plan["channels"]*4), 10),
+        fig, axes = plt.subplots(4, baseline.channels, figsize=(max(7, baseline.channels*4), 10),
                                  sharex=True, sharey="row", squeeze=False, constrained_layout=True)
-        for ch in range(plan["channels"]):
+        for ch in range(baseline.channels):
             p = [r for r in points if r["channel"] == ch]
             t = [r["at_ps"]/1e6 for r in p]
             axes[0, ch].step(t, [r["mocs"] for r in p], where="post", label="Occupied")
-            axes[0, ch].axhline(1024, color="red", linestyle="--", label="Selected MOCS")
+            axes[0, ch].axhline(configs[name].selected_mocs, color="red", linestyle="--", label="Selected MOCS")
             axes[0, ch].set_title(f"Channel {ch}")
             for field in ("total", "collecting", "ready_waiting", "programming"):
                 axes[1, ch].step(t, [r[field] for r in p], where="post", label=field)
-            axes[1, ch].axhline(16, color="red", linestyle="--", label="Pending limit")
+            axes[1, ch].axhline(configs[name].pending_limit, color="red", linestyle="--", label="Pending limit")
             axes[2, ch].step(t, [r["host_queued"] for r in p], where="post", label="Released, not handed off")
             axes[2, ch].set_ylim(0, max(1, max(r["host_queued"] for r in points))*1.05)
             axes[2, ch].yaxis.set_major_locator(MaxNLocator(integer=True))

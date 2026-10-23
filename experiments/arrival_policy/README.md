@@ -75,7 +75,7 @@ Linux 单配置构建通常使用 `--cli build/hbf_eventlab_cli`。输出目录�
 ## 绘图与测试
 
 ```powershell
-python -m pip install matplotlib
+python -m pip install -e ".[plots]"
 python experiments/arrival_policy/plot.py out/arrival-policy-minimal
 python tests/test_arrival_policy_experiment.py
 python tests/test_arrival_policy_experiment.py --cli build/Release/hbf_eventlab_cli.exe --output out/arrival-policy-tests
@@ -85,3 +85,5 @@ ctest --test-dir build -C Release -R '^experiment_arrival_policy_' --output-on-f
 `plots/` 中输出成批与稀疏两张对照图，各有 PNG、SVG，展示累计移交、实际收片进度和 Bank erase/program 时间区间。
 
 6 项单元测试覆盖地址集合、批次时刻、稀疏对照、配置唯一差异、非法选择和覆盖保护。真实 CLI 集成测试检查：相同 trace／资源配置、实际策略次序、2μs 时 A 已收到半页、A 更早完成但整体完成时间相同、稀疏对照一致、重复运行确定性，以及损坏地址、时间、成员、Pending 积分和 Bank 记录的拒绝。工具不会为展示差异而另写组装或执行模型。
+
+公共工具、实际配置核对、可选绘图依赖和测试开关见[实验基础设施](../README.md)。

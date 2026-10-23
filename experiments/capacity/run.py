@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import platform
 import subprocess
@@ -11,32 +10,16 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from analyze import analyze, csv_rows
-from plan import case_name, cases, configuration, validate_plan
-from workload import write_workload
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-
-
-def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def write_json(path: Path, data: object) -> None:
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
-
-
-def git_info() -> dict:
-    try:
-        def git(*args: str) -> str:
-            return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True, stderr=subprocess.DEVNULL, timeout=10).strip()
-        if Path(git("rev-parse", "--show-toplevel")).resolve() != ROOT:
-            return {"commit": None, "branch": None, "dirty": None}
-        return {"commit": git("rev-parse", "HEAD"), "branch": git("branch", "--show-current"),
-                "dirty": bool(git("status", "--porcelain"))}
-    except (OSError, subprocess.SubprocessError):
-        return {"commit": None, "branch": None, "dirty": None}
+if __package__ in (None, ""):
+    sys.path.insert(0, str(ROOT))
+from experiments.common.io import csv_rows, digest, write_json
+from experiments.common.provenance import git_info, script_hashes
+from experiments.capacity.analyze import analyze
+from experiments.capacity.plan import case_name, cases, configuration, validate_plan
+from experiments.capacity.workload import write_workload
 
 
 def run_case(cli: Path, case_dir: Path, trace: Path, plan: dict, case: dict, timeout: float) -> dict:
@@ -99,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
                 "plan": plan, "total_cases": len(matrix), "selected_cases": len(selected),
                 "scan_complete": False, "cli": str(cli), "cli_sha256": digest(cli),
                 "git": git_info(), "python": sys.version, "platform": platform.platform(),
-                "script_sha256": {p.name: digest(p) for p in sorted(HERE.glob("*.py"))},
+                "script_sha256": script_hashes(HERE),
                 "workload_sha256": {p.name: digest(p) for p in sorted(traces.glob("*.txt"))}}
     write_json(out / "manifest.json", manifest)
     rows = []

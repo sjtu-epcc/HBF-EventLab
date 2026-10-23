@@ -6,6 +6,14 @@ import csv
 import json
 from pathlib import Path
 
+import sys
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiments.common.config import load_run_configuration
+from experiments.common.model import FRAGMENTS, PAGE_BYTES, FRAGMENT_BYTES
+from experiments.common.io import read_csv
+
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -21,6 +29,18 @@ def main() -> None:
     root = args.run.resolve()
     rows = json.loads((root / "summary.json").read_text(encoding="utf-8"))
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    configs = {}
+    for row in rows:
+        if row["analysis_status"] != "ok":
+            continue
+        cfg = load_run_configuration(root / "cases" / row["case"])
+        for field, key in (("mocs_selected", "device.selected.mocs_selected"),
+                           ("pending_limit", "device.capabilities.max_pending_write_dlus"),
+                           ("program_ps", "execution.media_timing.program_ps"),
+                           ("open_dlus", "host.max_open_dlus_per_channel")):
+            if row[field] != cfg.integer(key):
+                raise ValueError("summary differs from effective configuration: " + field)
+        configs[row["case"]] = cfg
     output = root / "plots"
     output.mkdir(exist_ok=True)
     plan = manifest["plan"]
@@ -66,10 +86,10 @@ def main() -> None:
         x = [p["at_ps"] / 1e6 for p in points]
         fig, axes = plt.subplots(3, 1, figsize=(11, 7), sharex=True, constrained_layout=True)
         axes[0].step(x, [p["mocs"] for p in points], where="post", label="MOCS occupied")
-        axes[0].axhline(row["mocs_selected"], color="red", linestyle="--", label="Selected MOCS")
+        axes[0].axhline(configs[args.case].selected_mocs, color="red", linestyle="--", label="Selected MOCS")
         for field in ("total", "collecting", "ready_waiting", "programming"):
             axes[1].step(x, [p[field] for p in points], where="post", label=field)
-        axes[1].axhline(row["pending_limit"], color="red", linestyle="--", label="Pending limit")
+        axes[1].axhline(configs[args.case].pending_limit, color="red", linestyle="--", label="Pending limit")
         axes[2].step(x, [p["bank_busy"] for p in points], where="post", label="Bank busy: erase + program")
         for ax in axes:
             ax.legend(loc="upper right", fontsize=8)

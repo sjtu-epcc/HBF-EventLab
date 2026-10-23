@@ -6,6 +6,8 @@
 
 ## 构建
 
+完整测试需要 Python 3.10+。`HBF_EVENTLAB_EXPERIMENT_TESTS` 默认 `ON`：开启测试但找不到解释器时，CMake 会报错，不再静默省略实验测试。可用 `-DPython3_EXECUTABLE=C:/path/to/python.exe` 指定解释器。只验证 C++ 时显式传入 `-DHBF_EVENTLAB_EXPERIMENT_TESTS=OFF`，此时不应报告为完整回归；`-DBUILD_TESTING=OFF` 的纯构建不要求 Python。实验运行与测试无第三方 Python 运行依赖，绘图依赖按需通过 `python -m pip install -e ".[plots]"` 安装，见[实验公共基础设施](../experiments/README.md)。
+
 Windows需安装Visual Studio 2022 C++工具和CMake 3.20或更新版本。推荐执行：
 
 ```powershell
@@ -333,6 +335,16 @@ JSON schema为2，时间单位为Tick（CLI中1ps）。顶层包含`summary`、`
 [交织与到达间隔实验](../experiments/interleave_arrival/README.md)提供多channel的连续Global写入、`interleave_bytes × at间隔`扫描、逐页计划释放与实际组装对照，以及逐channel资源曲线。相同输入大小和间隔共用相同trace；实际超时上下文与因同块取消而失败的原始DLU分别统计。`at`仍表示Host输入释放，不是Device接受时刻。
 
 [到达形态与Host策略最小例子](../experiments/arrival_policy/README.md)固定两个独立block的首页，对同一份成批trace分别运行`fcfs`和`fill_open`，另用稀疏到达作对照。工具核对输入及资源配置一致，记录真实移交次序、组装和Bank执行；更早完成某个DLU与缩短整份workload时间分别报告。
+
+### 读窗口与实际服务观察
+
+统一JSON增加`read_paths[]`和`read_window_releases[]`，仍为schema 2的增量字段；旧文件可能缺少，消费者必须检查存在性。
+
+`read_paths`按`attempt`关联已有命令尝试：`window_entered_at`、`window_left_at`、`release_reason`、`service`（`cache/sense`）、`service_at`、`bank_ticket`。窗口退出原因为空但退出时刻非空，表示Cache／终结条件使其移出，并非窗口集合释放。早期Cache命中不进入窗口；Pending转发、立即错误和未推进到服务的读可能没有Cache/Sense记录，不能把空值当作命中或失败。最终结果仍由attempt响应状态与Host逻辑结果解释。
+
+`read_window_releases`记录channel、成员attempt、首成员进入时刻、计划deadline、实际释放时刻和原因（`batch/timer/threshold/immediate/policy`）。内建策略同次多个条件满足时，诊断优先级为Batch、零等待、数量阈值、timer；自定义策略可使用`policy`，不影响实际资格判断。每个Bank的sense记录可通过`bank_ticket`与读关联。服务时刻为Cache取得结果保护或sense实际发射，均不等于最终响应交付。
+
+执行[读窗口与NAND调度最小实验](../experiments/read_scheduling/README.md)可比较两种NAND策略及窗口释放边界。研究Regular累积时使用`host.read_hint_mode=all_regular`；默认`tail_batch`会将每条单独64B Global读标为Batch。
 
 ## 运行器与参数
 

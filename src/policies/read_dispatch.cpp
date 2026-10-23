@@ -3,13 +3,31 @@
 #include <algorithm>
 
 namespace hbf_eventlab {
+const char* to_string(ReadReleaseReason reason) {
+    switch(reason) {
+    case ReadReleaseReason::Batch:return "batch";
+    case ReadReleaseReason::Timer:return "timer";
+    case ReadReleaseReason::Threshold:return "threshold";
+    case ReadReleaseReason::Immediate:return "immediate";
+    case ReadReleaseReason::Policy:return "policy";
+    }
+    throw std::invalid_argument("unknown read release reason");
+}
 Tick WindowDispatchPolicy::deadline(ReadWindowView v) const { return Tick{checked_add(v.first_arrival.value, wait_.value)}; }
 bool WindowDispatchPolicy::ready(ReadWindowView v, Tick now) const {
     return v.size && ((threshold_ && v.size >= threshold_) || !(now < deadline(v)));
 }
-DispatchBatch ReadDispatchWindow::take() {
+ReadReleaseReason WindowDispatchPolicy::release_reason(ReadWindowView v,Tick) const {
+    // Diagnostic precedence when triggers coincide. Batch is handled by window.
+    if(!wait_.value)return ReadReleaseReason::Immediate;
+    return threshold_ && v.size>=threshold_?ReadReleaseReason::Threshold:ReadReleaseReason::Timer;
+}
+DispatchBatch ReadDispatchWindow::take(ReadReleaseReason reason,Tick now) {
+    const auto due=policy_.deadline(view());
     window_=Generation{checked_add(window_.value,1)};
-    return std::exchange(pending_, {});
+    auto batch=std::exchange(pending_, {});
+    if(observer_)observer_(batch,reason,first_,due,now);
+    return batch;
 }
 std::vector<DispatchBatch> ReadDispatchWindow::arrive(CommandId id, ReadHint hint, Tick now) {
     return accept(id,hint,now);
@@ -21,14 +39,15 @@ std::vector<DispatchBatch> ReadDispatchWindow::accept(std::optional<CommandId> m
         throw std::logic_error("duplicate read window member");
     last_ = now;
     std::vector<DispatchBatch> out;
-    if (!pending_.empty() && policy_.deadline(view()) < now) out.push_back(take());
+    if (!pending_.empty() && policy_.deadline(view()) < now) out.push_back(take(ReadReleaseReason::Timer,now));
     if (member) {
         if (pending_.empty()) first_ = now;
         pending_.push_back(*member);
     }
     // CHOSEN v0.7 interpretation (wording/bit-position ambiguity): B closes now.
     // R R B B R -> [R R B] [B], trailing R waits. This cannot override bank/resource legality.
-    if (!pending_.empty() && (hint == ReadHint::Batch || policy_.ready(view(), now))) out.push_back(take());
+    if (!pending_.empty() && (hint == ReadHint::Batch || policy_.ready(view(), now)))
+        out.push_back(take(hint==ReadHint::Batch?ReadReleaseReason::Batch:policy_.release_reason(view(),now),now));
     return out;
 }
 bool ReadDispatchWindow::remove(CommandId id) {
@@ -49,7 +68,7 @@ std::optional<DispatchBatch> ReadDispatchWindow::flush_due(ReadWindowWakeup toke
 std::optional<DispatchBatch> ReadDispatchWindow::flush_due(Tick now) {
     if (now < last_) throw std::logic_error("read dispatch time moved backwards");
     last_ = now;
-    if (!pending_.empty() && policy_.ready(view(), now)) return take();
+    if (!pending_.empty() && policy_.ready(view(), now)) return take(policy_.release_reason(view(),now),now);
     return std::nullopt;
 }
 std::optional<Tick> ReadDispatchWindow::next_wakeup() const {

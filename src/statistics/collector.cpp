@@ -94,6 +94,7 @@ void StatisticsCollector::record(const StatGlobalFinished& e) {
 }
 void StatisticsCollector::record(const StatAttemptStarted& e) {
     require(attempts_.emplace(e.id,AttemptTiming{e.id,e.command,e.at}).second,"statistics: duplicate attempt");note(e.at);
+    if(e.command.op==Op::Read)read_paths_.emplace(e.id,ReadTiming{});
     command_attempts_[{e.command.address.channel,e.command.id}]=e.id;
 }
 void StatisticsCollector::record(const StatAttemptLinked& e) {
@@ -237,7 +238,7 @@ void StatisticsCollector::write_json(std::ostream& destination,Tick at,const std
         out<<",\"host_success\":";if(a.host_success)out<<(*a.host_success?"true":"false");else out<<"null";
         out<<",\"work_ids\":[";bool sep=false;for(auto id:a.work){if(sep)out<<',';sep=true;out<<id.value;}out<<"]}";
     }
-    out<<']';write_pending_json(out,at);write_bank_json(out,at);out<<"}\n";destination<<out.str();
+    out<<']';write_pending_json(out,at);write_bank_json(out,at);write_read_json(out);out<<"}\n";destination<<out.str();
     if(!destination)throw std::runtime_error("statistics: JSON output failed");
 }
 } // namespace hbf_eventlab

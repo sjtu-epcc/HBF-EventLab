@@ -8,6 +8,7 @@ add_library(hbf_eventlab
     src/statistics/collector.cpp
     src/statistics/pending.cpp
     src/statistics/media.cpp
+    src/statistics/reads.cpp
     src/host/global_request_splitter.cpp
     src/host/retention_store.cpp
     src/host/recovery_manager.cpp
@@ -51,10 +52,32 @@ target_link_libraries(hbf_eventlab_device_demo PRIVATE HBFEventLab::core)
 add_executable(hbf_eventlab_cli examples/minimal_loop.cpp)
 target_link_libraries(hbf_eventlab_cli PRIVATE hbf_eventlab_workload_io)
 include(CTest)
+include(cmake/ExperimentPython.cmake)
 if(BUILD_TESTING)
-    # Python is optional for the C++ core; the experiment harness uses only the standard library.
-    find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
-    if(Python3_Interpreter_FOUND)
+    add_executable(hbf_eventlab_read_scheduling_tests tests/read_scheduling.cpp)
+    target_link_libraries(hbf_eventlab_read_scheduling_tests PRIVATE HBFEventLab::core)
+    foreach(scenario policy_order window_reasons window_stale cache_bypass cache_removal terminal_read
+            snapshot observational guards custom_reason)
+        add_test(NAME read_scheduling_${scenario} COMMAND hbf_eventlab_read_scheduling_tests ${scenario})
+        set_tests_properties(read_scheduling_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    # Core-only users opt out explicitly; requested verification must never disappear.
+    hbf_eventlab_find_experiment_python()
+    if(HBF_EVENTLAB_EXPERIMENT_TESTS)
+        add_test(NAME experiment_common_unit COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_experiment_common.py")
+        add_test(NAME experiment_python_configuration COMMAND ${CMAKE_COMMAND}
+            "-DSOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
+            "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/experiment-python-check-$<CONFIG>"
+            "-DPYTHON_EXECUTABLE=${Python3_EXECUTABLE}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_experiment_python.cmake")
+        set_tests_properties(experiment_common_unit experiment_python_configuration PROPERTIES TIMEOUT 60)
+        add_test(NAME experiment_read_scheduling_unit COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_read_scheduling_experiment.py")
+        add_test(NAME experiment_read_scheduling_integration COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_read_scheduling_experiment.py"
+            --cli "$<TARGET_FILE:hbf_eventlab_cli>" --output "${CMAKE_CURRENT_BINARY_DIR}/read-scheduling-test-$<CONFIG>")
+        set_tests_properties(experiment_read_scheduling_unit experiment_read_scheduling_integration PROPERTIES TIMEOUT 180)
         add_test(NAME experiment_capacity_unit COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_capacity_experiment.py")
         add_test(NAME experiment_capacity_integration COMMAND ${Python3_EXECUTABLE}

@@ -5,13 +5,15 @@ from collections import defaultdict
 from pathlib import Path
 
 
+from experiments.common.model import PAGE_BYTES, FRAGMENT_BYTES, FRAGMENTS
+
 def records(size_bytes: int, delta_ps: int) -> list[dict]:
-    if type(size_bytes) is not int or size_bytes <= 0 or size_bytes % 64:
+    if type(size_bytes) is not int or size_bytes <= 0 or size_bytes % FRAGMENT_BYTES:
         raise ValueError("size must be a positive multiple of 64B")
-    if type(delta_ps) is not int or delta_ps < 0 or (size_bytes // 64 - 1) * delta_ps >= 2**63:
+    if type(delta_ps) is not int or delta_ps < 0 or (size_bytes // FRAGMENT_BYTES - 1) * delta_ps >= 2**63:
         raise ValueError("invalid or overflowing release interval")
-    return [dict(global_id=i + 1, global_byte=i * 64, scheduled_release=i * delta_ps)
-            for i in range(size_bytes // 64)]
+    return [dict(global_id=i + 1, global_byte=i * FRAGMENT_BYTES, scheduled_release=i * delta_ps)
+            for i in range(size_bytes // FRAGMENT_BYTES)]
 
 
 def map_address(address: int, channels: int, interleave: int) -> tuple[int, int]:
@@ -20,22 +22,22 @@ def map_address(address: int, channels: int, interleave: int) -> tuple[int, int]
 
 
 def release_span(channels: int, interleave: int, delta_ps: int) -> int:
-    return (64 * channels - (channels - 1) * (interleave // 64) - 1) * delta_ps
+    return (FRAGMENTS * channels - (channels - 1) * (interleave // FRAGMENT_BYTES) - 1) * delta_ps
 
 
 def footprint(size_bytes: int, delta_ps: int, channels: int, interleave: int) -> list[dict]:
-    if channels not in (1, 2, 4, 8) or interleave not in (64, 128, 256, 512, 1024, 2048, 4096):
+    if channels not in (1, 2, 4, 8) or interleave not in (64, 128, 256, 512, 1024, 2048, PAGE_BYTES):
         raise ValueError("unsupported diagnostic mapping")
-    if size_bytes % (channels * 4096):
+    if size_bytes % (channels * PAGE_BYTES):
         raise ValueError("incomplete channel/page group")
     out, groups = [], defaultdict(list)
     for r in records(size_bytes, delta_ps):
         ch, local = map_address(r["global_byte"], channels, interleave)
-        item = r | dict(channel=ch, local_byte=local, local_dlu=local // 4096)
+        item = r | dict(channel=ch, local_byte=local, local_dlu=local // PAGE_BYTES)
         out.append(item)
-        groups[ch, local // 4096].append(item)
+        groups[ch, local // PAGE_BYTES].append(item)
     for rows in groups.values():
-        if sorted(r["local_byte"] % 4096 for r in rows) != list(range(0, 4096, 64)):
+        if sorted(r["local_byte"] % PAGE_BYTES for r in rows) != list(range(0, PAGE_BYTES, FRAGMENT_BYTES)):
             raise ValueError("input does not cover each local page exactly once")
         span = max(r["scheduled_release"] for r in rows) - min(r["scheduled_release"] for r in rows)
         if span != release_span(channels, interleave, delta_ps):
@@ -48,4 +50,4 @@ def write_workload(path: Path, size_bytes: int, delta_ps: int) -> None:
     with path.open("x", encoding="utf-8", newline="\n") as out:
         out.write("HBF_EVENTLAB_WORKLOAD 1\n")
         for r in records(size_bytes, delta_ps):
-            out.write(f'WRITE {r["global_id"]} {r["global_byte"]} 64 content=1 at={r["scheduled_release"]}\n')
+            out.write(f'WRITE {r["global_id"]} {r["global_byte"]} {FRAGMENT_BYTES} content=1 at={r["scheduled_release"]}\n')

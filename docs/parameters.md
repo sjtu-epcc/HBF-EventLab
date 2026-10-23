@@ -143,7 +143,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `execution.read_dispatch.policy` | `window` | 当前配置入口只提供 window 策略；API 可以注入自定义实现。 |
 | `execution.read_dispatch.wait_ps` | `10000` | 窗口等待时间；0 表示不等待累积。 |
 | `execution.read_dispatch.threshold` | `32` | 等待 Core sense 的窗口成员数触发阈值；0 关闭数量触发，timer 和 Batch 仍可释放。 |
-| `execution.nand_scheduler.policy` | `fcfs` | 当前配置入口只提供合法候选中的 FCFS。 |
+| `execution.nand_scheduler.policy` | `fcfs` | `fcfs`：合法候选按现有序号优先；`read_priority`：合法读优先，再按序号／ID，program与erase之间仍为FCFS。非抢占，不绕过窗口／顺序／资源限制；持续读可能使写饥饿。 |
 | `execution.ucie_scheduler.policy` | `fifo` | 当前配置入口只提供返回方向 FIFO 仲裁。 |
 
 窗口阈值高于 MOCS 不会被当作非法配置：timer／Batch 仍能推进。条目预算、payload 预算和链路服务字节分别计费，不能当作同一个硬件内存数值。
@@ -172,7 +172,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `run.events_per_tick` | `100000` | 同 Tick callback 上限；0 不限制。 |
 | `run.rounds_per_tick` | `100000` | 同 Tick 因果轮次上限；0 不限制。 |
 | `output.trace` | `false` | 是否输出 Host／Device 事件日志。 |
-| `output.statistics_json` | 空字符串 | 统一统计 JSON 路径（schema 2），包含请求延迟、Pending曲线、DLU上下文历史和Bank介质操作区间；空字符串关闭记录。精确历史有宿主内存开销，详见[统计说明](usage.md#统一统计)。 |
+| `output.statistics_json` | 空字符串 | 统一统计 JSON 路径（schema 2），包含请求延迟、Pending曲线、DLU上下文历史、Bank操作、读窗口与实际读服务；空字符串关闭记录。精确历史有宿主内存开销，详见[统计说明](usage.md#统一统计)。 |
 | `output.effective_config` | 空字符串 | 有效配置 INI 导出路径；空字符串关闭文件导出。 |
 
 这些运行限额不属于设备资源。基础 EventQueue 单独使用时默认总事件数不限；统一入口使用本表 RunLimits 作为程序级默认值。

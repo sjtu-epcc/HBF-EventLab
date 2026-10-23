@@ -2,6 +2,7 @@
 #include "hbf_eventlab/common/host_protocol.hpp"
 #include "hbf_eventlab/common/write_observation.hpp"
 #include "hbf_eventlab/interfaces/execution_policy.hpp"
+#include "hbf_eventlab/interfaces/read_dispatch.hpp"
 #include <string>
 #include <vector>
 #include <variant>
@@ -39,9 +40,19 @@ struct StatDluObserved { Tick at; AssemblyObservation observation; };
 // Bank ticket identity is owned by DeviceRuntimeState; observe only successful issues.
 struct StatBankOperationStarted { std::uint64_t ticket; MediaOperationKind kind; PhysicalNandAddress target; Tick at; };
 struct StatBankOperationFinished { std::uint64_t ticket; Tick at; };
+struct StatReadWindowEntered { TransferAttemptId id; Tick at; };
+struct StatReadWindowRemoved { TransferAttemptId id; Tick at; };
+struct StatReadWindowReleased {
+    ChannelId channel; std::vector<TransferAttemptId> members;
+    ReadReleaseReason reason; Tick first_arrival,deadline,at;
+};
+enum class ReadServiceKind { Cache, Sense };
+// Actual cache pin / successful sense issue, not an arrival-time prediction.
+struct StatReadServed { TransferAttemptId id; ReadServiceKind kind; std::optional<std::uint64_t> bank_ticket; Tick at; };
 using StatisticsEvent=std::variant<StatGlobalDefined,StatWorkDefined,StatGlobalReleased,
     StatWorkFinished,StatGlobalFinished,StatAttemptStarted,StatAttemptLinked,
-    StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed,StatPendingInitialized,StatDluObserved,StatBankOperationStarted,StatBankOperationFinished>;
+    StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed,StatPendingInitialized,StatDluObserved,StatBankOperationStarted,StatBankOperationFinished,
+    StatReadWindowEntered,StatReadWindowRemoved,StatReadWindowReleased,StatReadServed>;
 class IStatisticsSink {
 public:
     virtual ~IStatisticsSink()=default;

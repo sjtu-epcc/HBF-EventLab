@@ -5,8 +5,11 @@ from bisect import bisect_right
 from itertools import groupby
 from pathlib import Path
 
-from experiments.interleave_arrival.io_utils import csv_rows, interval_curve
-from .workload import BLOCK_BYTES, records
+from experiments.common.io import csv_rows
+from experiments.common.intervals import interval_curve
+from .workload import records
+from experiments.common.model import PAGE_BYTES, FRAGMENT_BYTES, FRAGMENTS
+from experiments.common.config import load_run_configuration
 
 
 def require(condition: bool, message: str) -> None:
@@ -23,21 +26,23 @@ def index(rows: list[dict], key: str) -> dict:
 def analyze(data: dict, shape: str, directory: Path) -> dict:
     require(data.get("schema_version") == 2 and "bank_operations" in data,
             "need schema 2 statistics with Bank observations")
+    cfg = load_run_configuration(directory)
+    require(cfg.channels == 1, "expected single-channel example")
     require(data["stop_reason"] == "Completed" and data["time_unit"] == "tick", "example did not complete")
     stop = data["at"]
     require(type(stop) is int and stop > 0, "invalid stop time")
     require(not data["summary"]["replay_attempts"] and not data["summary"]["retried_unit_attempts"],
             "unexpected retry/replay")
-    expected = index(records(shape), "id")
+    expected = index(records(shape, cfg.pages_per_block), "id")
     globals_ = index(data["globals"], "id")
     work = index(data["logical_work"], "id")
     by_global = index(data["logical_work"], "global_id")
     attempts = index(data["attempts"], "id")
-    require(set(globals_) == set(by_global) == set(expected) and len(attempts) == 128,
+    require(set(globals_) == set(by_global) == set(expected) and len(attempts) == 2 * FRAGMENTS,
             "incomplete or extra original work/attempts")
     for gid, source in expected.items():
         g, w = globals_[gid], by_global[gid]
-        require(g["op"] == "write" and g["bytes"] == 64 and g["scheduled_release"] == g["released"] == source["at"],
+        require(g["op"] == "write" and g["bytes"] == FRAGMENT_BYTES and g["scheduled_release"] == g["released"] == source["at"],
                 "Global release/size changed")
         require(w["channel"] == 0 and w["local_byte"] == source["address"] and w["content"] == source["content"],
                 "address/content mapping mismatch")
@@ -46,7 +51,7 @@ def analyze(data: dict, shape: str, directory: Path) -> dict:
 
     handoffs, seen_work = [], set()
     for a in sorted(attempts.values(), key=lambda a: (a["handoff"], a["id"])):
-        require(a["op"] == "write" and a["bytes"] == 64 and not a["replay"] and a["unit_attempt"] == 1 and
+        require(a["op"] == "write" and a["bytes"] == FRAGMENT_BYTES and not a["replay"] and a["unit_attempt"] == 1 and
                 len(a["work_ids"]) == 1, "unexpected command granularity/retry")
         wid = a["work_ids"][0]
         require(wid in work and wid not in seen_work, "duplicate/missing logical attempt")
@@ -63,17 +68,17 @@ def analyze(data: dict, shape: str, directory: Path) -> dict:
                              host_wait_ps=a["handoff"] - source["at"], end_to_end_ps=w["finished"] - source["at"]))
 
     contexts = index(data["dlu_contexts"], "local_dlu")
-    require(set(contexts) == {0, 8}, "expected one context for each independent block-start DLU")
+    require(set(contexts) == {0, cfg.pages_per_block}, "expected one context for each independent block-start DLU")
     pages, progress = [], []
     for dlu, d in sorted(contexts.items()):
         page = "A" if dlu == 0 else "B"
-        require(d["channel"] == 0 and d["received_fragments"] == 64 and not d["active"] and
+        require(d["channel"] == 0 and d["received_fragments"] == FRAGMENTS and not d["active"] and
                 d["termination"] == "program_success", "incomplete/failed assembly context")
         require(d["opened_at"] <= d["ready_at"] <= d["program_started_at"] <= d["retired_at"] <= stop,
                 "invalid context milestones")
-        require(d["deadline"] == d["opened_at"] + 10_000_000, "changed assembly deadline")
+        require(d["deadline"] == d["opened_at"] + cfg.integer("device.selected.assembly_timeout_ps"), "changed assembly deadline")
         members = index(d["members"], "attempt")
-        require(len(members) == 64 and all(aid in attempts and attempts[aid]["local_byte"] // 4096 == dlu
+        require(len(members) == FRAGMENTS and all(aid in attempts and attempts[aid]["local_byte"] // PAGE_BYTES == dlu
                                          and attempts[aid]["command"] == m["command"] for aid, m in members.items()),
                 "Assembly membership mismatch")
         source = [r for r in expected.values() if r["page"] == page]
@@ -82,7 +87,7 @@ def analyze(data: dict, shape: str, directory: Path) -> dict:
         history = d["progress"]
         require(history and history == sorted(history, key=lambda r: (r["at"], r["sequence"])) and
                 [r["received_fragments"] for r in history] == sorted(r["received_fragments"] for r in history) and
-                history[-1]["received_fragments"] == 64, "invalid Assembly progress")
+                history[-1]["received_fragments"] == FRAGMENTS, "invalid Assembly progress")
         pages.append(dict(page=page, local_dlu=dlu, first_release=min(r["at"] for r in source),
                           last_release=max(r["at"] for r in source), opened=d["opened_at"], ready=d["ready_at"],
                           program_started=d["program_started_at"], programmed=d["retired_at"],
@@ -101,13 +106,16 @@ def analyze(data: dict, shape: str, directory: Path) -> dict:
                 op["observed_busy_ticks"] == op["completed_at"] - op["issued_at"], "invalid Bank lifetime")
         require(i == 0 or ops[i-1]["completed_at"] <= op["issued_at"], "same-Bank overlap")
     mocs, marea = interval_curve([(a["accepted"], a["delivered"]) for a in attempts.values()], stop)
+    marea = marea["area"]
     queued, qarea = interval_curve([(r["released"], r["handoff"]) for r in handoffs], stop)
+    qarea = qarea["area"]
     bank, barea = interval_curve([(o["issued_at"], o["completed_at"]) for o in ops], stop)
+    barea = barea["area"]
     require(len(data["pending_channels"]) == 1, "wrong channel count")
     pc = data["pending_channels"][0]
     raw = data["pending_timeline"]
     phases = ("total", "collecting", "ready_waiting", "programming")
-    require(pc["channel"] == 0 and pc["limit"] == 8 and pc["observed_from"] == 0 and pc["observed_until"] == stop,
+    require(pc["channel"] == 0 and pc["limit"] == cfg.pending_limit and pc["observed_from"] == 0 and pc["observed_until"] == stop,
             "wrong Pending budget/window")
     require(raw and raw[0]["at"] == 0 and raw == sorted(raw, key=lambda r: (r["at"], r["sequence"])),
             "invalid Pending timeline")
@@ -128,15 +136,15 @@ def analyze(data: dict, shape: str, directory: Path) -> dict:
         require(sum(a[k] * (b["at_ps"] - a["at_ps"]) for a, b in zip(resources, resources[1:])) ==
                 pc["area_context_ticks"][k], "Pending integral mismatch")
     require(mocs[stop] == queued[stop] == bank[stop] == pc["current"]["total"] == 0, "resources not drained")
-    require(max(mocs.values()) <= 256 and pc["peak"]["total"] <= 8, "capacity exceeded")
+    require(max(mocs.values()) <= cfg.selected_mocs and pc["peak"]["total"] <= cfg.pending_limit, "capacity exceeded")
     order = " ".join(f"{page}{len(list(group))}" for page, group in groupby(handoffs, key=lambda r: r["page"]))
-    result = dict(stop_reason="Completed", successful_dlus=2, commands=128, handoff_order=order,
+    result = dict(stop_reason="Completed", successful_dlus=2, commands=2 * FRAGMENTS, handoff_order=order,
                   first_ready_ps=min(p["ready"] for p in pages), first_program_success_ps=min(p["programmed"] for p in pages),
                   simulation_end_ps=stop, logical_completion_ps=max(p["logical_finished"] for p in pages),
                   bank_busy_ps=barea, bank_utilization=barea/stop, mocs_mean=marea/stop,
                   mocs_peak_tick_boundary=max(mocs.values()), pending_peak=pc["peak"]["total"],
                   host_queue_area_fragment_ps=qarea,
-                  mean_fragment_latency_ps=sum(r["end_to_end_ps"] for r in handoffs)/128)
+                  mean_fragment_latency_ps=sum(r["end_to_end_ps"] for r in handoffs)/len(handoffs))
     for p in pages:
         for key in ("ready", "program_started", "programmed", "logical_finished"):
             result[f'{p["page"]}_{key}_ps'] = p[key]

@@ -6,6 +6,16 @@ void DeviceDriver::set_statistics_sink(IStatisticsSink& sink) {
     if(next_attempt_||statistics_sink_)throw std::logic_error("attach Device statistics once before handoff");
     writes_.set_statistics_sink(sink);
     statistics_sink_=&sink;
+    for(ChannelId ch=0;ch<channels_.size();++ch)
+        channels_[ch]->window.set_release_observer([this,ch](const DispatchBatch& batch,ReadReleaseReason reason,Tick first,Tick due,Tick at) {
+            StatReadWindowReleased event{ch,{},reason,first,due,at};
+            for(auto command:batch) {
+                const auto* t=find(ch,command);
+                if(!t)throw std::logic_error("window member lost its transaction");
+                event.members.push_back(t->id);
+            }
+            statistics_sink_->observe(event);
+        });
 }
 namespace {
 ExecutionConfiguration validated(ExecutionConfiguration c,const StaticDeviceDescription& d) { c.validate(d); return c; }
@@ -31,8 +41,9 @@ DeviceDriver::DeviceDriver(StaticDeviceDescription d,ExecutionConfiguration c,Ev
      nand_policy_(std::move(nand)),link_policy_(std::move(link)),dispatch_policy_(std::move(dispatch)) {
     if(nand_policy_) config_.nand_scheduler="custom";
     else {
-        if(config_.nand_scheduler!="fcfs") throw std::invalid_argument("execution.nand_scheduler: unsupported policy");
-        nand_policy_=std::make_unique<FcfsNandPolicy>();
+        if(config_.nand_scheduler=="fcfs") nand_policy_=std::make_unique<FcfsNandPolicy>();
+        else if(config_.nand_scheduler=="read_priority") nand_policy_=std::make_unique<ReadPriorityNandPolicy>();
+        else throw std::invalid_argument("execution.nand_scheduler: unsupported policy");
     }
     if(link_policy_) config_.ucie_scheduler="custom";
     else {
@@ -189,6 +200,7 @@ bool DeviceDriver::admit(Transaction& t) {
         // Pending forwarding/0xA and cache hits. Invalid read_hint has no Batch effect.
         if(t.read) try_cache(t);
         const bool member=t.read.has_value() && !t.cache_pending;
+        if(member && statistics_sink_)statistics_sink_->observe(StatReadWindowEntered{t.id,events_.now()});
         auto hint=cmd.read_hint;
         if(hint!=ReadHint::Regular && hint!=ReadHint::Batch) hint=ReadHint::Regular;
         release_batches(ch,channels_[ch]->window.accept(member?std::optional<CommandId>{cmd.id}:std::nullopt,hint,events_.now()));
@@ -217,7 +229,10 @@ void DeviceDriver::update_timer(ChannelId ch) {
 }
 void DeviceDriver::remove_window(Transaction& t) {
     const auto& cmd=t.input.command;
-    if(channels_[cmd.address.channel]->window.remove(cmd.id)) update_timer(cmd.address.channel);
+    if(channels_[cmd.address.channel]->window.remove(cmd.id)) {
+        if(statistics_sink_)statistics_sink_->observe(StatReadWindowRemoved{t.id,events_.now()});
+        update_timer(cmd.address.channel);
+    }
 }
 bool DeviceDriver::try_cache(Transaction& t) {
     if(!t.read || t.cache_pending || t.wait) return false;
@@ -233,6 +248,7 @@ bool DeviceDriver::try_cache(Transaction& t) {
     t.cache_result=std::move(result); t.cache_pending=true;
     notify_sense_order(t);
     remove_window(t); ++stats_.cache_hits; emit("cache-hit",c.channel,t.id.value,probe.target);
+    if(statistics_sink_)statistics_sink_->observe(StatReadServed{t.id,ReadServiceKind::Cache,{},events_.now()});
     const auto id=t.id.value;
     schedule(after(events_.now(),config_.media_timing.cache_access),EventPhase::Completion,[this,id,c] {
         auto& tx=transactions_.at(id);
@@ -366,6 +382,7 @@ void DeviceDriver::execute_media(ChannelId ch) {
             if(!operation) {cache_.cancel_fill(*fill);runtime_.release(bank,ticket);continue;}
             auto& tx=transactions_.at(choice.transaction); remove_window(tx); tx.read.reset(); notify_sense_order(tx);
             if(statistics_sink_)statistics_sink_->observe(StatBankOperationStarted{ticket,MediaOperationKind::Read,operation->physical,events_.now()});
+            if(statistics_sink_)statistics_sink_->observe(StatReadServed{tx.id,ReadServiceKind::Sense,ticket,events_.now()});
             ++stats_.senses; emit("sense-issue",ch,ticket,operation->physical);
             schedule(after(events_.now(),config_.media_timing.sense),EventPhase::Completion,[this,op=*operation,fill=*fill,bank,ticket] {
                 cache_.finish_fill(fill); reads_.finish_read(op.id);
