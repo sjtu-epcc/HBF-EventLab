@@ -13,6 +13,7 @@ add_library(hbf_eventlab
     src/host/retention_store.cpp
     src/host/recovery_manager.cpp
     src/host/host_driver.cpp
+    src/host/host_input.cpp
     src/host/write_retry.cpp
     src/runtime/simulation_runner.cpp
     src/architecture/execution_configuration.cpp
@@ -51,9 +52,19 @@ add_executable(hbf_eventlab_device_demo examples/device_loop_demo.cpp)
 target_link_libraries(hbf_eventlab_device_demo PRIVATE HBFEventLab::core)
 add_executable(hbf_eventlab_cli examples/minimal_loop.cpp)
 target_link_libraries(hbf_eventlab_cli PRIVATE hbf_eventlab_workload_io)
+add_executable(hbf_eventlab_incremental_demo examples/incremental_host.cpp)
+target_link_libraries(hbf_eventlab_incremental_demo PRIVATE HBFEventLab::core)
 include(CTest)
 include(cmake/ExperimentPython.cmake)
 if(BUILD_TESTING)
+    add_test(NAME host_incremental_demo COMMAND hbf_eventlab_incremental_demo)
+    add_executable(hbf_eventlab_host_incremental_tests tests/host_incremental.cpp)
+    target_link_libraries(hbf_eventlab_host_incremental_tests PRIVATE hbf_eventlab_workload_io)
+    foreach(scenario split feedback idle atomic duplicate address_atomic sealed block_scope dependencies invalid_dependencies
+            burst future future_cancel_reuse recovered_sealed recovery_append abort_append hints limit_atomic equivalent observer parser guards)
+        add_test(NAME host_incremental_${scenario} COMMAND hbf_eventlab_host_incremental_tests ${scenario})
+        set_tests_properties(host_incremental_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
     add_executable(hbf_eventlab_read_scheduling_tests tests/read_scheduling.cpp)
     target_link_libraries(hbf_eventlab_read_scheduling_tests PRIVATE HBFEventLab::core)
     foreach(scenario policy_order window_reasons window_stale cache_bypass cache_removal terminal_read

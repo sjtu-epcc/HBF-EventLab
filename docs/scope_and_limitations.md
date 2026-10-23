@@ -6,7 +6,7 @@
 
 | 范围 | 当前能力 |
 |---|---|
-| Host与地址 | Global字节范围交织、跨条目补齐DLU、逻辑片段归属、有限发送与恢复保留区。 |
+| Host与地址 | Global字节范围交织、跨条目／增量批次补齐DLU、逻辑片段归属、有限发送与恢复保留区；同一Host可追加类型化输入并通知Global最终结果。 |
 | 写路径 | 64B命令、显式完整4KiB local burst、组装位图、超时、overlap、接收/program顺序和起点erase。 |
 | 读路径 | 64B读、无序Pending转发/缺片、普通有序组、Cache、Regular/Batch窗口、合法性重查。 |
 | 资源 | 每Bank一个介质操作、独立Bank重叠、双页Cache、有限RX/TX、UCIe序列化/传播与理想Core路由。 |
@@ -53,13 +53,17 @@ Host默认重试0x4失败命令，并在0x5排空后重发完整页；0x6/info1�
 | 限制 | 当前处理与影响 |
 |---|---|
 | `LIMIT-READ-001`：显式有序读访问Pending DLU | 成功转发和缺片0xA组合均在接受副作用前给出模型能力诊断；运行器报告ModelError。有限返回缓冲不自动解决任意顺序等待时的Pending快照问题。 |
-| `LIMIT-WRITE-001`：额外WRITE完成依赖 | Host加载时拒绝；避免提供缺片的后序写反而等待前序DLU完成。规范本身并未因此禁止Host依赖。 |
+| `LIMIT-WRITE-001`：额外WRITE完成依赖 | Host输入预检时拒绝；避免提供缺片的后序写反而等待前序DLU完成。规范本身并未因此禁止Host依赖。 |
 | `LIMIT-CONTENT-001`：同块内容ID非连续回用 | 不支持A→B→A；新内容使用新的身份。 |
-| `LIMIT-CONTENT-002`：同内容同64B写片段重复输入 | Host加载时拒绝；此限制不替代Device overlap规则。 |
+| `LIMIT-CONTENT-002`：同内容同64B写片段重复输入 | Host输入预检时拒绝，包括跨批次重复；此限制不替代Device overlap规则。 |
 | `BURST-INCOMPLETE` | 显式写burst必须完整覆盖同内容同local DLU，不补零，不自动生成缺失数据。 |
 | 读burst、scratchpad、CSR/ADMIN | 不在当前输入子集内。运行配置静态冻结。 |
 
 同组读按channel分别排序，不形成跨channel全局顺序。文件行顺序不隐含前一Global完成；READ可用`after`显式依赖。任意新旧内容读快照语义尚未实现。缺前页可导致Stalled；未覆盖整页的输入经timeout后会因MissingRetryData结束为逻辑失败。若输入包含未来补片，Host可等待其`at`边界后整页重试；这不补造workload中缺失的数据。
+
+增量输入复用上述内容与恢复限制。新版本成功登记即隐式封闭该逻辑块的旧版本普通输入；封闭不等于旧请求已完成，也不取消旧版本内部恢复。依赖只能引用已经登记的 Global ID 或同一批次的新 ID；显式 burst 模式要求本次提交覆盖完整 local DLU。超时或恢复所需数据尚未登记时仍可能触发 `MissingRetryData` 等终止诊断，不能依靠将来的未知输入挽救已经失败的版本。
+
+当前增量 API 仅支持同一事件线程调用，不提供输入源关闭、水位线／安全推进前沿、`WaitingForInput`、提交队列背压或历史回收。有限输入 `SimulationRunner` 对增量模式返回 `ModelError`；不能将暂时没有事件当作整个在线任务完成。示例中的生产者事件提前登记，不能直接把这种运行方式用于未知未来到达的外部模拟器。
 
 ## 4. 介质、故障与维护边界
 
@@ -77,7 +81,7 @@ Bank全程互斥、组头取数、每遍排空和逐页replay是保守基线。D
 
 固定NAND/Cache时延、控制服务字节、传播延迟、缓冲深度、演示几何和Host容量是模型参数。UCIe有效吞吐档位有规范来源，但不构成整条路径的硬件校准。Tick、命令计数、CTest墙钟耗时和C++容器内存分别属于不同指标，不能直接推导真实吞吐、功耗或面积。
 
-Host加载有限输入并保留工作历史，部分检查扫描候选和依赖；尚未针对百万命令优化。可选统计collector保留请求、尝试及组装变化的精确历史，增加宿主内存与分析开销；不改变模拟时刻，不代表硬件缓冲容量。Pending曲线和各阶段占用已提供，但Programming数量不包含read/erase，不能替代Bank利用率。统一JSON提供Bank操作区间；容量实验脚本离线重建利用率并记录CLI进程墙钟耗时，二者不得等同。合成容量实验仅诊断当前单channel/die/Bank模型，不代表真实应用或已校准产品性能。没有GPU/HBM前端或完整GPU–HBM–HBF执行路径。Linux及其他编译器的验证状态以[验证说明](verification.md#evidence)为准。
+Host支持完整加载和增量登记，均保留工作历史；部分检查扫描候选和依赖，尚未针对百万命令或长期在线运行优化。可选统计collector保留请求、尝试及组装变化的精确历史，增加宿主内存与分析开销；不改变模拟时刻，不代表硬件缓冲容量。Pending曲线和各阶段占用已提供，但Programming数量不包含read/erase，不能替代Bank利用率。统一JSON提供Bank操作区间；容量实验脚本离线重建利用率并记录CLI进程墙钟耗时，二者不得等同。合成容量实验仅诊断当前单channel/die/Bank模型，不代表真实应用或已校准产品性能。没有GPU/HBM前端或完整GPU–HBM–HBF执行路径。Linux及其他编译器的验证状态以[验证说明](verification.md#evidence)为准。
 
 ## 配置入口的边界
 

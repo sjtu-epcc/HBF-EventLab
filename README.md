@@ -24,6 +24,8 @@ The project supports research into **Host–HBF coordination, access organizatio
 
 The media model uses `DataToken` to represent symbolic content. It does not store actual user bytes or NAND cell charge. Core Channel currently uses an ideal model with infinite bandwidth and zero latency; the fixed NAND latencies and buffer parameters cannot be used directly to predict real product performance.
 
+The C++ Host also supports incremental Global submissions and completion-driven input through the same sending and recovery logic. See the [API contract](docs/usage.md#incremental-host) and [example](examples/incremental_host.cpp). Safe time coordination with an external simulator and input-source closure are not yet provided; the CLI and `SimulationRunner` retain their finite-input contract.
+
 Read bursts, full AXI/CSR/ADMIN, ECC, a temperature subsystem, and a complete GPU–HBM–HBF path are currently unsupported. Inputs such as explicitly ordered reads accessing Pending DLUs and additional completion dependencies for WRITE requests also have specific restrictions. See [Scope and Limitations](docs/scope_and_limitations.md) for details.
 
 ## Quick Start

@@ -28,6 +28,12 @@ EventQueue + SimulationRunner 推进事件并检查 Host、Device 活动
 
 Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查询设备的 `ReplayState`、物理映射或 NAND 私有数据。文件解析位于适配器层，核心 Host 不依赖文本格式。
 
+同一个 `HostDriver` 支持两种输入模式：离线 `load()` 完整预检后 `start()`；增量 `start_incremental()` 后多次 `submit()`。两者共用拆分、候选、重试、恢复和统计逻辑。`host_input.cpp` 负责输入批次的预检、登记与释放事件，不另建一套 Host。`WorkloadReader::next()` 提供逐条文本解析，原 `read_workload()` 仍先读取完整文件，CLI 的离线检查边界保持不变。
+
+增量登记以逻辑块为单位维护内容版本：成功登记该块新内容的普通写后，旧版本不再接收外部普通写；旧在途工作和内部重试/replay继续。`Version::defined` 表示已登记的输入覆盖，`accepted` 表示暂定发送进度，两者都不是 Device 的 received bitmap。每个 Global 的全部逻辑子工作终结后，Host 可异步通知 `GlobalCompletion`，调用方可据此追加工作。
+
+当前 `SimulationRunner` 仍只支持有限离线输入，并明确拒绝增量模式。增量 API 由调用方在同一事件线程内使用；输入源关闭、安全时间前沿及等待外部输入的顶层停止语义尚未实现。`activity().drained()` 只描述当前临时活动，不能证明外部输入已结束。见[增量 Host API](usage.md#incremental-host)。
+
 ## 2. 接口与职责边界
 
 | 组件 | 职责与主要入口 |

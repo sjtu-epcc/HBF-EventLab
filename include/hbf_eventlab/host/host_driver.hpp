@@ -22,6 +22,10 @@ struct HostTrace {
     const char* action; Tick at; CommandId command; SendUnitId unit;
     LogicalBlockKey block; std::uint64_t pass;
 };
+struct GlobalCompletion {
+    WorkResult result;
+    Tick at; // Final logical outcome time, not callback consumption time.
+};
 class HostDriver {
 public:
     HostDriver(IHostPort&,EventQueue&,const IHostInterleaver&,HostConfiguration={},
@@ -31,6 +35,18 @@ public:
     HostDriver& operator=(const HostDriver&)=delete;
     void load(const std::vector<GlobalRequest>&); // fully validate before start/any transmission
     void start();
+    // Alternative to load/start: one persistent Host, single EventQueue thread.
+    void start_incremental();
+    // Batch validation is atomic for input-contract errors; no Device activity.
+    // Existing or same-batch dependencies only. Burst pages must be complete in
+    // this batch. not_before is absolute simulation time (must not be in the past).
+    // No queue-space backpressure yet: max_logical_fragments is a lifetime limit.
+    void submit(const std::vector<GlobalRequest>&);
+    void submit(const GlobalRequest& request) { submit(std::vector<GlobalRequest>{request}); }
+    bool incremental_input() const { return incremental_; }
+    // Attach once before load/start. Delivered asynchronously, exactly once for
+    // each final Global result. The callback may submit but must not run events.
+    void set_completion_handler(std::function<void(const GlobalCompletion&)>);
     // Use the same sink as DeviceDriver, before load. The sink outlives this Host.
     void set_statistics_sink(IStatisticsSink&);
     HostActivity activity() const;
@@ -74,6 +90,8 @@ private:
     };
     struct Version {
         std::vector<SendUnitId> normal;
+        // Host input coverage, not Device received/Assembly state. Survives retries.
+        std::map<PageId,std::bitset<fragments_per_dlu>> defined;
         std::map<PageId,std::bitset<fragments_per_dlu>> accepted;
         // Acceptance is tentative send progress, not a mirror of Device Assembly.
         std::map<PageId,PageRetry> retries;
@@ -92,7 +110,10 @@ private:
         std::optional<EventId> pump;
     };
     struct Attempt {SendUnitId unit;TransferAttemptId transfer;bool accepted=false;};
-    void validate(const std::vector<GlobalRequest>&) const;
+    struct PreparedRequest { GlobalRequest request; std::vector<Fragment> fragments; };
+    std::vector<PreparedRequest> prepare(const std::vector<GlobalRequest>&) const;
+    void register_input(std::vector<PreparedRequest>);
+    void arm_releases(const std::vector<GlobalRequestId>&);
     SendUnitId add_unit(Op,std::vector<Fragment>,std::optional<ContentKey>,std::optional<ReadGroup>,bool replay=false,std::uint64_t pass=0);
     void enqueue(Unit&,Tick);
     void release_units(Tick);
@@ -135,6 +156,7 @@ private:
     std::map<LogicalBlockKey,std::set<CommandId>> unsettled_;
     std::set<EventId> owned_events_;
     std::map<Tick,EventId> release_events_;
+    std::map<Tick,std::vector<GlobalRequestId>> release_globals_;
     // Preindexed initial releases: (last contributing input-fragment ordinal, unit).
     // Burst creation order and arbitrary Global IDs must not define FCFS order.
     std::map<Tick,std::vector<std::pair<std::uint64_t,SendUnitId>>> initial_enqueues_;
@@ -145,10 +167,11 @@ private:
     std::shared_ptr<bool> alive_=std::make_shared<bool>(true);
     std::uint64_t next_work_=0,next_unit_=0,next_command_=0;
     std::uint64_t next_enqueue_=0;
-    bool loaded_=false,started_=false;
+    bool loaded_=false,started_=false,incremental_=false;
     HostStatistics stats_;
     IStatisticsSink* statistics_sink_=nullptr;
     std::function<void(const HostTrace&)> trace_;
+    std::function<void(const GlobalCompletion&)> completion_;
 };
 } // namespace hbf_eventlab
 

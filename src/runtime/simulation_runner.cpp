@@ -11,6 +11,10 @@ RunReport SimulationRunner::report(RunStatus s,const std::string& why) {
     return {s,host_.workload_success(),events_.now(),events_.executed(),host_.activity(),device_(),why};
 }
 RunReport SimulationRunner::run(RunLimits limits) {
+    // This runner's Completed/Stalled contract describes a finite, preloaded input.
+    // Incremental callers currently drive the shared queue at explicit boundaries.
+    if(host_.incremental_input())return report(RunStatus::ModelError,
+        "finite SimulationRunner does not support open incremental input; drive EventQueue explicitly");
     events_.set_limits(limits.events);
     try {
         for(;;) {

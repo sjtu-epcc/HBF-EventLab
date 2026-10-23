@@ -103,7 +103,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `host.read_hint_mode` | `tail_batch` | `tail_batch` 或 `all_regular`；前者在每 Global、每 channel 的最后一条读使用 Batch。 |
 | `host.max_open_dlus_per_channel` | `2` | 正数。Host 活跃写 DLU 数：从首条命令 Taken 到该 DLU 已移交命令全部收到响应；不是 Device Pending 数。 |
 | `host.retained_fragments` | `65536` | Host 恢复保留区额度，单位为代表 64B 内容的符号片段；0 禁用。默认相当于 4MiB 逻辑内容，不等于程序实际内存。 |
-| `host.max_logical_fragments` | `1048576` | 正数；原始 workload 逻辑片段输入上限，属于程序保护，不是硬件容量。 |
+| `host.max_logical_fragments` | `1048576` | 正数；原始逻辑片段累计输入上限。增量模式按整个 Host 生命周期累计，已经完成的输入也计入；超限批次拒绝。属于程序保护，不是当前队列容量、Device MOCS 或硬件容量。 |
 | `host.recovery.max_replay_passes` | `3` | 每恢复任务最多 replay 遍数，初始普通写不计；0 禁止 replay。重复响应及合并任务不重置预算。 |
 | `host.retry.max_pending_retries` | `3` | 每发送单元收到 0x4 后允许的额外尝试，初始发送不计；0 关闭。 |
 | `host.retry.max_timeout_retries` | `3` | 同内容／页／pass 的额外整页组装轮数，初始组装不计；0 关闭。 |

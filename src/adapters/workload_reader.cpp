@@ -8,8 +8,9 @@ std::uint64_t number(const std::string& s) {
     std::size_t n=0;auto value=std::stoull(s,&n,s.rfind("0x",0)==0||s.rfind("0X",0)==0?16:10);if(n!=s.size())throw std::invalid_argument("invalid integer suffix");return value;
 }
 }
-std::vector<GlobalRequest> read_workload(std::istream& in) {
-    std::vector<GlobalRequest> out;std::string line;std::size_t lineno=0;bool header=false;
+std::optional<GlobalRequest> WorkloadReader::next() {
+    auto& in=input_; auto& lineno=lineno_; auto& header=header_;
+    std::string line;
     while(std::getline(in,line)) {
         ++lineno;line=line.substr(0,line.find('#'));std::istringstream words(line);std::string op;
         if(!(words>>op))continue;
@@ -42,10 +43,16 @@ std::vector<GlobalRequest> read_workload(std::istream& in) {
             }
             if(r.op==Op::Write&&!fields.count("content"))throw std::invalid_argument("WRITE requires content identity");
             if(r.op==Op::Read&&fields.count("content"))throw std::invalid_argument("READ uses expect, not content");
-            out.push_back(std::move(r));
+            return r;
         } catch(const std::exception& e) {throw std::invalid_argument("workload line "+std::to_string(lineno)+": "+e.what());}
     }
     if(!header)throw std::invalid_argument("missing workload version header");
+    if(in.bad() || (in.fail() && !in.eof()))throw std::runtime_error("workload stream read failed");
+    return std::nullopt;
+}
+std::vector<GlobalRequest> read_workload(std::istream& input) {
+    WorkloadReader reader(input);std::vector<GlobalRequest> out;
+    while(auto request=reader.next())out.push_back(std::move(*request));
     return out;
 }
 }

@@ -2,7 +2,7 @@
 
 适用项目版本：**0.5.0**。
 
-本文记录 HBF EventLab 的 159 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
+本文记录 HBF EventLab 的 165 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
 
 规范基准为 [OCP HBF Architecture Specification v0.7.0（03 AUG 2026）](https://www.opencompute.org/documents/ocp-hbf-architecture-specification-v0-7-0-final-pdf)，主要对照第 4、5、11 章。规范关系和项目选择必须分开记录；实现一个接口不等于证明任意替代实现都符合规范。
 
@@ -276,6 +276,9 @@
 | [ADR-CFG-03](#adr-cfg-03) | 策略名称与参数统一配置；仅装配已实现策略，不忽略未知或不适用的设置。 | 策略受规范约束；配置机制无直接规定 | 可配置策略；实现机制；实现保障 | 已实现；V1 |
 | [ADR-CFG-04](#adr-cfg-04) | 有效配置可导出并重载；Core拓扑、容量预算和派生容量使用同一组冻结参数。 | 无直接规定 | 实现机制；模型／输入假设；实现保障 | 已实现；V1 |
 | [ADR-EXP-01](#adr-exp-01) | 实验公共层统一读取实际配置，显式保证验证范围。 | 无直接规定 | 实现组织；实现保障 | 已实现；V1 |
+| [ADR-INPUT-01](#adr-input-01) | 同一Host支持增量批次登记，输入契约错误整批拒绝，保留离线完整预检。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
+| [ADR-INPUT-02](#adr-input-02) | 新内容成功登记隐式封闭该逻辑块旧版本的普通输入，旧工作和内部恢复继续。 | 无直接规定 | 模型／输入假设；实现保障 | 已实现；V1 |
+| [ADR-INPUT-03](#adr-input-03) | Global最终结果异步通知；输入登记、逻辑完成、排空及输入结束相互区分。 | 无直接规定 | 实现机制；实现保障 | 已实现于增量Host接口；V1 |
 
 ### 3.1 跨组件决策关系
 
@@ -949,7 +952,7 @@
 | 关联要求/条目 | REQ-REPLAY、REQ-ZONE、REQ-RESPONSE |
 | 选择理由 | 遵守 Host 承担数据恢复的职责，不将旧错误请求静默复活。 |
 | 模型假设/参数依据 | 本条无独立数值参数；见本条适用条件及限制。 |
-| 实现位置（成员/函数） | [finish_program() 终止旧请求](../src/runtime/write_path.cpp)；[submit() 仍接收 HostCommand Write](../src/runtime/write_path.cpp)；[HostDriver::receive / make_replay](../src/host/host_driver.cpp#L323)；[WriteRetentionStore](../include/hbf_eventlab/host/retention_store.hpp#L15)。 |
+| 实现位置（成员/函数） | [finish_program() 终止旧请求](../src/runtime/write_path.cpp)；[submit() 仍接收 HostCommand Write](../src/runtime/write_path.cpp)；[HostDriver::receive / make_replay](../src/host/host_driver.cpp)；[WriteRetentionStore](../include/hbf_eventlab/host/retention_store.hpp#L15)。 |
 | 验证测试与覆盖 | [T14](verification.md#t14)/[T17](verification.md#t17) 检查旧后继没有复活；[T18](verification.md#t18) 检查替换后仍需 Host 数据；[Host：recovery_once](../CMakeLists.txt#L149)、[Host：missing_retention](../CMakeLists.txt#L149)、[Host：persistent_failure](../CMakeLists.txt#L149) 覆盖自动恢复、数据缺失和恢复预算耗尽。 |
 | 实现状态/验证状态 | 设备语义及自动 Host replay 已接入；V2（有限 workload 子集） |
 | 已知限制 | Host 使用有限 WriteRetentionStore 保留原内容，缺数据或预算耗尽时明确终止相关逻辑工作；没有从 NAND 补齐恢复数据、完整 refresh 通知表或自动 refresh 调度。 |
@@ -2311,7 +2314,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-H01](#adr-h01)；[ADR-H02](#adr-h02)；[ADR-LOOP-H02](#adr-loop-h02) |
 | 选择理由 | 保留控制和数据所有权，同时避免把一条写命令计成两份MOCS。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [struct LocalTransaction](../include/hbf_eventlab/interfaces/host_port.hpp#L9)；[t.input.data.clear()](../src/runtime/device_driver.cpp#L177)；[LocalTransaction tx](../src/host/host_driver.cpp#L240) |
+| 实现位置（函数／成员） | [struct LocalTransaction](../include/hbf_eventlab/interfaces/host_port.hpp#L9)；[t.input.data.clear()](../src/runtime/device_driver.cpp#L177)；[LocalTransaction tx](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 分离metadata/payload仍一条command；64B与显式burst记账差异。<br>[Device：split_write](../CMakeLists.txt#L156)；[Host：burst_compare](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 不覆盖AW/W乱序到达、逐拍VALID/READY、flit打包或AXI协议验证。 |
@@ -2421,7 +2424,7 @@
 | 关联要求／条目 | REQ-ADDR；[ADR-A02](#adr-a02)；[ADR-A03](#adr-a03)；[ADR-LOOP-H02](#adr-loop-h02) |
 | 选择理由 | 16channel/64B交织时单条Global4KiB只贡献各channel一部分，必须允许后续条目补齐。 |
 | 模型假设／参数依据 | global base仅在interleaver去除一次；内部local保持零起点字节偏移。 |
-| 实现位置（函数／成员） | [GlobalRequestSplitter::fragment](../src/host/global_request_splitter.cpp#L3)；[GlobalRequestSplitter::split](../src/host/global_request_splitter.cpp#L9)；[void HostDriver::load](../src/host/host_driver.cpp#L97) |
+| 实现位置（函数／成员） | [GlobalRequestSplitter::fragment](../src/host/global_request_splitter.cpp#L3)；[GlobalRequestSplitter::split](../src/host/global_request_splitter.cpp#L9)；[HostDriver::load / register_input](../src/host/host_input.cpp) |
 | 验证测试与覆盖 | 交织正反向和范围拆分、16channel跨Global补齐、正常端到端。<br>[Host：splitter](../CMakeLists.txt#L149)；[Host：sixteen_channels](../CMakeLists.txt#L149)；[Host：normal](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 沿用扁平逻辑布局和静态配置；不新增FIOSA/CSR事务。 |
@@ -2439,7 +2442,7 @@
 | 关联要求／条目 | REQ-ADDR；REQ-ASSEMBLY；[ADR-H01](#adr-h01)；[ADR-H02](#adr-h02)；[ADR-LOOP-H01](#adr-loop-h01)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 避免自动组包悄悄改变命令压力；跨Global来源仍可共享一个合法local整页事务。 |
 | 模型假设／参数依据 | WriteCommandMode::Fragment64默认；Burst4096显式；整页64个片段。 |
-| 实现位置（函数／成员） | [void HostDriver::validate](../src/host/host_driver.cpp#L23)；[void HostDriver::load](../src/host/host_driver.cpp#L97)；[LocalTransaction tx](../src/host/host_driver.cpp#L240) |
+| 实现位置（函数／成员） | [HostDriver::prepare](../src/host/host_input.cpp)；[HostDriver::load / register_input](../src/host/host_input.cpp)；[LocalTransaction tx](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 64B/burst数量差异、跨Global归属和不完整burst拒绝。<br>[Host：burst_compare](../CMakeLists.txt#L149)；[Host：burst_cross_global](../CMakeLists.txt#L149)；[Host：burst_validation](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | burst缺完整local覆盖时报BURST-INCOMPLETE，不补零、不自动读burst。 |
@@ -2457,7 +2460,7 @@
 | 关联要求／条目 | REQ-SCOPE；REQ-MODEL；[ADR-LOOP-H01](#adr-loop-h01)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 避免后续写提供前序DLU缺片、却又等待前序完成的循环；合法写序仍由既有规则执行。 |
 | 模型假设／参数依据 | READ after可有多个Global依赖；拒绝未知ID及环。 |
-| 实现位置（函数／成员） | [void HostDriver::validate](../src/host/host_driver.cpp#L23)；[bool HostDriver::dependencies_ready](../src/host/host_driver.cpp#L168)；[void HostDriver::advance()](../src/host/host_driver.cpp#L438) |
+| 实现位置（函数／成员） | [HostDriver::prepare](../src/host/host_input.cpp)；[bool HostDriver::dependencies_ready](../src/host/host_driver.cpp)；[void HostDriver::advance()](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 写依赖拒绝、16channel补齐、依赖最终失败的读。<br>[Host：input_validation](../CMakeLists.txt#L149)；[Host：sixteen_channels](../CMakeLists.txt#L149)；[Host：persistent_failure](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 不对任意跨读写依赖图提供静态死锁证明。 |
@@ -2475,7 +2478,7 @@
 | 关联要求／条目 | REQ-MODEL；REQ-SCOPE；[ADR-M01](#adr-m01)；[ADR-W04](#adr-w04)；[ADR-LOOP-H13](#adr-loop-h13) |
 | 选择理由 | 使重试与新内容可区分，避免同一逻辑片段同时归属多个普通写计划。 |
 | 模型假设／参数依据 | content作用域为逻辑块；新内容使用新标识；同块版本依声明次序运行。 |
-| 实现位置（函数／成员） | [struct ContentKey](../include/hbf_eventlab/host/workload.hpp#L18)；[LIMIT-CONTENT-001](../src/host/host_driver.cpp#L55)；[LIMIT-CONTENT-002](../src/host/host_driver.cpp#L59) |
+| 实现位置（函数／成员） | [struct ContentKey](../include/hbf_eventlab/host/workload.hpp#L18)；[LIMIT-CONTENT-001](../src/host/host_input.cpp)；[LIMIT-CONTENT-002](../src/host/host_input.cpp) |
 | 验证测试与覆盖 | 内容ID回用/重复片段拒绝及连续版本隔离。<br>[Host：content_validation](../CMakeLists.txt#L149)；[Host：versions](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | LIMIT-CONTENT-001/002是能力边界，不能描述成规范定义的错误。 |
@@ -2493,7 +2496,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-H06](#adr-loop-h06)；[ADR-LOOP-H09](#adr-loop-h09)；[ADR-LOOP-H02](#adr-loop-h02) |
 | 选择理由 | 防止源每64B等待completion而凑不齐页，并允许合法补片越过受阻工作。 |
 | 模型假设／参数依据 | 默认每channel2个打开DLU；名额从首个Taken持到已移交命令最终响应全部返回。默认FCFS只比较当前合法候选；受阻新DLU不阻止旧DLU合法补片。可选fill_open主动提高补片优先级。 |
-| 实现位置（函数／成员） | [HostDriver::eligible](../src/host/host_driver.cpp#L178)；[HostDriver::pump](../src/host/host_driver.cpp#L220)；[FcfsHostSendPolicy](../include/hbf_eventlab/policies/host_send_policy.hpp#L7)；[FillOpenDluPolicy](../include/hbf_eventlab/policies/host_send_policy.hpp#L16) |
+| 实现位置（函数／成员） | [HostDriver::eligible](../src/host/host_driver.cpp)；[HostDriver::pump](../src/host/host_driver.cpp)；[FcfsHostSendPolicy](../include/hbf_eventlab/policies/host_send_policy.hpp#L7)；[FillOpenDluPolicy](../include/hbf_eventlab/policies/host_send_policy.hpp#L16) |
 | 验证测试与覆盖 | 打开DLU上限、不同策略实际次序、MOCS不足可超时而非伪造进展。<br>[Host发送测试](../tests/host_send_policy.cpp)：fcfs、fill_open、blocked_open、channels；[Host：open_limit](../CMakeLists.txt#L149)；[Host：mocs_one](../CMakeLists.txt#L149)；[Host：mocs_partial](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | Host打开名额不是Device Pending数；小MOCS+64B模式仍可能真实超时。 |
@@ -2511,7 +2514,7 @@
 | 关联要求／条目 | REQ-MODEL；REQ-WRITEORDER；[ADR-LOOP-H05](#adr-loop-h05)；[ADR-LOOP-H03](#adr-loop-h03) |
 | 选择理由 | 允许替换优先级实验，同时避免策略输出任意请求绕过正确性。 |
 | 模型假设／参数依据 | 默认fcfs按入队序号选择；fill_open依次比较补齐打开DLU、replay、入队序号。SendUnitId只作为最终稳定平局键，正常入队序号唯一；详见[ADR-LOOP-H27](#adr-loop-h27)。 |
-| 实现位置（函数／成员） | [IHostSendPolicy](../include/hbf_eventlab/interfaces/host_send_policy.hpp#L8)；[FcfsHostSendPolicy::select](../include/hbf_eventlab/policies/host_send_policy.hpp#L9)；[FillOpenDluPolicy::select](../include/hbf_eventlab/policies/host_send_policy.hpp#L18)；[HostDriver::pump候选检查](../src/host/host_driver.cpp#L236) |
+| 实现位置（函数／成员） | [IHostSendPolicy](../include/hbf_eventlab/interfaces/host_send_policy.hpp#L8)；[FcfsHostSendPolicy::select](../include/hbf_eventlab/policies/host_send_policy.hpp#L9)；[FillOpenDluPolicy::select](../include/hbf_eventlab/policies/host_send_policy.hpp#L18)；[HostDriver::pump候选检查](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 策略只能选择候选；FCFS与补齐优先的实际次序及合法越过。<br>[Host：policy_guard](../CMakeLists.txt#L149)；[Host发送测试](../tests/host_send_policy.cpp)：order、fcfs、fill_open、blocked_open、dependency_age。 |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 有限候选扫描未针对百万请求优化。 |
@@ -2529,7 +2532,7 @@
 | 关联要求／条目 | REQ-READDISPATCH；[ADR-LOOP-W01](#adr-loop-w01)；[ADR-LOOP-W02](#adr-loop-w02)；[ADR-LOOP-H01](#adr-loop-h01) |
 | 选择理由 | 形成可复现的Host调度边界，又不把Global范围强加成设备完成屏障。 |
 | 模型假设／参数依据 | TailBatch默认；--regular选AllRegular；组号作用域仍为channel。 |
-| 实现位置（函数／成员） | [ReadHintMode::TailBatch](../src/host/host_driver.cpp#L124)；[u.hint==ReadHint::Batch](../src/host/host_driver.cpp#L191) |
+| 实现位置（函数／成员） | [ReadHintMode::TailBatch](../src/host/host_driver.cpp)；[u.hint==ReadHint::Batch](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 两种hint生成和有序读；尾B由接受进度门控。<br>[Host：hints](../CMakeLists.txt#L149)；[Host：normal](../CMakeLists.txt#L149)；[Host：ordered_reads](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 当前是枚举配置，不是独立IReadHintPolicy插件；若用户策略乱序，尾B仍受接受门控。 |
@@ -2547,7 +2550,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-H09](#adr-loop-h09)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 一次尝试失败不必是逻辑最终失败；burst合并和重试不能丢失原Global归属。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [using GlobalRequestId](../include/hbf_eventlab/common/types.hpp#L20)；[struct Unit {](../include/hbf_eventlab/host/host_driver.hpp#L55)；[void HostDriver::finish_work](../src/host/host_driver.cpp#L292) |
+| 实现位置（函数／成员） | [using GlobalRequestId](../include/hbf_eventlab/common/types.hpp#L20)；[struct Unit {](../include/hbf_eventlab/host/host_driver.hpp)；[void HostDriver::finish_work](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 跨Global burst归属、恢复尝试与历史成功分开。<br>[Host：burst_cross_global](../CMakeLists.txt#L149)；[Host：recovery_once](../CMakeLists.txt#L149)；[Host：prior_success_retained](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 保留有限逻辑工作历史；对象内存大小不作为硬件成本。 |
@@ -2565,7 +2568,7 @@
 | 关联要求／条目 | REQ-MODEL；REQ-RESPONSE；[ADR-LOOP-L01](#adr-loop-l01)；[ADR-LOOP-L07](#adr-loop-l07)；[ADR-LOOP-P09](#adr-loop-p09) |
 | 选择理由 | 比MOCS更早覆盖在途请求，保证故障排空不会漏掉尚未正式接受的事务。 |
 | 模型假设／参数依据 | 按逻辑块unsettled_索引包含已移交读写；NotTaken没有最终completion。 |
-| 实现位置（函数／成员） | [void HostDriver::pump](../src/host/host_driver.cpp#L220)；[void HostDriver::receive](../src/host/host_driver.cpp#L323)；[std::map<CommandId,Attempt> attempts_](../include/hbf_eventlab/host/host_driver.hpp#L134) |
+| 实现位置（函数／成员） | [void HostDriver::pump](../src/host/host_driver.cpp)；[void HostDriver::receive](../src/host/host_driver.cpp)；[std::map<CommandId,Attempt> attempts_](../include/hbf_eventlab/host/host_driver.hpp) |
 | 验证测试与覆盖 | 旧Link/Ingress事务迟到、重复移交防护。<br>[Host：delayed_old_attempts](../CMakeLists.txt#L149)；[Host：ingress_old_attempts](../CMakeLists.txt#L149)；[Device：duplicate_handoff](../CMakeLists.txt#L160) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 不实现通用在途撤回；缺失响应只能诊断Stalled/LimitReached。 |
@@ -2583,7 +2586,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-W06](#adr-w06)；[ADR-LOOP-H09](#adr-loop-h09)；[ADR-LOOP-H15](#adr-loop-h15) |
 | 选择理由 | Host无需读取Device私有队列即可观察前页全部命令已正式接受，以及本遍page0尝试开始；后续错误通过[ADR-LOOP-H20](#adr-loop-h20)修正暂定进度。 |
 | 模型假设／参数依据 | 提供observer时异步接受通知先于一次最终响应；进度不释放credit。 |
-| 实现位置（函数／成员） | [struct AcceptedNotice](../include/hbf_eventlab/interfaces/host_port.hpp#L18)；[if(t.acceptance)](../src/runtime/device_driver.cpp#L180)；[void HostDriver::accepted](../src/host/host_driver.cpp#L280) |
+| 实现位置（函数／成员） | [struct AcceptedNotice](../include/hbf_eventlab/interfaces/host_port.hpp#L18)；[if(t.acceptance)](../src/runtime/device_driver.cpp#L180)；[void HostDriver::accepted](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 恢复快照含接受进度、正常写的前页接受门控和MOCS等待。<br>[Host：recovery_snapshot](../CMakeLists.txt#L149)；[Host：normal](../CMakeLists.txt#L149)；[Host：mocs_partial](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | Host前页accepted位图既不是介质program游标，也不是Device的received bitmap。后继可能在前页错误反馈前已经发出，须按[ADR-LOOP-H24](#adr-loop-h24)处理。 |
@@ -2601,7 +2604,7 @@
 | 关联要求／条目 | REQ-REPLAY；[ADR-R01](#adr-r01)；[ADR-R05](#adr-r05)；[ADR-LOOP-H12](#adr-loop-h12) |
 | 选择理由 | 后继页错误先到时也能冻结旧计划，却不把page3误作恢复终点。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [const bool recoverable=](../src/host/host_driver.cpp#L340)；[const auto root=](../src/host/host_driver.cpp#L342)；[RecoveryTask& RecoveryManager::notice](../src/host/recovery_manager.cpp#L3) |
+| 实现位置（函数／成员） | [const bool recoverable=](../src/host/host_driver.cpp)；[const auto root=](../src/host/host_driver.cpp)；[RecoveryTask& RecoveryManager::notice](../src/host/recovery_manager.cpp#L3) |
 | 验证测试与覆盖 | 0x6/info2先到仍等0x7根因；单次失败自动恢复。<br>[Host：follower_before_root](../CMakeLists.txt#L149)；[Host：recovery_once](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 如果根因始终不来，保留WaitingForProgramFailRoot，不能从内部ReplayState补答案。 |
@@ -2619,7 +2622,7 @@
 | 关联要求／条目 | REQ-REPLAY；REQ-MODEL；[ADR-LOOP-H09](#adr-loop-h09)；[ADR-LOOP-H11](#adr-loop-h11)；[ADR-LOOP-H14](#adr-loop-h14) |
 | 选择理由 | 覆盖正式接受之外的迟到Link/Ingress片段；只等有限旧集合，避免新读不断加入而饿死恢复。 |
 | 模型假设／参数依据 | 包含冻结时已移交旧读和旧写；首次恢复与再次失败每遍都重新取集合。 |
-| 实现位置（函数／成员） | [recovery_.notice](../src/host/host_driver.cpp#L343)；[t.failed_pass=pass](../src/host/recovery_manager.cpp#L12)；[void RecoveryManager::settled](../src/host/recovery_manager.cpp#L16)；[bool HostDriver::advance_recovery](../src/host/host_driver.cpp#L402) |
+| 实现位置（函数／成员） | [recovery_.notice](../src/host/host_driver.cpp)；[t.failed_pass=pass](../src/host/recovery_manager.cpp#L12)；[void RecoveryManager::settled](../src/host/recovery_manager.cpp#L16)；[bool HostDriver::advance_recovery](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 首遍有旧Link/Ingress，第二遍有迟到旧读，必须取得最终归属后再开始。<br>[Host：delayed_old_attempts](../CMakeLists.txt#L149)；[Host：ingress_old_attempts](../CMakeLists.txt#L149)；[Host：late_read_second_pass](../CMakeLists.txt#L149)；[Host：recovery_snapshot](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 当前replay按页等待，第二次失败不存在预发后继replay写页；测试用旧读/旧响应验证同一屏障。 |
@@ -2637,7 +2640,7 @@
 | 关联要求／条目 | REQ-REPLAY；REQ-MODEL；[ADR-LOOP-H04](#adr-loop-h04)；[ADR-LOOP-H11](#adr-loop-h11)；[ADR-LOOP-H17](#adr-loop-h17) |
 | 选择理由 | 不能读取设备NAND或用新内容覆盖旧恢复数据；原Global地址还能正确跨交织重放。 |
 | 模型假设／参数依据 | 默认65536片段；FIFO逐出未固定项；全固定时不保存新数据但不阻断普通写。 |
-| 实现位置（函数／成员） | [void WriteRetentionStore::save](../src/host/retention_store.cpp#L4)；[bool WriteRetentionStore::pin_prefix](../src/host/retention_store.cpp#L19)；[void HostDriver::make_replay](../src/host/host_driver.cpp#L389) |
+| 实现位置（函数／成员） | [void WriteRetentionStore::save](../src/host/retention_store.cpp#L4)；[bool WriteRetentionStore::pin_prefix](../src/host/retention_store.cpp#L19)；[void HostDriver::make_replay](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 保留区固定/逐出、内容版本、数据缺失和此前成功页参与恢复。<br>[Host：retention_pins](../CMakeLists.txt#L149)；[Host：versions](../CMakeLists.txt#L149)；[Host：missing_retention](../CMakeLists.txt#L149)；[Host：prior_success_retained](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 数据可能因容量不足缺失而明确失败；保留算法当前非插件；DataToken不是真字节。 |
@@ -2655,7 +2658,7 @@
 | 关联要求／条目 | REQ-REPLAY；[ADR-R02](#adr-r02)；[ADR-R03](#adr-r03)；[ADR-LOOP-H12](#adr-loop-h12)；[ADR-LOOP-H15](#adr-loop-h15) |
 | 选择理由 | 64个0x7不能启动64次replay；page2恢复期间page1再失败不能丢掉page2义务。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [RecoveryTask& RecoveryManager::notice](../src/host/recovery_manager.cpp#L3)；[bool HostDriver::advance_recovery](../src/host/host_driver.cpp#L402) |
+| 实现位置（函数／成员） | [RecoveryTask& RecoveryManager::notice](../src/host/recovery_manager.cpp#L3)；[bool HostDriver::advance_recovery](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 再次失败保留最远终点、burst与多响应合并。<br>[Host：replay_merge](../CMakeLists.txt#L149)；[Host：burst_recovery](../CMakeLists.txt#L149)；[Host：recovery_snapshot](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 任务完成后新的普通写故障可以创建新任务；不能误解为逻辑块终身共用一次预算。 |
@@ -2673,7 +2676,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-H10](#adr-loop-h10)；[ADR-LOOP-H14](#adr-loop-h14)；[ADR-LOOP-H17](#adr-loop-h17) |
 | 选择理由 | 既不因64条反馈多计，也不因重试嵌套无限重置；移交但未接受不算已开始的一遍。 |
 | 模型假设／参数依据 | max_replay_passes默认3、0禁用；普通初始写不计。 |
-| 实现位置（函数／成员） | [bool RecoveryManager::begin_pass](../src/host/recovery_manager.cpp#L24)；[bool RecoveryManager::accepted](../src/host/recovery_manager.cpp#L30)；[void HostDriver::accepted](../src/host/host_driver.cpp#L280) |
+| 实现位置（函数／成员） | [bool RecoveryManager::begin_pass](../src/host/recovery_manager.cpp#L24)；[bool RecoveryManager::accepted](../src/host/recovery_manager.cpp#L30)；[void HostDriver::accepted](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 持续失败预算耗尽、零预算、正式接受时计数。<br>[Host：persistent_failure](../CMakeLists.txt#L149)；[Host：zero_budget](../CMakeLists.txt#L149)；[Host：recovery_snapshot](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 不是可靠性最优值，没有产品校准依据。 |
@@ -2691,7 +2694,7 @@
 | 关联要求／条目 | REQ-WRITEORDER；REQ-REPLAY；[ADR-LOOP-H11](#adr-loop-h11)；[ADR-LOOP-H12](#adr-loop-h12)；[ADR-LOOP-H15](#adr-loop-h15) |
 | 选择理由 | 以较小恢复并行度换取明确的页进度与排空边界；旧失败命令不复活，后继重发分配新ID。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [void HostDriver::make_replay](../src/host/host_driver.cpp#L389)；[bool HostDriver::advance_recovery](../src/host/host_driver.cpp#L402) |
+| 实现位置（函数／成员） | [void HostDriver::make_replay](../src/host/host_driver.cpp)；[bool HostDriver::advance_recovery](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 自动重放前缀、再次失败合并、后继页继续及burst恢复。<br>[Host：recovery_once](../CMakeLists.txt#L149)；[Host：replay_merge](../CMakeLists.txt#L149)；[Host：burst_recovery](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | Device在终点program成功时解除自身限制，Host确认要等终点全部响应；不是同一时刻。 |
@@ -2709,7 +2712,7 @@
 | 关联要求／条目 | REQ-MODEL；REQ-SCOPE；[ADR-LOOP-H13](#adr-loop-h13)；[ADR-LOOP-H15](#adr-loop-h15)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 持续失败也能有界结束；其他块继续成功，历史成功不追溯改写。 |
 | 模型假设／参数依据 | MissingRecoveryData / RecoveryBudgetExhausted / DependencyFailed为Host诊断；同块后续内容可标PriorContentFailed。 |
-| 实现位置（函数／成员） | [void HostDriver::abort_version](../src/host/host_driver.cpp#L312)；[void HostDriver::finish_work](../src/host/host_driver.cpp#L292)；[void HostDriver::advance()](../src/host/host_driver.cpp#L438) |
+| 实现位置（函数／成员） | [void HostDriver::abort_version](../src/host/host_driver.cpp)；[void HostDriver::finish_work](../src/host/host_driver.cpp)；[void HostDriver::advance()](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 缺数据/持续失败有限终止，同块新内容取消，历史成功不回写失败。<br>[Host：missing_retention](../CMakeLists.txt#L149)；[Host：persistent_failure](../CMakeLists.txt#L149)；[Host：abort_new_content](../CMakeLists.txt#L149)；[Host：prior_success_retained](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 无自动refresh/数据生成补洞；已接受旧操作不能只从Host删除。 |
@@ -2727,7 +2730,7 @@
 | 关联要求／条目 | REQ-RESPONSE；[ADR-D05](#adr-d05)；[ADR-D06](#adr-d06)；[ADR-LOOP-H03](#adr-loop-h03) |
 | 选择理由 | 不让错误读触发另一写恢复；普通读和“恢复后读”有可见输入区别。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [bool HostDriver::dependencies_ready](../src/host/host_driver.cpp#L168)；[const auto& rr=std::get<ReadResponse>](../src/host/host_driver.cpp#L369) |
+| 实现位置（函数／成员） | [bool HostDriver::dependencies_ready](../src/host/host_driver.cpp)；[const auto& rr=std::get<ReadResponse>](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 恢复中普通读、第二遍排空时的读、依赖恢复成功的读。<br>[Host：read_during_recovery](../CMakeLists.txt#L149)；[Host：late_read_second_pass](../CMakeLists.txt#L149)；[Host：recovery_once](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 自动read retry尚未策略化；有序Pending组合仍单独报能力限制。 |
@@ -2745,7 +2748,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-H08](#adr-loop-h08)；[ADR-LOOP-H17](#adr-loop-h17)；[ADR-LOOP-F01](#adr-loop-f01) |
 | 选择理由 | 避免第一个子错误就丢弃其他outstanding，也不把可恢复尝试错误直接计为最终失败。 |
 | 模型假设／参数依据 | remaining计64B逻辑片段；命令/响应计实际64B或burst事务。`pending_limit_errors`/`assembly_timeout_errors`计错误响应条数，`timeout_retry_rounds`计整页重试准备轮数；重发命令在Taken时计数，未来补片首次发送不计重传。replay中的资源重试同时属于`replay_commands`，这些维度不可直接相加。 |
-| 实现位置（函数／成员） | [void HostDriver::finish_work](../src/host/host_driver.cpp#L292)；[void HostDriver::receive](../src/host/host_driver.cpp#L323)；[struct WorkResult](../include/hbf_eventlab/host/workload.hpp#L31) |
+| 实现位置（函数／成员） | [void HostDriver::finish_work](../src/host/host_driver.cpp)；[void HostDriver::receive](../src/host/host_driver.cpp)；[struct WorkResult](../include/hbf_eventlab/host/workload.hpp#L31) |
 | 验证测试与覆盖 | 恢复后成功、最终失败、内容不匹配和逻辑片段汇总；[timeout_late_fragments](../tests/host_retry.cpp#L140)验证64条超时响应只驱动一轮重发，[timeout_release](../tests/host_retry.cpp#L156)区分未来补片和真正重传。<br>[Host：recovery_once](../CMakeLists.txt#L149)；[Host：persistent_failure](../CMakeLists.txt#L149)；[Host：data_mismatch](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 不同内容之间未实现任意读快照语义；不能从文件行顺序推断完成依赖。 |
@@ -2763,7 +2766,7 @@
 | 关联要求／条目 | REQ-WRITEORDER；REQ-RESPONSE；[ADR-W01](#adr-w01)；[ADR-W06](#adr-w06)；[ADR-LOOP-H10](#adr-loop-h10)；[ADR-LOOP-H23](#adr-loop-h23) |
 | 选择理由 | 保留正常写的接受流水，同时避免一次错误接受永久放行后继；不复制一份可能与Device漂移的Assembly状态。 |
 | 模型假设／参数依据 | 普通写错误先撤销当前命令覆盖的位；timeout整页重试前，在旧尝试排空后清零整页。修复状态按内容版本、页和pass关联；普通写pass为0，block replay使用各自pass。 |
-| 实现位置（函数／成员） | [Version::accepted / retries](../include/hbf_eventlab/host/host_driver.hpp#L75)；[HostDriver::accepted](../src/host/host_driver.cpp#L280)；[note_write_retry](../src/host/write_retry.cpp#L37)；[retry_eligible](../src/host/write_retry.cpp#L5)；[advance_write_retries](../src/host/write_retry.cpp#L81) |
+| 实现位置（函数／成员） | [Version::accepted / retries](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::accepted](../src/host/host_driver.cpp)；[note_write_retry](../src/host/write_retry.cpp#L37)；[retry_eligible](../src/host/write_retry.cpp#L5)；[advance_write_retries](../src/host/write_retry.cpp#L81) |
 | 验证测试与覆盖 | [pending_followers](../tests/host_retry.cpp#L90)验证错误接受曾放行后继、根因乱序及有效片段保留；[timeout_late_fragments](../tests/host_retry.cpp#L140)验证迟到旧尝试结束前不建立新一轮组装。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | bitmap仍是Host暂定记录，不能拿来查询真实Pending内容或替代Device写序检查。页级状态位于HostDriver内，不是独立策略插件。 |
@@ -2781,7 +2784,7 @@
 | 关联要求／条目 | REQ-PENDING；REQ-OVERLAP；[ADR-H06](#adr-h06)；[ADR-LOOP-H09](#adr-loop-h09)；[ADR-LOOP-H20](#adr-loop-h20)；[ADR-LOOP-H22](#adr-loop-h22) |
 | 选择理由 | 0x4的迟到反馈不表示整页都被丢弃；其他片段可能已有效组装。整页盲重发会造成overlap，等待整个block排空又可能阻止缺片DLU完成。 |
 | 模型假设／参数依据 | 最早受影响页先修复，同pass后继的新发送暂缓；已移交命令继续取得最终归属。失败单元回队列后分配新CommandId，保留原逻辑工作和符号内容。64B与显式burst均按原发送单元重试。 |
-| 实现位置（函数／成员） | [note_write_retry](../src/host/write_retry.cpp#L37)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[requeue](../src/host/write_retry.cpp#L30)；[HostDriver::pump](../src/host/host_driver.cpp#L220) |
+| 实现位置（函数／成员） | [note_write_retry](../src/host/write_retry.cpp#L37)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[requeue](../src/host/write_retry.cpp#L30)；[HostDriver::pump](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | [pending_followers](../tests/host_retry.cpp#L90)、[pending_burst](../tests/host_retry.cpp#L135)检查选择性重发和新命令身份；[real_pending](../tests/host_retry.cpp#L208)检查真实Device中Pending=1的闭环。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 有界重试不能保证持续超载时成功；自动补片不会增加配置容量。已成功接收的命令不因关联错误而被Host撤回。 |
@@ -2799,7 +2802,7 @@
 | 关联要求／条目 | REQ-PENDING；REQ-MODEL；[ADR-LOOP-H21](#adr-loop-h21)；[ADR-LOOP-H25](#adr-loop-h25)；[ADR-LOOP-F02](#adr-loop-f02) |
 | 选择理由 | 仅使用公开反馈；保留早于迟到0x4到达的容量进展，避免漏唤醒。正间隔兜底避免缺少后续已知完成时无限停等，同时不在同Tick自旋。 |
 | 模型假设／参数依据 | 同channel的Success、AssemblyTimeout、ProgramFail响应按内容/页/pass/组装轮去重，推进容量反馈版本。每次Taken保存当时版本；收到0x4后，发现新版本即可重查，否则最多等待`pending_retry_delay`（默认1000000 Tick）。 |
-| 实现位置（函数／成员） | [HostDriver::receive](../src/host/host_driver.cpp#L323)；[capacity_progress_ / capacity_completions_](../include/hbf_eventlab/host/host_driver.hpp#L143)；[Unit::capacity_at_handoff](../include/hbf_eventlab/host/host_driver.hpp#L70)；[update_retry_wakeup](../src/host/write_retry.cpp#L163) |
+| 实现位置（函数／成员） | [HostDriver::receive](../src/host/host_driver.cpp)；[capacity_progress_ / capacity_completions_](../include/hbf_eventlab/host/host_driver.hpp)；[Unit::capacity_at_handoff](../include/hbf_eventlab/host/host_driver.hpp)；[update_retry_wakeup](../src/host/write_retry.cpp#L163) |
 | 验证测试与覆盖 | [pending_progress](../tests/host_retry.cpp#L124)检查先完成后错误的反馈次序和timer取消；[pending_budget](../tests/host_retry.cpp#L112)检查无有效进展时有界重试；[real_pending](../tests/host_retry.cpp#L208)检查真实资源释放。 |
 | 实现状态／验证状态 | 已实现；V1（执行边界）；V0（数值校准）。 |
 | 已知限制 | 容量反馈只是代理，名额可能已被其他工作占用；兜底timer可能在没有已知DLU完成时探测并再次收到0x4。它不等价于精确Pending空闲订阅，不保证最少拒绝次数。 |
@@ -2817,7 +2820,7 @@
 | 关联要求／条目 | REQ-TIMEOUT；REQ-ASSEMBLY；[ADR-W09](#adr-w09)；[ADR-LOOP-H09](#adr-loop-h09)；[ADR-LOOP-H13](#adr-loop-h13)；[ADR-LOOP-H20](#adr-loop-h20) |
 | 选择理由 | 超时清理后，旧Link/Ingress片段仍可能迟到并建立另一个不完整context；先跟踪其最终响应，防止新一轮数据混入旧context或被旧反馈清零。 |
 | 模型假设／参数依据 | 同内容、页、pass中全部Handed单元结束后，检查64片覆盖；以前移交过的片段必须仍能从保留区找到，未发送片段必须到达原Global的`not_before`。满足后清空页bitmap并回队列；一次修复排空期间的多条超时响应不重复开轮。 |
-| 实现位置（函数／成员） | [PageRetry::phase / timeout_rounds](../include/hbf_eventlab/host/host_driver.hpp#L48)；[note_write_retry](../src/host/write_retry.cpp#L37)；[advance_write_retries的Draining分支](../src/host/write_retry.cpp#L102)；[requeue](../src/host/write_retry.cpp#L30) |
+| 实现位置（函数／成员） | [PageRetry::phase / timeout_rounds](../include/hbf_eventlab/host/host_driver.hpp)；[note_write_retry](../src/host/write_retry.cpp#L37)；[advance_write_retries的Draining分支](../src/host/write_retry.cpp#L102)；[requeue](../src/host/write_retry.cpp#L30) |
 | 验证测试与覆盖 | [timeout_late_fragments](../tests/host_retry.cpp#L140)、[timeout_future_data](../tests/host_retry.cpp#L156)、[timeout_missing_coverage](../tests/host_retry.cpp#L168)覆盖迟到、未来输入和缺失数据；[real_timeout](../tests/host_retry.cpp#L218)覆盖实际Device成功重试及持续失败。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 不发明缺片、不读取Device私有数据；保留容量不足可导致明确失败。晚到旧片段可能需要再等一次Device timeout才能排空，此等待不是新一轮Host重试。 |
@@ -2835,7 +2838,7 @@
 | 关联要求／条目 | REQ-WRITEORDER；[ADR-W06](#adr-w06)；[ADR-LOOP-H10](#adr-loop-h10)；[ADR-LOOP-H20](#adr-loop-h20)；[ADR-LOOP-H21](#adr-loop-h21)；[ADR-LOOP-H23](#adr-loop-h23) |
 | 选择理由 | 后继错误先到时不能立即丢弃整个内容版本，也不能把任意写序错误都当作可重试的资源拒绝。等待前页真正成功使错误修复边界明确。 |
 | 模型假设／参数依据 | 前页0x4/0x5只标记同内容、同pass中已Handed或已收到Order错误的具体后继尝试。若info1先到而前页仍有在途尝试则等待；前页终结后仍无可关联原因则报告`UnexplainedWriteOrderViolation`。被拒后继重发需前页全部成功；已经有效接收的后继不重复发送。 |
-| 实现位置（函数／成员） | [Unit::order_retry_allowed / PageRetry::order_explained](../include/hbf_eventlab/host/host_driver.hpp#L48)；[note_write_retry](../src/host/write_retry.cpp#L37)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[page_succeeded](../src/host/write_retry.cpp#L17) |
+| 实现位置（函数／成员） | [Unit::order_retry_allowed / PageRetry::order_explained](../include/hbf_eventlab/host/host_driver.hpp)；[note_write_retry](../src/host/write_retry.cpp#L37)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[page_succeeded](../src/host/write_retry.cpp#L17) |
 | 验证测试与覆盖 | [pending_followers](../tests/host_retry.cpp#L90)包含根因先到、后继先到、部分迟到后继合法接收三种交错；[unexplained_order](../tests/host_retry.cpp#L172)检查不能解释的错误明确失败。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 关联基于当前模型内可观察响应和具体命令尝试，并非通用故障因果推断。保守的成功屏障会降低修复期间的流水并行度，不能当成规范额外要求。 |
@@ -2853,7 +2856,7 @@
 | 关联要求／条目 | REQ-MODEL；REQ-SCOPE；[ADR-LOOP-H17](#adr-loop-h17)；[ADR-LOOP-H19](#adr-loop-h19)；[ADR-LOOP-H22](#adr-loop-h22)；[ADR-LOOP-H23](#adr-loop-h23) |
 | 选择理由 | 持续超载或MOCS不足以收齐页时也能有界结束；允许实验显式关闭自动重试，对比遇错终止的基线。 |
 | 模型假设／参数依据 | 默认`max_pending_retries=3`，按发送单元累计额外0x4尝试，Taken时计数；`max_timeout_retries=3`，按内容/页/pass累计额外完整组装轮数。0禁用对应功能。`pending_retry_delay=1000000 Tick`；这些预算独立于program-fail的`max_replay_passes`。 |
-| 实现位置（函数／成员） | [HostConfiguration](../include/hbf_eventlab/host/workload.hpp#L41)；[HostDriver::pump](../src/host/host_driver.cpp#L220)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[abort_version](../src/host/host_driver.cpp#L312)；[CLI参数](../examples/minimal_loop.cpp) |
+| 实现位置（函数／成员） | [HostConfiguration](../include/hbf_eventlab/host/workload.hpp#L41)；[HostDriver::pump](../src/host/host_driver.cpp)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[abort_version](../src/host/host_driver.cpp)；[CLI参数](../examples/minimal_loop.cpp) |
 | 验证测试与覆盖 | [pending_budget](../tests/host_retry.cpp#L112)验证耗尽/关闭；[real_timeout](../tests/host_retry.cpp#L218)验证整页预算；[timeout_future_data](../tests/host_retry.cpp#L156)验证数据不足；[partial_timeout](../tests/host.cpp#L176)保留关闭timeout重试的行为。 |
 | 实现状态／验证状态 | 已实现；V1（有限失败与关闭边界）；V0（参数校准）。 |
 | 已知限制 | 上限不是全workload统一次数，也不能保证重试成功。失败诊断为`PendingRetryBudgetExhausted`、`AssemblyRetryBudgetExhausted`或`WriteStatus:5 MissingRetryData`；不新增设备状态码，不自动退役或清除恢复义务。 |
@@ -2871,7 +2874,7 @@
 | 关联要求／条目 | REQ-REPLAY；REQ-TIMEOUT；[ADR-LOOP-H11](#adr-loop-h11)；[ADR-LOOP-H14](#adr-loop-h14)；[ADR-LOOP-H15](#adr-loop-h15)；[ADR-LOOP-H23](#adr-loop-h23)；[ADR-LOOP-H25](#adr-loop-h25) |
 | 选择理由 | 防止资源重试虚增block恢复次数或丢失最远终点，也避免block恢复排空时同时建立互相冲突的页重试。 |
 | 模型假设／参数依据 | replay执行期间允许当前pass内的页修复；发生program-fail或info2后，由RecoveryManager接管旧尝试排空并停用旧页修复。排空期间收到的旧资源错误不重新开启页修复。新replay使用新pass；资源重试仍属于原逻辑内容。 |
-| 实现位置（函数／成员） | [HostDriver::receive](../src/host/host_driver.cpp#L323)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[advance_recovery](../src/host/host_driver.cpp#L402)；[RecoveryManager::accepted](../src/host/recovery_manager.cpp#L30) |
+| 实现位置（函数／成员） | [HostDriver::receive](../src/host/host_driver.cpp)；[advance_write_retries](../src/host/write_retry.cpp#L81)；[advance_recovery](../src/host/host_driver.cpp)；[RecoveryManager::accepted](../src/host/recovery_manager.cpp#L30) |
 | 验证测试与覆盖 | [retry_during_replay](../tests/host_retry.cpp#L179)分别注入Pending满及组装超时，断言仍是一项任务、一遍replay；原有[replay_merge](../tests/host.cpp#L149)继续验证真正再次program-fail的终点和遍数。 |
 | 实现状态／验证状态 | 已实现；V1（已列交叉场景）。 |
 | 已知限制 | 未穷举资源错误、退役、remap和多次program failure的全部交错。不能把测试通过扩大为所有故障组合的符合性证明。 |
@@ -2891,7 +2894,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-H05](#adr-loop-h05)；[ADR-LOOP-H06](#adr-loop-h06)；[ADR-LOOP-H21](#adr-loop-h21)；[ADR-LOOP-H23](#adr-loop-h23)；[ADR-STAT-02](#adr-stat-02) |
 | 选择理由 | 避免稳定ID让失败重试永久占据旧优先级；避免预加载、burst延后构造及任意Global ID影响FCFS含义。允许合法候选越过受阻者，保持补齐前进性。 |
 | 模型假设／参数依据 | 每channel只比较当前合法候选。普通单元按释放Tick、输入行／行内片段顺序入队；burst按全部片段释放后的最后贡献片段排序。真正重发、新replay及恢复后失败后继取得新序号；NotTaken、依赖和资源等待保留原序号。超时重试中尚未发送的原片段保留次序，不计重传。同Tick动态入队按事件处理次序登记，无额外时间延迟。 |
-| 实现位置（函数／成员） | [HostDriver::Unit::enqueue_sequence / queued_at、initial_enqueues_](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::load / add_unit / release_units / enqueue / pump / advance_recovery](../src/host/host_driver.cpp)；[HostDriver::requeue](../src/host/write_retry.cpp)；[HostSendCandidate::sequence](../include/hbf_eventlab/interfaces/host_send_policy.hpp)；[FcfsHostSendPolicy::select / FillOpenDluPolicy::select](../include/hbf_eventlab/policies/host_send_policy.hpp)。 |
+| 实现位置（函数／成员） | [HostDriver::Unit::enqueue_sequence / queued_at、initial_enqueues_](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::load / register_input](../src/host/host_input.cpp)；[add_unit / release_units / enqueue / pump / advance_recovery](../src/host/host_driver.cpp)；[HostDriver::requeue](../src/host/write_retry.cpp)；[HostSendCandidate::sequence](../include/hbf_eventlab/interfaces/host_send_policy.hpp)；[FcfsHostSendPolicy::select / FillOpenDluPolicy::select](../include/hbf_eventlab/policies/host_send_policy.hpp)。 |
 | 验证测试与覆盖 | [host_send_policy.cpp](../tests/host_send_policy.cpp)：release_order、same_tick、dependency_age、not_taken、retry_tail、same_tick_retry、timeout_tail、timeout_unsent、replay_followers、burst_mixed、cross_global_burst、channels；统计断言检查稳定SendUnit／逻辑ID与重试queued_at；[statistics.cpp](../tests/statistics.cpp)：observational覆盖两种策略。 |
 | 实现状态／验证状态 | 已实现；V1（端口交错及真实Device闭环）。 |
 | 已知限制 | 默认FCFS不是严格队首阻塞，也不提供跨channel全局排序；fill_open的补齐／replay优先级仍高于队龄。不保证超载配置成功；当前候选扫描未针对大workload优化。 |
@@ -2909,7 +2912,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-F02](#adr-loop-f02)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 单看EventQueue返回会遗漏未发Host工作或没有事件的活动；各所有者报告而非Runner复制状态。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [RunReport SimulationRunner::run](../src/runtime/simulation_runner.cpp#L13)；[HostActivity HostDriver::activity](../src/host/host_driver.cpp#L470)；[DeviceActivity DeviceDriver::activity](../src/runtime/device_driver.cpp#L455) |
+| 实现位置（函数／成员） | [RunReport SimulationRunner::run](../src/runtime/simulation_runner.cpp#L13)；[HostActivity HostDriver::activity](../src/host/host_driver.cpp)；[DeviceActivity DeviceDriver::activity](../src/runtime/device_driver.cpp#L455) |
 | 验证测试与覆盖 | 空输入、Host空而Device仍有活动、正常完成、失败后排空。<br>[Host：empty](../CMakeLists.txt#L149)；[Host：runner_device_activity](../CMakeLists.txt#L149)；[Host：normal](../CMakeLists.txt#L149)；[Host：persistent_failure](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | activity有重叠维度，不应求和当请求总数；部分Host摘要扫描有限历史。 |
@@ -2927,7 +2930,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-F01](#adr-loop-f01)；[ADR-LOOP-F03](#adr-loop-f03) |
 | 选择理由 | 区分目前无候选与永远无动作，避免把等待介质/timeout误报停滞。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [RunReport SimulationRunner::run](../src/runtime/simulation_runner.cpp#L13)；[std::optional<Tick> EventQueue::next_time](../src/infrastructure/event_queue.cpp#L25)；[std::string HostDriver::waiting_reason](../src/host/host_driver.cpp#L481) |
+| 实现位置（函数／成员） | [RunReport SimulationRunner::run](../src/runtime/simulation_runner.cpp#L13)；[std::optional<Tick> EventQueue::next_time](../src/infrastructure/event_queue.cpp#L25)；[std::string HostDriver::waiting_reason](../src/host/host_driver.cpp) |
 | 验证测试与覆盖 | 未来组装timeout、未来release、未启动Host与无进展依赖。<br>[Host：partial_timeout](../CMakeLists.txt#L149)；[Host：delayed_release](../CMakeLists.txt#L149)；[Host：not_started](../CMakeLists.txt#L149)；[Host：stalled_dependency](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 不提供任意依赖图的因果证明；Stalled保留当前状态供诊断。 |
@@ -2963,7 +2966,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-F01](#adr-loop-f01)；[ADR-LOOP-H17](#adr-loop-h17) |
 | 选择理由 | 逻辑工作已全部有归属时，不应被取消请求的远期到达占住运行器。 |
 | 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [const bool settled=std::all_of](../src/host/host_driver.cpp#L460)；[release_events_](../include/hbf_eventlab/host/host_driver.hpp#L137) |
+| 实现位置（函数／成员） | [const bool settled=std::all_of](../src/host/host_driver.cpp)；[release_events_](../include/hbf_eventlab/host/host_driver.hpp) |
 | 验证测试与覆盖 | 被取消工作原有远期release不再引发虚假时间限额。<br>[Host：cancelled_future_release](../CMakeLists.txt#L149) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 已移交事件仍必须正常排空；不能泛化为任意未来事件都可删除。 |
@@ -3019,7 +3022,7 @@
 | 关联要求／条目 | REQ-SCOPE；REQ-MODEL；[ADR-LOOP-H03](#adr-loop-h03)；[ADR-LOOP-H04](#adr-loop-h04)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 便于保留固定实验输入、识别单位/范围错误，并在替换前端时复用同一Host接口。 |
 | 模型假设／参数依据 | 格式HBF_EVENTLAB_WORKLOAD 1；exit 0成功/2逻辑失败/3停滞/4限额/5模型输入/6实现错误。 |
-| 实现位置（函数／成员） | [std::vector<GlobalRequest> read_workload](../src/adapters/workload_reader.cpp#L11)；[void HostDriver::validate](../src/host/host_driver.cpp#L23)；[int main(](../examples/minimal_loop.cpp#L39) |
+| 实现位置（函数／成员） | [std::vector<GlobalRequest> read_workload](../src/adapters/workload_reader.cpp)；[HostDriver::prepare](../src/host/host_input.cpp)；[int main(](../examples/minimal_loop.cpp#L39) |
 | 验证测试与覆盖 | 格式解析/输入拒绝，正常/恢复/持续失败/缺数据的CLI结果与退出码。<br>[Host：parser](../CMakeLists.txt#L149)；[Host：input_validation](../CMakeLists.txt#L149)；[CLI：normal](../CMakeLists.txt#L139)；[CLI：recovery](../CMakeLists.txt#L141)；[CLI：persistent](../CMakeLists.txt#L143)；[CLI：missing](../CMakeLists.txt#L144) |
 | 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
 | 已知限制 | 只支持有限内存加载输入；未实现GPU/HBM、运行时CSR/ADMIN、自动refresh或remap workload。 |
@@ -3039,7 +3042,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-L01](#adr-loop-l01)；[ADR-LOOP-L07](#adr-loop-l07)；[ADR-LOOP-H19](#adr-loop-h19) |
 | 选择理由 | 将Host等待、请求传输、RX等待和接受后的服务区分，避免误把credit持有时长解释为NAND操作时延。 |
 | 模型假设／参数依据 | 原Global `not_before` 为释放边界；Taken为移交；RX到达不等于接受；交付时间取Device事件，不取Host回调或导出时间。Tick=1ps沿用执行配置。分位数采用nearest-rank，成功/失败及读/写分别汇总。 |
-| 实现位置（函数／成员） | [IStatisticsSink / StatisticsEvent](../include/hbf_eventlab/interfaces/statistics_sink.hpp)；[DeviceDriver::try_submit / admit / deliver](../src/runtime/device_driver.cpp)；[HostDriver::start / pump / receive](../src/host/host_driver.cpp)；[StatisticsCollector::record / summarize](../src/statistics/collector.cpp)。 |
+| 实现位置（函数／成员） | [IStatisticsSink / StatisticsEvent](../include/hbf_eventlab/interfaces/statistics_sink.hpp)；[DeviceDriver::try_submit / admit / deliver](../src/runtime/device_driver.cpp)；[HostDriver::start / arm_releases](../src/host/host_input.cpp)；[pump / receive](../src/host/host_driver.cpp)；[StatisticsCollector::record / summarize](../src/statistics/collector.cpp)。 |
 | 验证测试与覆盖 | [statistics.cpp](../tests/statistics.cpp)：boundaries、ingress_wait、event_time、zero_and_status，验证传输公式、RX/MOCS区分、回调延后、读写同数值状态及零延迟。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 未校准性能；DLU阶段与Pending占用见[ADR-STAT-04](#adr-stat-04)、[ADR-STAT-05](#adr-stat-05)；Bank操作观察见[ADR-STAT-06](#adr-stat-06)，利用率需明确观测区间及Bank数量。 |
@@ -3057,7 +3060,7 @@
 | 关联要求／条目 | REQ-MODEL；[ADR-LOOP-H02](#adr-loop-h02)；[ADR-LOOP-H19](#adr-loop-h19)；[ADR-LOOP-H23](#adr-loop-h23)；[ADR-LOOP-H26](#adr-loop-h26) |
 | 选择理由 | 避免把一次burst算作64次响应，把可恢复尝试错误当作最终失败，或重置释放时刻而隐藏重试成本。 |
 | 模型假设／参数依据 | 一次Taken对应一个TransferAttemptId；NotTaken不创建尝试。burst可关联多个Global；replay按channel/local地址/content查回原始工作。Global在全部子工作取得最终结果时完成，时间取最后子结果；历史成功不重复完成。重试更新queued_at，原释放时间不变。 |
-| 实现位置（函数／成员） | [HostDriver::load / finish_work / pump / advance_recovery](../src/host/host_driver.cpp)；[HostDriver::requeue](../src/host/write_retry.cpp)；[StatisticsCollector::write_index_ / work_ / attempts_](../include/hbf_eventlab/statistics/collector.hpp)及[record(StatAttemptLinked)](../src/statistics/collector.cpp)。 |
+| 实现位置（函数／成员） | [HostDriver::register_input](../src/host/host_input.cpp)；[finish_work / pump / advance_recovery](../src/host/host_driver.cpp)；[HostDriver::requeue](../src/host/write_retry.cpp)；[StatisticsCollector::write_index_ / work_ / attempts_](../include/hbf_eventlab/statistics/collector.hpp)及[record(StatAttemptLinked)](../src/statistics/collector.cpp)。 |
 | 验证测试与覆盖 | [statistics.cpp](../tests/statistics.cpp)：cross_global_burst、multi_channel、pending_retry、timeout_retry、replay、mismatch；覆盖共享归属、0x4/0x5和重复program-fail、协议成功但Host符号数据不匹配。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | replay_attempts与retried_unit_attempts可交叉，不能相加；保留历史成功不表示故障后旧数据始终可读。 |
@@ -3259,6 +3262,62 @@
 | 验证测试与覆盖 | [公共层测试](../tests/test_experiment_common.py)、[配置路径测试](../tests/check_experiment_python.cmake)及四组真实CLI实验集成；已有54案例重分析指标一致。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | Python模型契约不是完整CLI元数据接口；固定案例分析器不能直接用于任意大型trace。依赖范围不等于精确环境锁定。 |
+
+### 增量 Host 输入契约
+
+<a id="adr-input-01"></a>
+
+#### ADR-INPUT-01｜同一Host支持增量批次登记，输入契约错误整批拒绝，保留离线完整预检。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；实现保障 |
+| 分类边界说明 | 本条是模拟器前端输入契约；submit成功不表示Device接受、占用MOCS或数据进入Assembly。 |
+| 规范依据／无直接依据说明 | OCP不规定模拟器C++输入批次或文本解析接口。既有地址粒度、写合法性及响应语义不改变。 |
+| 关联要求／条目 | [ADR-LOOP-M03](#adr-loop-m03)；[ADR-LOOP-H03](#adr-loop-h03)；[ADR-LOOP-H27](#adr-loop-h27) |
+| 选择理由 | 复用原Host的候选、重试、replay与统计；避免后半批输入错误留下部分业务状态。 |
+| 模型假设／参数依据 | 单事件线程；not_before为不早于当前时刻的绝对时间。依赖限已登记或同批ID；fragment64可跨批补DLU，显式burst须同批完整。累计输入受max_logical_fragments限制。 |
+| 实现位置（函数／成员） | [HostDriver::prepare / register_input / load / submit / start_incremental / arm_releases](../src/host/host_input.cpp)；[WorkloadReader::next / read_workload](../src/adapters/workload_reader.cpp)。 |
+| 验证测试与覆盖 | [host_incremental.cpp](../tests/host_incremental.cpp)：split、atomic、address_atomic、duplicate、dependencies、invalid_dependencies、burst、future、future_cancel_reuse、hints、limit_atomic、equivalent、parser、guards；离线与同条件增量输入的完整统计JSON一致。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 无跨提交未来依赖、跨提交burst组包或队列额度背压。回滚保证针对输入契约错误，不覆盖内存耗尽和观察器异常。逐条文本解析不提供实时输入时间协调。 |
+
+<a id="adr-input-02"></a>
+
+#### ADR-INPUT-02｜新内容成功登记隐式封闭该逻辑块旧版本的普通输入，旧工作和内部恢复继续。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；实现保障 |
+| 分类边界说明 | 沿用逻辑块content身份，不新增设备epoch或以PEC判断输入封闭。向封闭版本追加普通写是Host输入错误，不生成Device错误响应。 |
+| 规范依据／无直接依据说明 | OCP未规定Host模拟器的内容ID和提交生命周期；本条扩展既有不可回用内容契约到增量场景。 |
+| 关联要求／条目 | [ADR-LOOP-H04](#adr-loop-h04)；[ADR-LOOP-H13](#adr-loop-h13)；[ADR-INPUT-01](#adr-input-01) |
+| 选择理由 | 不需预先知道整个trace，也不增加显式seal协议；保留旧内容恢复所需身份和数据。 |
+| 模型假设／参数依据 | 版本依成功登记顺序，不依数值大小或释放时刻；同一逻辑块不能A→B→A，其他块独立。读取不封闭版本；失败批次不封闭。已失败版本不接受外部普通写。 |
+| 实现位置（函数／成员） | [HostDriver::Version::defined / accepted、version_order_](../include/hbf_eventlab/host/host_driver.hpp)；[prepare / register_input](../src/host/host_input.cpp)；[eligible / version_done / advance_recovery](../src/host/host_driver.cpp)。defined仅用于输入覆盖，accepted仍为暂定发送进度，均不替代Device组装状态。 |
+| 验证测试与覆盖 | [host_incremental.cpp](../tests/host_incremental.cpp)：sealed、block_scope、atomic、address_atomic、recovered_sealed、recovery_append、abort_append；覆盖非单调ID、旧版本恢复、新版本隔离与失败拒绝。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 封闭不保证旧输入完整；未知未来数据不参与当前恢复，缺数据仍可终止版本。没有任意新旧读快照，也未加入内容历史回收。 |
+
+<a id="adr-input-03"></a>
+
+#### ADR-INPUT-03｜Global最终结果异步通知；输入登记、逻辑完成、排空及输入结束相互区分。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；实现保障 |
+| 分类边界说明 | GlobalCompletion是Host工作汇总通知，不是额外OCP completion。Device命令响应和credit释放边界保持不变。 |
+| 规范依据／无直接依据说明 | OCP不规定模拟器回调和输入源结束接口；沿用当前Global逻辑工作统计口径。 |
+| 关联要求／条目 | [ADR-STAT-02](#adr-stat-02)；[ADR-LOOP-F01](#adr-loop-f01)；[ADR-INPUT-01](#adr-input-01) |
+| 选择理由 | 外部调用方可以依据结果继续提交，并避免receive/advance状态更新中的同步重入；不误把暂时空闲判为输入结束。 |
+| 模型假设／参数依据 | 模式选择前挂接一次处理器；所有子工作终结后恰好一次异步通知，at记录结果确定时刻。回调可submit，不可递归运行事件。统计事件仍使用原事件时刻。 |
+| 实现位置（函数／成员） | [GlobalCompletion / set_completion_handler](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::finish_work / schedule / activity](../src/host/host_driver.cpp)；[SimulationRunner::run增量模式检查](../src/runtime/simulation_runner.cpp)；[反馈追加示例](../examples/incremental_host.cpp)。 |
+| 验证测试与覆盖 | [host_incremental.cpp](../tests/host_incremental.cpp)：feedback、idle、recovered_sealed、observer、guards；[incremental_host.cpp](../examples/incremental_host.cpp)展示分批写与完成反馈产生读。 |
+| 实现状态／验证状态 | 已实现于增量Host接口；V1。 |
+| 已知限制 | 逻辑失败通知不保证旧在途操作已排空。有限SimulationRunner拒绝增量模式；安全推进前沿、输入关闭、WaitingForInput及外部模拟器适配尚未提供。 |
 
 ## 5. 参数与模型假设
 

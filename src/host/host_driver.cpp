@@ -20,49 +20,6 @@ HostDriver::~HostDriver() {
     for(auto id:owned_events_)events_.cancel(id);
     for(auto& c:channels_)if(c.wait)port_.notifications().cancel(*c.wait);
 }
-void HostDriver::validate(const std::vector<GlobalRequest>& input) const {
-    std::map<GlobalRequestId,const GlobalRequest*> ids;std::uint64_t count=0;
-    for(const auto& r:input) {
-        if(!ids.emplace(r.id,&r).second)throw std::invalid_argument("duplicate Global ID");
-        if(r.op!=Op::Read && r.op!=Op::Write)throw std::invalid_argument("invalid operation");
-        if(r.op==Op::Write&&!r.after.empty())throw std::invalid_argument("LIMIT-WRITE-001: extra write dependencies unsupported");
-        if(r.op==Op::Write&&(r.group||r.expected_content))throw std::invalid_argument("read-only fields on Write");
-        if(!r.bytes||r.bytes%64||r.address.value%64)throw std::invalid_argument("unaligned/empty Global range");
-        (void)checked_add(r.address.value,r.bytes);
-        count=checked_add(count,r.bytes/64);
-        if(count>config_.max_logical_fragments)throw std::invalid_argument("workload exceeds configured fragment limit");
-        if(r.not_before<events_.now())throw std::invalid_argument("workload release time is in the past");
-    }
-    std::map<GlobalRequestId,int> color;
-    std::function<void(GlobalRequestId)> visit=[&](GlobalRequestId id) {
-        if(!ids.count(id))throw std::invalid_argument("unknown read dependency");
-        if(color[id]==1)throw std::invalid_argument("cyclic read dependency");
-        if(color[id]==2)return;
-        color[id]=1;for(auto dependency:ids.at(id)->after)visit(dependency);color[id]=2;
-    };
-    for(const auto& r:input)visit(r.id);
-    std::map<RetainedKey,GlobalByteAddress> coverage;
-    std::map<ContentKey,std::map<PageId,std::size_t>> pages;
-    std::map<LogicalBlockKey,std::vector<std::uint64_t>> versions;
-    for(const auto& r:input)for(const auto& f:splitter_.split(r)) {
-        if(f.address.channel>=channels_.size() || f.address.local.value>=port_.description().geometry().channel_bytes())
-            throw std::invalid_argument("interleaver outside channel geometry");
-        if(r.op!=Op::Write)continue;
-        const ContentKey key{f.logical.block,r.content};
-        auto& order=versions[key.block];
-        if(order.empty()||order.back()!=key.content) {
-            if(std::find(order.begin(),order.end(),key.content)!=order.end())
-                throw std::invalid_argument("LIMIT-CONTENT-001: reused noncontiguous content version");
-            order.push_back(key.content);
-        }
-        if(!coverage.emplace(RetainedKey{key,f.logical.page,f.logical.byte_offset/64},f.global).second)
-            throw std::invalid_argument("LIMIT-CONTENT-002: duplicate write fragment in one content version");
-        ++pages[key][f.logical.page];
-    }
-    if(config_.writes==WriteCommandMode::Burst4096)
-        for(const auto& version:pages)for(const auto& page:version.second)
-            if(page.second!=64)throw std::invalid_argument("BURST-INCOMPLETE: explicit burst mode needs complete local DLU coverage");
-}
 SendUnitId HostDriver::add_unit(Op op,std::vector<Fragment> fragments,std::optional<ContentKey> content,
                                std::optional<ReadGroup> group,bool replay,std::uint64_t pass) {
     if(fragments.empty())throw std::logic_error("empty send unit");
@@ -94,72 +51,10 @@ void HostDriver::release_units(Tick now) {
         initial_enqueues_.erase(it);
     }
 }
-void HostDriver::load(const std::vector<GlobalRequest>& input) {
-    if(loaded_||started_)throw std::logic_error("Host workload already loaded");
-    validate(input); // no partial device activity on invalid input
-    std::map<PageKey,std::vector<Fragment>> burst;
-    std::vector<PageKey> burst_order;
-    for(const auto& r:input) {
-        requests_.emplace(r.id,r);results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/64)});
-        if(statistics_sink_)statistics_sink_->observe(StatGlobalDefined{r.id,r.op,r.bytes,r.not_before});
-        for(auto f:splitter_.split(r)) {
-            f.id=LogicalWorkId{++next_work_};work_.emplace(f.id,Work{f});
-            if(statistics_sink_)statistics_sink_->observe(StatWorkDefined{f.id,r.id,f.address,
-                r.op==Op::Write?std::optional<std::uint64_t>{r.content}:std::nullopt});
-            std::optional<ContentKey> content;
-            if(r.op==Op::Write) {
-                content=ContentKey{f.logical.block,r.content};
-                if(!versions_.count(*content)) {versions_.emplace(*content,Version{});version_order_[content->block].push_back(*content);}
-            }
-            if(r.op==Op::Write&&config_.writes==WriteCommandMode::Burst4096) {
-                const PageKey key{*content,f.logical.page};if(!burst.count(key))burst_order.push_back(key);burst[key].push_back(f);
-            } else add_unit(r.op,{f},content,r.group);
-        }
-    }
-    for(auto key:burst_order) {
-        auto fragments=std::move(burst.at(key));
-        std::sort(fragments.begin(),fragments.end(),[](const auto&a,const auto&b){return a.logical.byte_offset<b.logical.byte_offset;});
-        add_unit(Op::Write,std::move(fragments),key.content,{});
-    }
-    if(config_.hints==ReadHintMode::TailBatch) {
-        std::map<std::pair<GlobalRequestId,ChannelId>,SendUnitId> tails;
-        for(const auto& item:units_)if(item.second.op==Op::Read) {
-            const auto& f=item.second.fragments.front();tails[{f.parent,f.address.channel}]=item.first;
-        }
-        for(const auto& item:tails)units_.at(item.second).hint=ReadHint::Batch;
-    }
-    for(auto& release:initial_enqueues_)std::sort(release.second.begin(),release.second.end());
-    loaded_=true;
-}
 EventId HostDriver::schedule(Tick at,std::function<void()> f) {
     auto id=std::make_shared<EventId>();
     *id=events_.schedule_at(at,EventPhase::Arrival,[this,id,f=std::move(f)]{owned_events_.erase(*id);f();});
     owned_events_.insert(*id);return *id;
-}
-void HostDriver::start() {
-    if(!loaded_||started_)throw std::logic_error("Host must load exactly once before start");
-    started_=true;
-    release_units(events_.now());
-    if(statistics_sink_)for(const auto& r:requests_)if(!(events_.now()<r.second.not_before))
-        statistics_sink_->observe(StatGlobalReleased{r.first,r.second.not_before});
-    std::map<Tick,std::vector<GlobalRequestId>> releases;
-    for(const auto& r:requests_)if(events_.now()<r.second.not_before) {
-        auto& ids=releases[r.second.not_before];
-        if(statistics_sink_)ids.push_back(r.first);
-    }
-    for(auto& entry:releases) {
-        const auto at=entry.first;
-        // Index once: observing releases must not scan the entire workload at
-        // every distinct arrival time. Same event count/order as the driver.
-        release_events_[at]=schedule(at,[this,at,ids=std::move(entry.second)]{
-            release_units(at);
-            if(statistics_sink_)for(auto id:ids)
-                if(results_.at(id).state==LogicalResult::Pending)
-                    statistics_sink_->observe(StatGlobalReleased{id,at});
-            release_events_.erase(at);for(ChannelId ch=0;ch<channels_.size();++ch)request_pump(ch);
-        });
-    }
-    for(ChannelId ch=0;ch<channels_.size();++ch)request_pump(ch);
 }
 void HostDriver::request_pump(ChannelId ch) {
     if(channels_[ch].pump)return;
@@ -302,6 +197,11 @@ void HostDriver::finish_work(LogicalWorkId id,bool success,const std::string& re
         statistics_sink_->observe(StatWorkFinished{id,events_.now(),success,success?std::string{}:reason});
         if(!result.remaining)statistics_sink_->observe(StatGlobalFinished{result.id,events_.now(),
             result.state==LogicalResult::Success,result.reason});
+    }
+    if(!result.remaining && completion_) {
+        const GlobalCompletion completed{result,events_.now()};
+        // Run after receive/advance finishes updating attempts and retry state.
+        schedule(events_.now(),[this,completed]{completion_(completed);});
     }
 }
 void HostDriver::cancel_unit(Unit& u,const std::string& reason) {
@@ -461,6 +361,7 @@ void HostDriver::advance() {
     if(settled) {
         for(const auto& event:release_events_) {events_.cancel(event.second);owned_events_.erase(event.second);}
         release_events_.clear();
+        release_globals_.clear();
         initial_enqueues_.clear();
     }
     // Cancel passive source waits if no sendable work remains on that channel.

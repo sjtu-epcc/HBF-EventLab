@@ -363,6 +363,54 @@ CLI 打印配置、Global 结果、尝试错误、恢复次数、设备操作数
 
 持久 NAND、映射、PEC、无活动引用的 Cache、放弃恢复后的设备限制不要求清空。未来 timeout、窗口、介质完成和 release 事件仍直接跳时执行；被动订阅不会凭空产生进展。
 
+<a id="incremental-host"></a>
+
+## 增量 Host API
+
+C++ 调用方可向同一个 `HostDriver` 追加 `GlobalRequest`，复用现有发送策略、内容身份、写重试、replay 和统计。CLI 仍采用完整文本加载，不因增加此 API 而改变离线预检方式。
+
+```cpp
+// Host / Device / EventQueue 的构造与离线模式相同。
+// 统计接收器和完成处理器均在选择输入模式之前挂接。
+host.set_completion_handler([&](const GlobalCompletion& completion) {
+    // result.id / state / failed / reason：所有逻辑子工作的最终汇总。
+    // at：逻辑结果确定的模拟时刻；此处可以继续 host.submit(...)。
+});
+host.start_incremental(); // 与 load(...); start(); 二选一
+
+GlobalRequest first{GlobalRequestId{1}, Op::Write,
+                    GlobalByteAddress{0}, 2048, 1};
+first.not_before = events.now();
+host.submit(first);
+
+GlobalRequest rest{GlobalRequestId{2}, Op::Write,
+                   GlobalByteAddress{2048}, 2048, 1};
+rest.not_before = events.now();
+host.submit(rest); // 单 channel 示例：两次登记共同补齐一个 4KiB DLU
+```
+
+上述地址例子要求单 channel；多 channel 的 DLU 归属仍由交织和布局决定。完整构造和反馈追加读的例子见 [incremental_host.cpp](../examples/incremental_host.cpp)，构建目标为 `hbf_eventlab_incremental_demo`。在已有构建目录中运行：
+
+```powershell
+cmake --build build --config Debug --target hbf_eventlab_incremental_demo
+.\build\Debug\hbf_eventlab_incremental_demo.exe
+ctest --test-dir build -C Debug -R '^host_incremental_' --output-on-failure
+```
+
+API 契约如下：
+
+- `submit(request)` 或 `submit(vector)` 成功表示 **Host 已登记输入**，不表示链路 Taken、Device 正式接受或写入 Assembly。ID 在整个 Host 生命周期中唯一，失败批次不占用 ID。
+- 一批输入先完整校验，再登记和安排释放。对重复 ID／片段、地址越界、过去时刻、未知依赖、封闭版本等输入错误，整批抛出异常；不会留下部分输入、统计或封闭变化。内存耗尽、用户观察器抛异常等不在可恢复回滚保证内。
+- `not_before` 是绝对模拟时刻，必须不早于 `events.now()`；默认值仍为零，不自动改为“现在”。同 Tick 按提交和批内次序登记，之后遵守现有候选合法性和发送策略。Host 不保证等待尚未提交的未来数据；组装期限仍正常推进。
+- READ 的 `after` 可以引用已经登记的请求，或同一批次中稍后列出的请求；拒绝未登记的未来 ID 和循环依赖。WRITE 的额外完成依赖仍不支持。
+- 内容封闭按**逻辑块和成功登记顺序**发生，与 content 数值大小和 `not_before` 大小无关。提交该块新 content 的普通写后，旧 content 不再接受外部普通写；旧在途请求、重试和 replay 继续处理。其他逻辑块不受影响。向封闭或已失败版本追加普通写是 Host 输入错误，不产生 Device 错误 completion。读期望值不建立或封闭写版本。
+- `fragment64` 可跨批次补齐 DLU；`burst4096` 要求每个 local DLU 在**同一提交批次**中提供完整覆盖，可以来自多个 Global 条目，不跨批次暂存待组包片段。`tail_batch` 仍按每个 Global 条目、每个 channel 决定末尾 Batch 提示，不以 `submit()` 批次作为读窗口边界。
+- `GlobalCompletion` 在该 Global 的全部逻辑子工作取得最终归属后恰好通知一次；错误尝试若仍会重试，不提前通知失败。通知通过后续同 Tick 事件调用，结果是独立副本；`at` 保存结果确定时刻。逻辑结果已确定不保证关联旧尝试和 Device 活动已经全部排空。回调可以提交新输入，但不得递归推进事件，也不应抛异常。
+
+`WorkloadReader::next()` 每次返回一个文本条目，EOF 返回空值，并保留格式版本和行号诊断。它只负责阻塞式 `istream` 解析，不是实时输入协议；逐条 `submit()` 时不能引用尚未登记的依赖，也不能拆开显式 burst 页。离线 `read_workload()` 仍读取完整列表后统一校验。
+
+**时间推进仍由调用方负责。** 示例在执行队列前登记已知的生产者事件，因此可以安全运行。面对未知外部输入，不能直接 `events.run()` 跳到未来 timeout，再试图补交早于当前时刻的请求。安全时间前沿、输入关闭和等待外部输入状态尚未提供；现有有限输入 `SimulationRunner` 明确拒绝增量模式。当前 `activity().drained()`／`workload_success()` 只涵盖已登记工作，不能证明输入结束。数据结构和统计仍保留历史，`host.max_logical_fragments` 按累计输入计数，不是可回收的队列额度。
+
 ## 支持边界
 
 完整响应子集、输入限制和未实现功能见[支持范围与限制](scope_and_limitations.md)。验证矩阵、结果及复现步骤见[验证说明](verification.md)。
