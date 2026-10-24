@@ -4,6 +4,7 @@ const char* to_string(RunStatus s) {
     switch(s) {
     case RunStatus::Completed:return "Completed";case RunStatus::Stalled:return "Stalled";
     case RunStatus::LimitReached:return "LimitReached";case RunStatus::ModelError:return "ModelError";
+    case RunStatus::Paused:return "Paused";case RunStatus::WaitingForInput:return "WaitingForInput";
     default:return "ImplementationError";
     }
 }

@@ -16,6 +16,7 @@ add_library(hbf_eventlab
     src/host/host_input.cpp
     src/host/write_retry.cpp
     src/runtime/simulation_runner.cpp
+    src/runtime/simulation_session.cpp
     src/architecture/execution_configuration.cpp
     src/runtime/bank_cache.cpp
     src/runtime/device_driver.cpp
@@ -54,9 +55,21 @@ add_executable(hbf_eventlab_cli examples/minimal_loop.cpp)
 target_link_libraries(hbf_eventlab_cli PRIVATE hbf_eventlab_workload_io)
 add_executable(hbf_eventlab_incremental_demo examples/incremental_host.cpp)
 target_link_libraries(hbf_eventlab_incremental_demo PRIVATE HBFEventLab::core)
+add_executable(hbf_eventlab_session_demo examples/online_session.cpp)
+target_link_libraries(hbf_eventlab_session_demo PRIVATE HBFEventLab::core)
 include(CTest)
 include(cmake/ExperimentPython.cmake)
 if(BUILD_TESTING)
+    add_test(NAME session_demo COMMAND hbf_eventlab_session_demo)
+    add_executable(hbf_eventlab_session_tests tests/session.cpp)
+    target_link_libraries(hbf_eventlab_session_tests PRIVATE HBFEventLab::core)
+    foreach(scenario exclusive empty_frontier endpoint_input first_atomic late_atomic horizon_guard open_drained close_work close_empty
+            open_timeout closed_stalled missing_predecessor feedback_closed feedback_guard feedback_future feedback_validation callback_error callback_model_error
+            limit_total limit_tick limit_round time_empty time_future entered_tick equivalent causal_time recovery clock_idle frozen_deadline
+            deadline_endpoint deadline_feedback maximum_boundary)
+        add_test(NAME session_${scenario} COMMAND hbf_eventlab_session_tests ${scenario})
+        set_tests_properties(session_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
     add_test(NAME host_incremental_demo COMMAND hbf_eventlab_incremental_demo)
     add_executable(hbf_eventlab_host_incremental_tests tests/host_incremental.cpp)
     target_link_libraries(hbf_eventlab_host_incremental_tests PRIVATE hbf_eventlab_workload_io)

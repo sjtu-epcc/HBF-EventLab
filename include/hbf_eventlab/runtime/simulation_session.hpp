@@ -1,0 +1,62 @@
+#pragma once
+#include "hbf_eventlab/configuration/simulation_configuration.hpp"
+#include "hbf_eventlab/policies/round_robin_interleaver.hpp"
+
+namespace hbf_eventlab {
+struct SessionReport {
+    RunReport run;
+    bool input_closed;
+    // Earliest external timestamp; false excludes the floor tick itself.
+    Tick input_floor;
+    bool accepts_at_floor;
+    std::optional<Tick> next_event;
+};
+
+// One logical external producer, all calls on the same simulation thread.
+// Owns the existing Host/Device, not an alternative streaming Host. No wall-time
+// waits, threads, sockets, or file I/O. The optional observer outlives this object.
+class SimulationSession {
+public:
+    explicit SimulationSession(ResolvedSimulationConfiguration, IStatisticsSink* = nullptr);
+    SimulationSession(const SimulationSession&)=delete;
+    SimulationSession& operator=(const SimulationSession&)=delete;
+    void set_completion_handler(std::function<void(const GlobalCompletion&)>);
+    // External registration: outside advance/callbacks, before close_input.
+    // Rejected batches have the same input-contract atomicity as Host::submit.
+    void submit(const std::vector<GlobalRequest>&);
+    void submit(const GlobalRequest& r) { submit(std::vector<GlobalRequest>{r}); }
+    // Only within this session's completion callback, including after close.
+    // It already runs as an event; Host release/pump obey same-tick causality.
+    void submit_feedback(const std::vector<GlobalRequest>&);
+    void submit_feedback(const GlobalRequest& r) { submit_feedback(std::vector<GlobalRequest>{r}); }
+    void close_input(); // idempotent; does not cancel accepted work or feedback
+    SessionReport advance_before(Tick); // exclusive endpoint, not a run limit
+    SessionReport run_to_completion(); // requires external input closed
+    // Absolute safety ceilings, preserved across pauses; explicit changes only.
+    void set_run_limits(RunLimits);
+    const RunLimits& run_limits() const { return limits_; }
+    Tick now() const { return events_.now(); }
+    Tick input_floor() const { return events_.now(); }
+    bool accepts_at_floor() const { return !events_.tick_started(); }
+    bool input_closed() const { return input_closed_; }
+    std::optional<Tick> next_event_time();
+    const HostDriver& host() const { return host_; }
+    const DeviceDriver& device() const { return device_; }
+    const ResolvedSimulationConfiguration& configuration() const { return config_; }
+private:
+    void outside_execution() const;
+    void healthy() const;
+    void start();
+    SessionReport drive(std::optional<Tick>);
+    SessionReport report(RunStatus,const std::string&);
+    ResolvedSimulationConfiguration config_;
+    EventQueue events_;
+    DeviceDriver device_;
+    RoundRobinInterleaver interleaver_;
+    HostDriver host_;
+    RunLimits limits_;
+    bool input_closed_=false, started_=false;
+    bool running_=false, in_feedback_=false;
+    std::optional<std::pair<RunStatus,std::string>> failure_;
+};
+} // namespace hbf_eventlab

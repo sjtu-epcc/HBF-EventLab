@@ -26,12 +26,16 @@ public:
     // Callback exceptions retain the remaining batch; resumption finishes it first.
     bool run_next();
     void run();
+    // Advance an empty time interval without inventing an event. Events at the
+    // endpoint remain unexecuted. Never skip a live event or frozen settlement.
+    void advance_idle_to(Tick);
     void set_limits(EventLimits limits) { limits_ = limits; }
     Tick now() const { return now_; }
     std::uint64_t round() const { return round_; }
     std::uint64_t executed() const { return executed_; }
     std::uint64_t executed_this_tick() const { return tick_events_; }
     bool settling_deadlines() const { return settling_; }
+    bool tick_started() const { return has_executed_ || !settlement_.empty(); }
     std::size_t pending() const { return live_.size(); }
     std::optional<Tick> next_time();
 private:

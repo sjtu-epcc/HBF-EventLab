@@ -409,7 +409,70 @@ API 契约如下：
 
 `WorkloadReader::next()` 每次返回一个文本条目，EOF 返回空值，并保留格式版本和行号诊断。它只负责阻塞式 `istream` 解析，不是实时输入协议；逐条 `submit()` 时不能引用尚未登记的依赖，也不能拆开显式 burst 页。离线 `read_workload()` 仍读取完整列表后统一校验。
 
-**时间推进仍由调用方负责。** 示例在执行队列前登记已知的生产者事件，因此可以安全运行。面对未知外部输入，不能直接 `events.run()` 跳到未来 timeout，再试图补交早于当前时刻的请求。安全时间前沿、输入关闭和等待外部输入状态尚未提供；现有有限输入 `SimulationRunner` 明确拒绝增量模式。当前 `activity().drained()`／`workload_success()` 只涵盖已登记工作，不能证明输入结束。数据结构和统计仍保留历史，`host.max_logical_fragments` 按累计输入计数，不是可回收的队列额度。
+上述是底层 Host 接口；示例在执行队列前登记已知生产者事件。未知未来输入应使用下面的 `SimulationSession`，不要直接让 `events.run()` 跳过外部尚可能提交的时刻。有限输入 `SimulationRunner` 明确拒绝裸增量模式。`activity().drained()`／`workload_success()` 只涵盖已登记工作，不能证明输入结束；累计输入与统计历史仍不自动回收。
+
+<a id="online-session"></a>
+
+## 在线会话 API
+
+`SimulationSession` 接收 `ResolvedSimulationConfiguration`，构造原有 Host、Device、地址交织及事件队列。它使用统一配置中的几何、策略、故障输入和运行限额，不依赖文件输入。配置的 `output` 路径和 trace 开关仍由应用层处理；会话不打开输出文件。可在构造时传入 `IStatisticsSink*`，观察器必须比会话活得更久。Host/Device 查询通过只读视图提供，不允许从会话获取可修改的事件队列。
+
+```cpp
+SimulationConfiguration config;
+config.device.geometry.host_channels = 1;
+StatisticsCollector statistics; // 先构造，最后析构
+SimulationSession session(resolve_configuration(config), &statistics);
+session.set_completion_handler([&](const GlobalCompletion& c) {
+    if (c.result.id == GlobalRequestId{2} &&
+        c.result.state == LogicalResult::Success) {
+        GlobalRequest r{GlobalRequestId{3}, Op::Read, GlobalByteAddress{0}, 64};
+        r.not_before = session.now();
+        r.expected_content = 1;
+        session.submit_feedback(r); // 已在完成事件内，允许关闭外部输入后继续
+    }
+});
+session.submit(GlobalRequest{GlobalRequestId{1}, Op::Write,
+                             GlobalByteAddress{0}, 2048, 1});
+auto paused = session.advance_before(Tick{100000});
+// 调用方承诺：不会再提供释放时刻 <100000 的外部输入。
+GlobalRequest rest{GlobalRequestId{2}, Op::Write, GlobalByteAddress{2048}, 2048, 1};
+rest.not_before = session.now();
+session.submit(rest); // endpoint 100000 尚未执行，可在此登记
+session.close_input();
+auto done = session.run_to_completion();
+// 检查 done.run.status、done.run.workload_success 和两侧 activity。
+```
+
+完整示例见 [online_session.cpp](../examples/online_session.cpp)。执行 `cmake --build build --config Debug --target hbf_eventlab_session_demo` 后运行 `build/Debug/hbf_eventlab_session_demo.exe`；Linux 单配置构建中的程序位于构建目录根部。定向测试为 `ctest --test-dir build -C Debug -R '^session_' --output-on-failure`。
+
+| 调用／查询 | 语义 |
+|---|---|
+| `submit(request/batch)` | 仅在推进函数之外调用。使用已有 Global 身份、原子预检和内容封闭规则；拒绝关闭来源、过去时间或已经进入的 Tick。首次非法批次不启动Host，也不消耗ID。 |
+| `advance_before(T)` | 执行所有 `<T` 的事件及其同 Tick 因果轮次、deadline，保留 T 的事件。空区间也推进到 T，并封闭 `<T` 的外部输入位置；不生成占位事件。调用方必须先提交该区间中所有可能的外部输入。 |
+| `submit_feedback(request/batch)` | 仅在本会话注册的 Global 完成回调内合法；使用原Host，允许当前 Tick 和未来时刻，不允许过去。Host 的发射仍经事件推进，不同步进入Device。外部不能把它当作关闭后的提交后门。 |
+| `close_input()` | 幂等关闭外部来源，不能重新打开；保留已登记未来工作、内部重试/replay和事件反馈。关闭不验证输入必然能够成功。 |
+| `run_to_completion()` | 仅输入关闭后可调用；推进到排空、停滞、运行限额或错误，不能对开放来源无限跳时。 |
+| `set_run_limits(limits)` | 显式更改绝对安全上限，保留已执行事件数及当前 Tick 的计数／轮次；普通暂停继续不重置预算。时间上限不能退到当前时钟之前。当前上限由 `run_limits()` 查询，`configuration()` 保留初始配置快照。 |
+| `next_event_time()` | 下一个内部事件时间；只供外部协调，不代表不存在更早的外部输入。 |
+
+完成处理器须在首次提交、推进或关闭之前挂接。所有调用在同一模拟线程串行进行；会话不创建线程，不要求GPU采用特定线程模型。多个外部来源应由适配器提供一致次序和安全时间边界。完成回调可以查询结果、调用 `submit_feedback()`，不能重入推进函数、关闭来源或修改限额。要长期保留 `GlobalCompletion` 时由调用方复制结果。
+
+`SessionReport` 中的 `run` 含状态、逻辑成功标志、时钟、累计执行数和 Host/Device 活动摘要；另有 `input_closed`、`input_floor`、`accepts_at_floor` 和 `next_event`。外部输入必须满足 `at>input_floor`，或在 `accepts_at_floor=true` 时取等号。正常到达 T 时通常边界为 `(T, true)`；安全限额可能停在一个已经开始的 Tick，这时边界为 `(T, false)`，外部不得插入该 Tick。再次使用已经进入的 Tick 作为排他暂停终点也会被拒绝。
+
+| 结果 | 判定 |
+|---|---|
+| `Paused` | 到达正常排他终点，下一内部事件在终点或之后；暂停动作不额外计事件，已经执行的事件正常记账，预算不重置。 |
+| `WaitingForInput` | 内部事件已经用尽、外部来源仍开放；时钟仍提交到本次安全终点。即使暂时排空也不报告整个任务完成；若还有未满足依赖，摘要仍保留它们。 |
+| `Completed` | 输入已关闭、事件用尽且Host和Device临时活动均排空。逻辑失败通过 `workload_success=false` 另报。可能早于请求的暂停终点返回。 |
+| `Stalled` | 输入已关闭、事件用尽，但仍有未完成活动。未来timeout、窗口或介质完成事件存在时，不作此判断。 |
+| `LimitReached` | 下一执行动作或请求的空区间推进会超过安全上限；状态保留，可显式提高限额后继续。时间上限是包含端点的绝对上限，与排他暂停终点不同。 |
+| `ModelError`／`ImplementationError` | 事件执行中发生模型输入错误／实现或用户回调异常；会话保留诊断现场并停止继续执行，不重复已经调用过的回调。 |
+
+外部 `submit()` 的契约错误直接抛异常，整批拒绝，会话仍可继续。反馈中的输入错误也可以在回调内捕获并纠正；未捕获异常进入上述终止诊断。内存耗尽或用户统计观察器异常不属于原子回滚保证。安全限额是防失控机制，不能用无限同 Tick 反馈循环等待外部进展。
+
+deadline 批量结算仍不可与反馈交错；限额不足时保留冻结批次，显式提高限额后优先完成原批次。外部不能插入正在结算或已经执行过的 Tick；结算产生的合法反馈可在同 Tick 后续轮次启动新工作，但不能撤销旧 timeout。Host 在 deadline 时刻登记补片并不代表Device已经接受，链路和RX等待仍正常计入。
+
+会话仍保留历史，`host.max_logical_fragments` 是累计输入上限，不是有释放反馈的提交队列容量；精确统计的长期内存开销也未消除。输入队列背压、历史回收、多来源水位线协调及GPU适配不在当前会话API中实现。
 
 ## 支持边界
 

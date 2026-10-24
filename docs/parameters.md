@@ -179,6 +179,8 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 
 ## 有效配置与扩展
 
+在线 `SimulationSession` 复用解析后的运行配置。`advance_before(T)` 的 T 是一次正常让出执行权的排他终点，不是配置中的 `run.max_tick_ps`；后者仍是包含端点的绝对安全上限。暂停继续不重新获得事件预算。只有显式 `set_run_limits()` 才改变安全上限，累计计数不清零。`host.max_logical_fragments` 仍按整场会话累计；当前没有可回收的输入队列额度。会话不解释 `output` 文件路径或创建文件，调用方负责挂接统计、导出配置与输出结果。详见[在线会话API](usage.md#online-session)。
+
 `--dump-config` 在运行前输出已经展开默认值、zone 大小和 Core 路由的配置。派生带宽、档位上限、逻辑容量和组装预算写为只读注释，主体可以再次经 `--config` 加载。重放导出文件时，如果其中的 output.effective_config 恰好指回输入文件，请用 `--dump-config another.ini` 覆盖，避免覆盖保护报错。
 
 每次实验建议保存 workload、有效配置、统计 JSON、程序版本和运行命令。改变配置值不必重新编译。当前没有多文件继承或运行中热修改配置。

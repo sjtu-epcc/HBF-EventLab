@@ -2,7 +2,7 @@
 
 适用项目版本：**0.5.0**。
 
-本文记录 HBF EventLab 的 165 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
+本文记录 HBF EventLab 的 168 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
 
 规范基准为 [OCP HBF Architecture Specification v0.7.0（03 AUG 2026）](https://www.opencompute.org/documents/ocp-hbf-architecture-specification-v0-7-0-final-pdf)，主要对照第 4、5、11 章。规范关系和项目选择必须分开记录；实现一个接口不等于证明任意替代实现都符合规范。
 
@@ -279,6 +279,9 @@
 | [ADR-INPUT-01](#adr-input-01) | 同一Host支持增量批次登记，输入契约错误整批拒绝，保留离线完整预检。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
 | [ADR-INPUT-02](#adr-input-02) | 新内容成功登记隐式封闭该逻辑块旧版本的普通输入，旧工作和内部恢复继续。 | 无直接规定 | 模型／输入假设；实现保障 | 已实现；V1 |
 | [ADR-INPUT-03](#adr-input-03) | Global最终结果异步通知；输入登记、逻辑完成、排空及输入结束相互区分。 | 无直接规定 | 实现机制；实现保障 | 已实现于增量Host接口；V1 |
+| [ADR-INPUT-04](#adr-input-04) | 在线推进使用排他终点，空区间同样封闭；外部输入不能插入已进入的Tick。 | 无直接规定 | 模型／输入假设；实现保障 | 已实现；V1 |
+| [ADR-INPUT-05](#adr-input-05) | 外部来源关闭与事件反馈分开，同一会话复用原Host和Device。 | 无直接规定 | 实现组织；实现机制 | 已实现；V1 |
+| [ADR-INPUT-06](#adr-input-06) | 正常暂停、等待输入与安全限额分开；完成判定同时检查来源和活动。 | 无直接规定 | 实现保障 | 已实现；V1 |
 
 ### 3.1 跨组件决策关系
 
@@ -3317,7 +3320,61 @@
 | 实现位置（函数／成员） | [GlobalCompletion / set_completion_handler](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::finish_work / schedule / activity](../src/host/host_driver.cpp)；[SimulationRunner::run增量模式检查](../src/runtime/simulation_runner.cpp)；[反馈追加示例](../examples/incremental_host.cpp)。 |
 | 验证测试与覆盖 | [host_incremental.cpp](../tests/host_incremental.cpp)：feedback、idle、recovered_sealed、observer、guards；[incremental_host.cpp](../examples/incremental_host.cpp)展示分批写与完成反馈产生读。 |
 | 实现状态／验证状态 | 已实现于增量Host接口；V1。 |
-| 已知限制 | 逻辑失败通知不保证旧在途操作已排空。有限SimulationRunner拒绝增量模式；安全推进前沿、输入关闭、WaitingForInput及外部模拟器适配尚未提供。 |
+| 已知限制 | 逻辑失败通知不保证旧在途操作已排空。有限SimulationRunner拒绝裸增量模式；在线协调由[ADR-INPUT-04](#adr-input-04)至[ADR-INPUT-06](#adr-input-06)的SimulationSession提供。GPU适配尚未提供。 |
+
+<a id="adr-input-04"></a>
+
+#### ADR-INPUT-04｜在线推进使用排他终点，空区间同样封闭；外部输入不能插入已进入的Tick。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；实现保障 |
+| 分类边界说明 | 本条是模拟器协同执行契约，不是额外HBF延迟。Device收到补片的边界与deadline语义不改变。 |
+| 规范依据／无直接依据说明 | OCP不规定外部模拟器时间前沿或暂停API；已有组装期限与接受边界仍适用。 |
+| 关联要求／条目 | [ADR-INPUT-01](#adr-input-01)；[在线会话使用说明](usage.md#online-session) |
+| 选择理由 | 排他终点避免端点是否已结算的歧义；空区间也作时间承诺，防止最后事件较早导致外部回填过去。 |
+| 模型假设／参数依据 | 调用方先提交所有释放时刻<T的外部输入；advance_before(T)只执行<T，正常到达时T保持开放。安全限额或异常可停在已进入Tick，报告floor及是否允许取等号；外部不得回填该Tick。内部反馈依原轮次执行，不增加虚假Tick。 |
+| 实现位置（函数／成员） | [SimulationSession::submit / advance_before / drive](../src/runtime/simulation_session.cpp)及[输入边界视图](../include/hbf_eventlab/runtime/simulation_session.hpp)；[EventQueue::advance_idle_to / tick_started](../include/hbf_eventlab/infrastructure/event_queue.hpp)及[实现](../src/infrastructure/event_queue.cpp)。 |
+| 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：exclusive、empty_frontier、endpoint_input、late_atomic、horizon_guard、entered_tick、clock_idle、frozen_deadline、deadline_endpoint、deadline_feedback、maximum_boundary；覆盖空洞、端点、冻结批次、链路迟到与uint64最大时刻。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 不自动推导外部来源的安全前沿；调用方的错误承诺无法由后端预知。多个生产者需要适配器合并，不支持回滚时间或投机执行。 |
+
+<a id="adr-input-05"></a>
+
+#### ADR-INPUT-05｜外部来源关闭与事件反馈分开，同一会话复用原Host和Device。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现组织；实现机制 |
+| 分类边界说明 | 输入来源所有权与Host/Device业务所有权分开；Session不维护另一套组装、映射、重试或恢复状态。 |
+| 规范依据／无直接依据说明 | OCP不规定模拟器会话、关闭或回调入口；普通逻辑内容、Device命令响应及credit边界仍沿用原模型。 |
+| 关联要求／条目 | [ADR-INPUT-02](#adr-input-02)；[ADR-INPUT-03](#adr-input-03) |
+| 选择理由 | 一次关闭能明确结束外部输入，同时允许已经启动的反馈链和内部恢复完成；专用入口防止关闭后的普通提交伪装为反馈。 |
+| 模型假设／参数依据 | 单一逻辑外部来源、同一模拟线程。close_input幂等且不可重新打开。submit_feedback只允许本会话完成回调内调用，且不能提交过去时刻；完成处理器在首次输入/推进/关闭前挂接。配置与故障复用统一装配，output文件由调用方管理。 |
+| 实现位置（函数／成员） | [SimulationSession构造、set_completion_handler / submit_feedback / close_input](../src/runtime/simulation_session.cpp)；[HostDriver::start_incremental初始批次预检](../src/host/host_input.cpp)；[只读Host/Device视图](../include/hbf_eventlab/runtime/simulation_session.hpp)。 |
+| 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：first_atomic、close_work、close_empty、feedback_closed、feedback_guard、feedback_future、feedback_validation、causal_time、recovery；[online_session.cpp](../examples/online_session.cpp)展示外部关闭后的写完成驱动读。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 不创建线程、不提供同步锁或真实时间等待，不包含GPU桥接。暂未提供输入队列背压及历史回收，max_logical_fragments仍是累计保护额度。 |
+
+<a id="adr-input-06"></a>
+
+#### ADR-INPUT-06｜正常暂停、等待输入与安全限额分开；完成判定同时检查来源和活动。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现保障 |
+| 分类边界说明 | 这些是模拟器停止结果，不是Device响应状态。逻辑成功/失败和临时活动排空仍分别报告。 |
+| 规范依据／无直接依据说明 | OCP不规定模拟器运行状态或防失控预算。 |
+| 关联要求／条目 | [ADR-LOOP-F01](#adr-loop-f01)；[ADR-LOOP-F02](#adr-loop-f02)；[ADR-LOOP-F03](#adr-loop-f03)；[ADR-INPUT-04](#adr-input-04) |
+| 选择理由 | 避免外部输入暂时空闲被误判Completed/Stalled，也避免正常让出执行权被记为LimitReached或重新获得运行预算。 |
+| 模型假设／参数依据 | 到达边界且仍有未来事件为Paused；事件用尽且来源开放为WaitingForInput。来源关闭后，无事件且双方排空为Completed，否则Stalled。存在未来timeout/操作事件时继续推进。安全限额跨调用累计；可显式修改上限但不清零计数。 |
+| 实现位置（函数／成员） | [SimulationSession::drive / report / set_run_limits / run_to_completion](../src/runtime/simulation_session.cpp)；[SessionReport](../include/hbf_eventlab/runtime/simulation_session.hpp)；[RunStatus](../include/hbf_eventlab/runtime/simulation_runner.hpp)。 |
+| 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：open_drained、open_timeout、closed_stalled、missing_predecessor、limit_total、limit_tick、limit_round、time_empty、time_future、equivalent、callback_error、callback_model_error；暂停/继续与离线连续运行的统计及事件数一致。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 未捕获事件/回调异常终止会话，现场只供诊断，不尝试事务回滚或重放已调用回调；外部提交的契约错误可捕获后继续。WaitingForInput不证明所有未来输入都能使系统前进。 |
 
 ## 5. 参数与模型假设
 

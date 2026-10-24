@@ -78,5 +78,15 @@ bool EventQueue::run_next() {
     return true;
 }
 void EventQueue::run() { while (run_next()) {} }
+void EventQueue::advance_idle_to(Tick at) {
+    if(executing_ || !settlement_.empty())throw std::logic_error("cannot advance clock during an event or frozen deadline batch");
+    if(at<now_)throw std::invalid_argument("cannot move event clock backwards");
+    const auto next=next_time();
+    if(next && *next<at)throw std::invalid_argument("idle advance would skip a live event");
+    if(now_<at) {
+        now_=at;round_=tick_events_=0;has_executed_=false;
+        active_phase_=EventPhase::Completion;
+    }
+}
 } // namespace hbf_eventlab
 

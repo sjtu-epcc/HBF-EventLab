@@ -138,8 +138,9 @@ void HostDriver::submit(const std::vector<GlobalRequest>& input) {
     if(!incremental_ || !started_)throw std::logic_error("submit requires start_incremental");
     register_input(prepare(input));
 }
-void HostDriver::start_incremental() {
+void HostDriver::start_incremental(const std::vector<GlobalRequest>& initial) {
     if(loaded_||started_)throw std::logic_error("Host input mode already selected");
+    register_input(prepare(initial));
     incremental_=true;loaded_=true;start();
 }
 void HostDriver::start() {

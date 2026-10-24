@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-默认完整测试集共 **327 项**（317项核心测试＋10项实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为317项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+默认完整测试集共 **360 项**（350项核心测试＋10项实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为350项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-23 | 327/327通过，0失败 | 340.74s |
-| Release | 2026-10-24 | 327/327通过，0失败 | 48.24s |
+| Debug | 2026-10-24 | 360/360通过，0失败 | 85.57s |
+| Release | 2026-10-24 | 360/360通过，0失败 | 15.29s |
 
-上述两个配置各按串行CTest运行，同时执行了其他验证工作；耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
+上述两个配置各按 `ctest --parallel 4` 运行，测试期间同时执行了其他验证工作；耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-327项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、103个Host行为场景、1个增量Host示例、35个统计场景、26个配置场景、28个CLI场景、10个读调度/窗口观察场景和10个实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
+360项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、103个Host行为场景、1个增量Host示例、32个在线会话场景、1个会话示例、35个统计场景、26个配置场景、28个CLI场景、10个读调度/窗口观察场景和10个实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -49,6 +49,11 @@
 | 增量校验与内容身份 | host_incremental_atomic、host_incremental_address_atomic、host_incremental_duplicate、host_incremental_sealed、host_incremental_block_scope、host_incremental_dependencies、host_incremental_invalid_dependencies、host_incremental_limit_atomic | 整批错误不留副作用、不封闭旧版本；ID与片段去重、非单调内容ID、按逻辑块封闭、依赖及累计额度。 |
 | 增量反馈与恢复 | host_incremental_feedback、host_incremental_recovered_sealed、host_incremental_recovery_append、host_incremental_abort_append、host_incremental_demo | 完成通知追加工作；已封闭旧版本仍可replay；恢复中追加、失败后拒绝补片和恰好一次最终结果。 |
 | 输入模式与等价性 | host_incremental_idle、host_incremental_equivalent、host_incremental_observer、host_incremental_parser、host_incremental_guards | 空闲后继续、离线/增量完整统计一致、通知不改变结果时刻、逐条解析与模式保护；有限Runner拒绝误判开放输入。 |
+| 在线时间边界 | session_exclusive、session_empty_frontier、session_endpoint_input、session_horizon_guard、session_clock_idle、session_maximum_boundary | 排他终点未执行、空区间不可回填、不能跳过活事件、零时刻和最大时刻。 |
+| 在线登记与来源 | session_first_atomic、session_late_atomic、session_open_drained、session_close_work、session_close_empty、session_missing_predecessor、session_closed_stalled | 首批拒绝不启动Host，批内晚到原子拒绝，来源开放/关闭与活动排空分开，后续输入可补前页。 |
+| 在线反馈 | session_feedback_closed、session_feedback_guard、session_feedback_future、session_feedback_validation、session_causal_time、session_demo | 关闭后仍允许完成事件产生工作；禁止外部伪装反馈和重入，未来反馈阻止提前完成，不制造额外Tick。 |
+| 在线限额与诊断 | session_limit_total、session_limit_tick、session_limit_round、session_time_empty、session_time_future、session_entered_tick、session_callback_error、session_callback_model_error | 跨暂停保留预算、显式提高后继续、空区间也受时间上限约束、异常不重复执行回调。 |
+| 在线deadline与恢复 | session_open_timeout、session_frozen_deadline、session_deadline_endpoint、session_deadline_feedback、session_recovery、session_equivalent | 冻结批次不被反馈穿插，Host释放不能代替Device接受，旧timeout不能被复活；同一Host恢复跨暂停继续，连续与分段运行统计/事件数一致。 |
 | 运行限额 | time_limit、event_limit、same_tick_limit、round_limit | 分别触限、现场保留，不制造完成或额外Tick。 |
 | 统计时间与归属 | statistics_boundaries、statistics_ingress_wait、statistics_cross_global_burst、statistics_multi_channel | 五个时刻、credit持有时长、跨Global burst一次响应、跨channel最后逻辑结果决定Global完成。 |
 | 统计重试与终止 | statistics_pending_retry、statistics_timeout_retry、statistics_replay、statistics_partial_future_cancel、statistics_unfinished_resume | 重试不改逻辑分母/释放时刻；部分子工作提前取消、限额停止及恢复继续不丢失或伪造样本。 |
@@ -69,7 +74,7 @@
 | 配置合法性与运行 | configuration_grade_limits、configuration_mocs_ranges、configuration_small_read、configuration_small_write、configuration_small_burst、configuration_capacity | 档位上限、Supported／Selected、实际写模式诊断、真实超时／burst前进及预算传递。 |
 | 配置复现与保护 | configuration_roundtrip、configuration_default_equivalence、configuration_cli_roundtrip、configuration_cli_collision | 导出再载入保持结果／Tick／事件数；输入与输出不互相覆盖。 |
 
-场景名指测试函数或CLI案例名；同名案例按“生命周期 / Device / Host / CLI”区分。Host断言主要位于 [host.cpp](../tests/host.cpp)、[host_retry.cpp](../tests/host_retry.cpp)、[host_send_policy.cpp](../tests/host_send_policy.cpp) 和 [host_incremental.cpp](../tests/host_incremental.cpp)。实际CTest注册以[构建定义](../CMakeLists.txt)和`ctest -N`为准。设计表中的测试引用指向对应注册位置；需要查看断言时可在`tests/`中搜索函数，例如：
+场景名指测试函数或CLI案例名；同名案例按“生命周期 / Device / Host / CLI”区分。Host断言主要位于 [host.cpp](../tests/host.cpp)、[host_retry.cpp](../tests/host_retry.cpp)、[host_send_policy.cpp](../tests/host_send_policy.cpp) 和 [host_incremental.cpp](../tests/host_incremental.cpp)；在线会话断言位于 [session.cpp](../tests/session.cpp)。实际CTest注册以[构建定义](../CMakeLists.txt)和`ctest -N`为准。设计表中的测试引用指向对应注册位置；需要查看断言时可在`tests/`中搜索函数，例如：
 
 ```text
 rg -n "void event_rounds" tests
@@ -101,6 +106,7 @@ ctest --test-dir build-verify -C Release -R '(^|_)recovery_once$' --output-on-fa
 ctest --test-dir build-verify -C Release -R '^host_retry_' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^host_send_' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^host_incremental_' --output-on-failure
+ctest --test-dir build-verify -C Release -R '^session_' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^statistics_' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^pending_statistics_' --output-on-failure
 ctest --test-dir build-verify -C Release -R '^configuration_' --output-on-failure

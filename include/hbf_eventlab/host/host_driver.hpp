@@ -36,7 +36,8 @@ public:
     void load(const std::vector<GlobalRequest>&); // fully validate before start/any transmission
     void start();
     // Alternative to load/start: one persistent Host, single EventQueue thread.
-    void start_incremental();
+    // Optional initial batch is validated before the mode/start transition.
+    void start_incremental(const std::vector<GlobalRequest>& initial = {});
     // Batch validation is atomic for input-contract errors; no Device activity.
     // Existing or same-batch dependencies only. Burst pages must be complete in
     // this batch. not_before is absolute simulation time (must not be in the past).

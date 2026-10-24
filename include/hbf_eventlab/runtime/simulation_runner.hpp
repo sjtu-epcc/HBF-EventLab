@@ -2,7 +2,7 @@
 #include "hbf_eventlab/host/host_driver.hpp"
 #include "hbf_eventlab/runtime/device_driver.hpp"
 namespace hbf_eventlab {
-enum class RunStatus { Completed, Stalled, LimitReached, ModelError, ImplementationError };
+enum class RunStatus { Completed, Stalled, LimitReached, ModelError, ImplementationError, Paused, WaitingForInput };
 struct RunLimits {
     std::optional<Tick> max_tick=Tick{1000000000000ULL}; // 1 simulated second, not wall time
     EventLimits events{10000000,100000,100000};

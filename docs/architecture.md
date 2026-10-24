@@ -32,7 +32,9 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 
 增量登记以逻辑块为单位维护内容版本：成功登记该块新内容的普通写后，旧版本不再接收外部普通写；旧在途工作和内部重试/replay继续。`Version::defined` 表示已登记的输入覆盖，`accepted` 表示暂定发送进度，两者都不是 Device 的 received bitmap。每个 Global 的全部逻辑子工作终结后，Host 可异步通知 `GlobalCompletion`，调用方可据此追加工作。
 
-当前 `SimulationRunner` 仍只支持有限离线输入，并明确拒绝增量模式。增量 API 由调用方在同一事件线程内使用；输入源关闭、安全时间前沿及等待外部输入的顶层停止语义尚未实现。`activity().drained()` 只描述当前临时活动，不能证明外部输入已结束。见[增量 Host API](usage.md#incremental-host)。
+`SimulationRunner` 负责有限离线输入；在线入口为 `SimulationSession`，它拥有同一套 EventQueue、DeviceDriver、interleaver 和 HostDriver，不复制业务状态或另建 Host。`submit()` 登记外部输入，`advance_before(T)` 处理严格早于 T 的事件，`close_input()` 封闭外部来源；完成回调内的 `submit_feedback()` 仍可生成因果后续工作。会话只暴露 Host/Device 的只读视图，避免外部绕过时间和关闭边界。见[在线会话 API](usage.md#online-session)。
+
+会话的外部输入边界直接由 EventQueue 的当前时刻和同 Tick 执行状态派生，不维护第二份时钟。空区间使用 `advance_idle_to()` 推进时钟，不生成虚假事件、不重置累计事件数；已进入的 Tick（包括冻结但尚未执行完的 deadline 批次）不能再接受外部插入。内部反馈遵守原有同 Tick 轮次。`activity().drained()` 只描述临时活动；输入仍开放时不报告 Completed，已关闭且无事件但未排空时报告 Stalled。
 
 ## 2. 接口与职责边界
 
@@ -54,6 +56,7 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 | `RecoveryManager`、`WriteRetentionStore` | Host 恢复范围、每遍排空和预算；有限、版本化的恢复 token 保留。 |
 | `EventQueue`、`AdmissionWaitRegistry` | 时间与因果顺序、取消和限额；按原因/对象的异步唤醒。 |
 | `SimulationRunner` | 驱动事件并查询状态摘要，区分完成、停滞、限额和模型诊断。 |
+| `SimulationSession` | 统一在线输入和时间推进，区分外部提交／事件反馈、正常暂停／安全限额及输入开放／关闭；只协调已有状态所有者。 |
 | `IStatisticsSink`、`StatisticsCollector` | 接收带事件时刻的观察记录，关联Global、逻辑片段和命令尝试，提供只读统计及JSON；不参与调度。 |
 
 overlap、写顺序、错误作用域、同组交付、同 Bank sense 顺序和所有权是固定正确性条件。策略可以改变合法候选的优先级，不能绕过这些条件。接口存在也不意味着所有替代实现均已通过验证。Core Channel 目前只有路由模型，Cache 替换也尚无独立策略插件。
