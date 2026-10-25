@@ -12,6 +12,7 @@ namespace hbf_eventlab {
 // One sink belongs to one Host/Device run. Attach before load/first handoff and
 // keep it alive until both producers are destroyed. Timestamps are event times.
 struct StatGlobalDefined { GlobalRequestId id; Op op; std::uint64_t bytes; Tick release; };
+struct StatInputRegistered { GlobalRequestId id; Tick offered,registered; };
 struct StatWorkDefined {
     LogicalWorkId id; GlobalRequestId parent; ChannelAddress address;
     std::optional<std::uint64_t> content;
@@ -49,7 +50,7 @@ struct StatReadWindowReleased {
 enum class ReadServiceKind { Cache, Sense };
 // Actual cache pin / successful sense issue, not an arrival-time prediction.
 struct StatReadServed { TransferAttemptId id; ReadServiceKind kind; std::optional<std::uint64_t> bank_ticket; Tick at; };
-using StatisticsEvent=std::variant<StatGlobalDefined,StatWorkDefined,StatGlobalReleased,
+using StatisticsEvent=std::variant<StatGlobalDefined,StatInputRegistered,StatWorkDefined,StatGlobalReleased,
     StatWorkFinished,StatGlobalFinished,StatAttemptStarted,StatAttemptLinked,
     StatAttemptAdvanced,StatAttemptDelivered,StatAttemptAssessed,StatPendingInitialized,StatDluObserved,StatBankOperationStarted,StatBankOperationFinished,
     StatReadWindowEntered,StatReadWindowRemoved,StatReadWindowReleased,StatReadServed>;

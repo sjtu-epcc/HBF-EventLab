@@ -15,6 +15,10 @@ bool HostDriver::retry_eligible(const Unit& u) const {
 }
 
 bool HostDriver::page_succeeded(ContentKey key,PageId page,std::uint64_t pass) const {
+    if(pass==0) {
+        const auto& pages=versions_.at(key).successful;
+        const auto it=pages.find(page);return it!=pages.end()&&it->second.all();
+    }
     bool found=false;
     for(const auto& item:units_) {
         const auto& u=item.second;

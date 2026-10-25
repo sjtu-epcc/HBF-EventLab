@@ -10,6 +10,7 @@ struct SessionReport {
     Tick input_floor;
     bool accepts_at_floor;
     std::optional<Tick> next_event;
+    InputCapacity input_capacity;
 };
 
 // One logical external producer, all calls on the same simulation thread.
@@ -21,14 +22,20 @@ public:
     SimulationSession(const SimulationSession&)=delete;
     SimulationSession& operator=(const SimulationSession&)=delete;
     void set_completion_handler(std::function<void(const GlobalCompletion&)>);
+    void set_input_capacity_handler(std::function<void(InputCapacity)>);
     // External registration: outside advance/callbacks, before close_input.
     // Rejected batches have the same input-contract atomicity as Host::submit.
     void submit(const std::vector<GlobalRequest>&);
     void submit(const GlobalRequest& r) { submit(std::vector<GlobalRequest>{r}); }
-    // Only within this session's completion callback, including after close.
+    InputAdmission try_submit(const std::vector<GlobalRequest>&);
+    InputAdmission try_submit(const GlobalRequest& r) { return try_submit(std::vector<GlobalRequest>{r}); }
+    // Only within this session's completion/capacity callback, including after close.
     // It already runs as an event; Host release/pump obey same-tick causality.
     void submit_feedback(const std::vector<GlobalRequest>&);
     void submit_feedback(const GlobalRequest& r) { submit_feedback(std::vector<GlobalRequest>{r}); }
+    InputAdmission try_submit_feedback(const std::vector<GlobalRequest>&);
+    InputAdmission try_submit_feedback(const GlobalRequest& r) { return try_submit_feedback(std::vector<GlobalRequest>{r}); }
+    InputCapacity input_capacity() const { return host_.input_capacity(); }
     void close_input(); // idempotent; does not cancel accepted work or feedback
     SessionReport advance_before(Tick); // exclusive endpoint, not a run limit
     SessionReport run_to_completion(); // requires external input closed

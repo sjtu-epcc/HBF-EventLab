@@ -117,6 +117,7 @@ Fields fields(SimulationConfiguration& c) {
     add("host.send_policy",h.send_policy);add("host.write_mode",h.writes);add("host.read_hint_mode",h.hints);
     add("host.max_open_dlus_per_channel",h.max_open_dlus_per_channel);
     add("host.retained_fragments",h.retained_fragments);add("host.max_logical_fragments",h.max_logical_fragments);
+    add("host.max_resident_fragments",h.max_resident_fragments);
     add("host.recovery.max_replay_passes",h.max_replay_passes);
     add("host.retry.max_pending_retries",h.max_pending_retries);add("host.retry.max_timeout_retries",h.max_timeout_retries);
     add("host.retry.pending_delay_ps",h.pending_retry_delay);
@@ -137,6 +138,7 @@ Fields fields(SimulationConfiguration& c) {
     add("run.max_tick_ps",c.run.max_tick);add("run.total_events",c.run.events.total_events);
     add("run.events_per_tick",c.run.events.events_per_tick);add("run.rounds_per_tick",c.run.events.rounds_per_tick);
     add("output.trace",c.output.trace);add("output.statistics_json",c.output.statistics_json);add("output.effective_config",c.output.effective_config);
+    add("output.statistics_events_jsonl",c.output.statistics_events_jsonl);add("output.statistics_buffer_bytes",c.output.statistics_buffer_bytes);
     return out;
 }
 void assign(Fields& available,const std::string& key,const std::string& value) {
@@ -184,6 +186,7 @@ ResolvedSimulationConfiguration resolve_configuration(SimulationConfiguration c)
     d.topology.die_to_core_channel=d.topology.resolved_routes(g);
     StaticDeviceDescription description(g,d.capabilities,d.selected,d.topology,d.capacity_policy);
     c.execution.validate(description);c.host.validate();
+    if(!c.output.statistics_buffer_bytes)throw std::invalid_argument("output.statistics_buffer_bytes: must be positive");
     validate_host_send_policy(c.host.send_policy);
     policy("execution.read_dispatch.policy",c.execution.read_dispatch.policy,"window");
     if(c.execution.nand_scheduler!="read_priority")

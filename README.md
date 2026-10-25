@@ -26,6 +26,8 @@ The media model uses `DataToken` to represent symbolic content. It does not stor
 
 The C++ `SimulationSession` supports incremental Global submissions, exclusive time horizons, input-source closure, and completion-driven feedback through the existing Host and Device. See the [online API contract](docs/usage.md#online-session) and [example](examples/online_session.cpp). The caller supplies a safe horizon and serializes external input; the core creates no threads or wall-clock waits. The CLI and `SimulationRunner` retain their finite-input contract.
 
+Online producers can use `try_submit()` with a resident logical-fragment budget and capacity notifications. Completed execution records are reclaimed while correctness summaries and recovery retention remain separate. See the [bounded-input example](examples/bounded_input.cpp). For long runs, [buffered JSONL event export](docs/statistics_event_stream.md) avoids retaining the full statistical history in memory; it does not bound all simulator state.
+
 Read bursts, full AXI/CSR/ADMIN, ECC, a temperature subsystem, and a complete GPU–HBM–HBF path are currently unsupported. Inputs such as explicitly ordered reads accessing Pending DLUs and additional completion dependencies for WRITE requests also have specific restrictions. See [Scope and Limitations](docs/scope_and_limitations.md) for details.
 
 ## Quick Start

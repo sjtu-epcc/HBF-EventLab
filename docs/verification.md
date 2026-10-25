@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-默认完整测试集共 **360 项**（350项核心测试＋10项实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为350项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+默认完整测试集共 **396 项**（385项核心测试＋11项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为385项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-24 | 360/360通过，0失败 | 85.57s |
-| Release | 2026-10-24 | 360/360通过，0失败 | 15.29s |
+| Debug | 2026-10-25 | 396/396通过，0失败 | 93.30s |
+| Release | 2026-10-25 | 396/396通过，0失败 | 15.77s |
 
 上述两个配置各按 `ctest --parallel 4` 运行，测试期间同时执行了其他验证工作；耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-360项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、103个Host行为场景、1个增量Host示例、32个在线会话场景、1个会话示例、35个统计场景、26个配置场景、28个CLI场景、10个读调度/窗口观察场景和10个实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
+396项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、127个Host行为场景、1个增量Host示例、32个在线会话场景、2个会话/容量示例、45个统计场景、26个配置场景、28个CLI场景、10个读调度/窗口观察场景和11个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -54,6 +54,11 @@
 | 在线反馈 | session_feedback_closed、session_feedback_guard、session_feedback_future、session_feedback_validation、session_causal_time、session_demo | 关闭后仍允许完成事件产生工作；禁止外部伪装反馈和重入，未来反馈阻止提前完成，不制造额外Tick。 |
 | 在线限额与诊断 | session_limit_total、session_limit_tick、session_limit_round、session_time_empty、session_time_future、session_entered_tick、session_callback_error、session_callback_model_error | 跨暂停保留预算、显式提高后继续、空区间也受时间上限约束、异常不重复执行回调。 |
 | 在线deadline与恢复 | session_open_timeout、session_frozen_deadline、session_deadline_endpoint、session_deadline_feedback、session_recovery、session_equivalent | 冻结批次不被反馈穿插，Host释放不能代替Device接受，旧timeout不能被复活；同一Host恢复跨暂停继续，连续与分段运行统计/事件数一致。 |
+| 驻留输入契约 | host_resident_capacity、oversized、atomic_seal、invalid_full、future_budget、burst_budget、lifetime_limit、configuration | 原子拒绝不留ID/事件/封闭；未来输入与burst按逻辑片段收费；累计保护独立、配置往返一致。 |
+| 严格预算与反馈 | host_resident_strict_timeout、strict_stall、callback_retry、callback_backpressure、offered_time、origin_invalid、bounded_input_demo | 不预留补片额度；真实超时/停滞；容量事件驱动保留项重试；关闭后内部反馈继续，原始产生时间独立统计。 |
+| 执行对象回收 | host_resident_summaries、sealed_summary、failed_summary、replay_collected、replay_merged、missing_retention、pending_retry、timeout_retry、retained_failure、long_input | 保留前页事实/内容封闭/结果；旧页Work和Unit已删后replay；重试活动不提前回收，缺数据明确失败；重复输入后详细对象排空。 |
+| 字节阈值事件导出 | statistics_stream_threshold、large_record、finish、escaping、write_failure、flush_failure、invalid、observational、replay、partial | 缓冲边界、超大单条、终结/转义/失败；flush不改变模拟时间或身份，不截断活动上下文。 |
+| 统计流交叉验证 | statistics_stream_cli | 解析所有JSONL行及连续序号；97/65536字节阈值输出一致；普通/replay/限额场景重建Attempt归属、Global结果、Pending积分及Bank区间，与完整Collector比较；输入和输出路径保护。 |
 | 运行限额 | time_limit、event_limit、same_tick_limit、round_limit | 分别触限、现场保留，不制造完成或额外Tick。 |
 | 统计时间与归属 | statistics_boundaries、statistics_ingress_wait、statistics_cross_global_burst、statistics_multi_channel | 五个时刻、credit持有时长、跨Global burst一次响应、跨channel最后逻辑结果决定Global完成。 |
 | 统计重试与终止 | statistics_pending_retry、statistics_timeout_retry、statistics_replay、statistics_partial_future_cancel、statistics_unfinished_resume | 重试不改逻辑分母/释放时刻；部分子工作提前取消、限额停止及恢复继续不丢失或伪造样本。 |

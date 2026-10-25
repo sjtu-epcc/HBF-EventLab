@@ -6,6 +6,7 @@ add_library(hbf_eventlab
     src/architecture/topology_configuration.cpp
     src/architecture/ucie_profile.cpp
     src/statistics/collector.cpp
+    src/statistics/event_stream.cpp
     src/statistics/pending.cpp
     src/statistics/media.cpp
     src/statistics/reads.cpp
@@ -14,6 +15,7 @@ add_library(hbf_eventlab
     src/host/recovery_manager.cpp
     src/host/host_driver.cpp
     src/host/host_input.cpp
+    src/host/host_storage.cpp
     src/host/write_retry.cpp
     src/runtime/simulation_runner.cpp
     src/runtime/simulation_session.cpp
@@ -57,9 +59,26 @@ add_executable(hbf_eventlab_incremental_demo examples/incremental_host.cpp)
 target_link_libraries(hbf_eventlab_incremental_demo PRIVATE HBFEventLab::core)
 add_executable(hbf_eventlab_session_demo examples/online_session.cpp)
 target_link_libraries(hbf_eventlab_session_demo PRIVATE HBFEventLab::core)
+add_executable(hbf_eventlab_bounded_demo examples/bounded_input.cpp)
+target_link_libraries(hbf_eventlab_bounded_demo PRIVATE HBFEventLab::core)
 include(CTest)
 include(cmake/ExperimentPython.cmake)
 if(BUILD_TESTING)
+    add_test(NAME bounded_input_demo COMMAND hbf_eventlab_bounded_demo)
+    add_executable(hbf_eventlab_event_stream_tests tests/event_stream.cpp)
+    target_link_libraries(hbf_eventlab_event_stream_tests PRIVATE HBFEventLab::core)
+    foreach(scenario threshold large_record finish escaping write_failure flush_failure invalid observational replay partial)
+        add_test(NAME statistics_stream_${scenario} COMMAND hbf_eventlab_event_stream_tests ${scenario})
+        set_tests_properties(statistics_stream_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    add_executable(hbf_eventlab_resident_tests tests/host_resident.cpp)
+    target_link_libraries(hbf_eventlab_resident_tests PRIVATE HBFEventLab::core)
+    foreach(scenario capacity oversized atomic_seal invalid_full future_budget burst_budget strict_timeout strict_stall
+            summaries sealed_summary failed_summary replay_collected replay_merged missing_retention pending_retry callback_retry
+            offered_time origin_invalid retained_failure long_input lifetime_limit configuration timeout_retry callback_backpressure)
+        add_test(NAME host_resident_${scenario} COMMAND hbf_eventlab_resident_tests ${scenario})
+        set_tests_properties(host_resident_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
     add_test(NAME session_demo COMMAND hbf_eventlab_session_demo)
     add_executable(hbf_eventlab_session_tests tests/session.cpp)
     target_link_libraries(hbf_eventlab_session_tests PRIVATE HBFEventLab::core)
@@ -88,6 +107,11 @@ if(BUILD_TESTING)
     # Core-only users opt out explicitly; requested verification must never disappear.
     hbf_eventlab_find_experiment_python()
     if(HBF_EVENTLAB_EXPERIMENT_TESTS)
+        add_test(NAME statistics_stream_cli COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_event_stream.py"
+            "$<TARGET_FILE:hbf_eventlab_cli>" "${CMAKE_CURRENT_SOURCE_DIR}/examples/workloads/normal.txt"
+            "${CMAKE_CURRENT_BINARY_DIR}/event-stream-check-$<CONFIG>")
+        set_tests_properties(statistics_stream_cli PROPERTIES TIMEOUT 60)
         add_test(NAME experiment_common_unit COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_experiment_common.py")
         add_test(NAME experiment_python_configuration COMMAND ${CMAKE_COMMAND}

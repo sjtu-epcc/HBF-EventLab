@@ -90,6 +90,7 @@ Debug 使用独立的 `build-linux-debug` 目录和 `-DCMAKE_BUILD_TYPE=Debug`�
 | `--max-events N` | 默认10000000，累计callback上限；0关闭该项限额。 |
 | `--trace` | 默认关闭；输出Host/Device事件及命令身份。 |
 | `--stats-json FILE` | 默认关闭；导出统一统计汇总、Global/逻辑片段/命令尝试明细、Pending曲线和DLU上下文历史。父目录须已存在；禁止覆盖输入workload。 |
+| `--stats-events FILE` | 追加JSONL观察事件流，按`output.statistics_buffer_bytes`字节阈值导出；与完整JSON可独立开启。 |
 
 覆盖顺序为内建默认值 → 配置文件 → 显式CLI选项；`--config`的位置不影响优先级，同一字段的多个CLI覆盖按从左到右最后一次生效。未知字段／策略及非法组合在运行前报错。参数调整不需要重新编译。
 
@@ -409,7 +410,7 @@ API 契约如下：
 
 `WorkloadReader::next()` 每次返回一个文本条目，EOF 返回空值，并保留格式版本和行号诊断。它只负责阻塞式 `istream` 解析，不是实时输入协议；逐条 `submit()` 时不能引用尚未登记的依赖，也不能拆开显式 burst 页。离线 `read_workload()` 仍读取完整列表后统一校验。
 
-上述是底层 Host 接口；示例在执行队列前登记已知生产者事件。未知未来输入应使用下面的 `SimulationSession`，不要直接让 `events.run()` 跳过外部尚可能提交的时刻。有限输入 `SimulationRunner` 明确拒绝裸增量模式。`activity().drained()`／`workload_success()` 只涵盖已登记工作，不能证明输入结束；累计输入与统计历史仍不自动回收。
+上述是底层 Host 接口；示例在执行队列前登记已知生产者事件。未知未来输入应使用下面的 `SimulationSession`，不要直接让 `events.run()` 跳过外部尚可能提交的时刻。有限输入 `SimulationRunner` 明确拒绝裸增量模式。`activity().drained()`／`workload_success()` 只涵盖已登记工作，不能证明输入结束；可回收的驻留额度与累计输入保护分别配置。
 
 <a id="online-session"></a>
 
@@ -449,7 +450,9 @@ auto done = session.run_to_completion();
 |---|---|
 | `submit(request/batch)` | 仅在推进函数之外调用。使用已有 Global 身份、原子预检和内容封闭规则；拒绝关闭来源、过去时间或已经进入的 Tick。首次非法批次不启动Host，也不消耗ID。 |
 | `advance_before(T)` | 执行所有 `<T` 的事件及其同 Tick 因果轮次、deadline，保留 T 的事件。空区间也推进到 T，并封闭 `<T` 的外部输入位置；不生成占位事件。调用方必须先提交该区间中所有可能的外部输入。 |
-| `submit_feedback(request/batch)` | 仅在本会话注册的 Global 完成回调内合法；使用原Host，允许当前 Tick 和未来时刻，不允许过去。Host 的发射仍经事件推进，不同步进入Device。外部不能把它当作关闭后的提交后门。 |
+| `submit_feedback(request/batch)` | 仅在本会话注册的 Global 完成或容量通知回调内合法；使用原Host，允许当前 Tick 和未来时刻，不允许过去。Host 的发射仍经事件推进，不同步进入Device。外部不能把它当作关闭后的提交后门。 |
+| `try_submit`／`try_submit_feedback` | 与对应提交入口相同的时间和来源边界；容量拒绝用`InputAdmission`返回，不注册部分工作。其他输入契约错误仍抛异常。 |
+| `input_capacity()`／`set_input_capacity_handler()` | 查询limit/resident/generation；在输入、推进或关闭之前挂接容量处理器，安全回收后通过合并事件通知当前值。通知不是名额预留或提交必成功的承诺。 |
 | `close_input()` | 幂等关闭外部来源，不能重新打开；保留已登记未来工作、内部重试/replay和事件反馈。关闭不验证输入必然能够成功。 |
 | `run_to_completion()` | 仅输入关闭后可调用；推进到排空、停滞、运行限额或错误，不能对开放来源无限跳时。 |
 | `set_run_limits(limits)` | 显式更改绝对安全上限，保留已执行事件数及当前 Tick 的计数／轮次；普通暂停继续不重置预算。时间上限不能退到当前时钟之前。当前上限由 `run_limits()` 查询，`configuration()` 保留初始配置快照。 |
@@ -457,7 +460,7 @@ auto done = session.run_to_completion();
 
 完成处理器须在首次提交、推进或关闭之前挂接。所有调用在同一模拟线程串行进行；会话不创建线程，不要求GPU采用特定线程模型。多个外部来源应由适配器提供一致次序和安全时间边界。完成回调可以查询结果、调用 `submit_feedback()`，不能重入推进函数、关闭来源或修改限额。要长期保留 `GlobalCompletion` 时由调用方复制结果。
 
-`SessionReport` 中的 `run` 含状态、逻辑成功标志、时钟、累计执行数和 Host/Device 活动摘要；另有 `input_closed`、`input_floor`、`accepts_at_floor` 和 `next_event`。外部输入必须满足 `at>input_floor`，或在 `accepts_at_floor=true` 时取等号。正常到达 T 时通常边界为 `(T, true)`；安全限额可能停在一个已经开始的 Tick，这时边界为 `(T, false)`，外部不得插入该 Tick。再次使用已经进入的 Tick 作为排他暂停终点也会被拒绝。
+`SessionReport` 中的 `run` 含状态、逻辑成功标志、时钟、累计执行数和 Host/Device 活动摘要；另有 `input_closed`、`input_floor`、`accepts_at_floor`、`next_event`和`input_capacity`。外部输入必须满足 `at>input_floor`，或在 `accepts_at_floor=true` 时取等号。正常到达 T 时通常边界为 `(T, true)`；安全限额可能停在一个已经开始的 Tick，这时边界为 `(T, false)`，外部不得插入该 Tick。再次使用已经进入的 Tick 作为排他暂停终点也会被拒绝。
 
 | 结果 | 判定 |
 |---|---|
@@ -472,7 +475,40 @@ auto done = session.run_to_completion();
 
 deadline 批量结算仍不可与反馈交错；限额不足时保留冻结批次，显式提高限额后优先完成原批次。外部不能插入正在结算或已经执行过的 Tick；结算产生的合法反馈可在同 Tick 后续轮次启动新工作，但不能撤销旧 timeout。Host 在 deadline 时刻登记补片并不代表Device已经接受，链路和RX等待仍正常计入。
 
-会话仍保留历史，`host.max_logical_fragments` 是累计输入上限，不是有释放反馈的提交队列容量；精确统计的长期内存开销也未消除。输入队列背压、历史回收、多来源水位线协调及GPU适配不在当前会话API中实现。
+### 驻留预算、拒绝与回收
+
+`host.max_resident_fragments` 限制当前尚未安全回收的逻辑64B片段数，默认0关闭；与Device MOCS/Pending、Host打开DLU数及WriteRetentionStore预算分别计费。读写、未来释放和等待依赖的片段均计入，一条4KiB burst占64份逻辑预算；重试和replay不重复创造逻辑工作。`max_logical_fragments`另行控制生命周期累计量，长期输入可显式设0关闭累计保护。
+
+| `InputDisposition` | 调用方应做什么 |
+|---|---|
+| `Registered` | 整批已登记，后续有逻辑完成通知；不要重复提交。 |
+| `Backpressured` | 整批尚未登记，没有完成通知、ID消耗或版本封闭；调用方保留请求，容量通知或其他合法推进后重试。 |
+| `TooLarge` | 该批本身超过总额度，等待不能解决；拆分输入或重新选择配置。显式burst仍需同批完整，不能拆成不合法半页。 |
+
+`TooLarge`在构造大量片段前返回，不承诺已通过所有其他契约检查。普通批次会完整预检，错误不会部分登记。兼容的`submit()`在容量拒绝时抛异常；有容量限制的在线生产者应使用`try_submit()`。内存耗尽、统计观察器异常仍不属于事务回滚保证。
+
+逻辑结果确定不必然立即归还预算：还要等Unit/Attempt及当前重试、恢复流程不再需要详细对象。增量Host在安全回调边界回收Work、Unit及无引用的GlobalRequest，保留WorkResult摘要、版本输入覆盖/成功位图和内容身份。原Attempt在响应终结时释放。WriteRetentionStore里的地址和Token独立保留/淘汰，故后续失败仍可重放已经回收执行对象的旧页。`host().storage()`可查询这些对象数量，不能当作字节内存统计。
+
+容量通知在安全回收后安排，同Tick通知可合并；`generation`增加表示释放进展，不是一请求一通知。通知内可用`try_submit_feedback()`重试自己保留的因果工作；仍不足时保留待提交项，不在同Tick自旋。关闭外部来源前，调用方必须确保外部待提交项已登记或已明确放弃。会话不知道外部私有队列中还有什么，不能替调用方判定这些工作完成；已关闭后的内部反馈仍可经容量回调继续。
+
+当前严格按实际占用收费，不为收齐DLU预留输入名额。若额度只容纳半页，已登记片段可以超时；若工作等待尚未登记的前页而额度已满，系统可能等待输入，关闭后报告Stalled。不会偷偷增额或改写成Device错误。未来补片预留策略尚未实现。
+
+重试登记必须更新`not_before`到合法当前/未来时刻。C++输入可另设`GlobalRequest::offered_at`保留外部首次产生请求的时刻，须不晚于登记时钟和`not_before`；它不参与调度，也不允许回填过去。统计仅在显式提供时记录`InputRegistered`及`input_wait=registered-offered`、`source_end_to_end=finished-offered`，原有释放到完成和接受到响应口径不变；被拒绝且永不登记的项由生产者统计。文本workload语法没有新增offered字段。
+
+完整生产者示例为[bounded_input.cpp](../examples/bounded_input.cpp)，构建目标`hbf_eventlab_bounded_demo`，可选参数为事件输出路径：
+
+```powershell
+cmake --build build --config Debug --target hbf_eventlab_bounded_demo
+./build/Debug/hbf_eventlab_bounded_demo.exe events.jsonl
+```
+
+示例先登记4KiB写，因64份预算不足保留4KiB读，推进安全时间区间后重试读，最后关闭输入并排空。它展示API交互，尚未接入GPU。
+
+### 统计历史分批导出
+
+CLI可用`--stats-events events.jsonl --set output.statistics_buffer_bytes=65536`按序列化字节阈值导出事件流。长期C++会话可单独挂接`StatisticsEventStream`，暂停时`flush()`、最终停止时`finish()`；flush不终结活动请求或DLU。详见[事件格式、生命周期和内存边界](statistics_event_stream.md)。`--stats-json`仍启用保存全部历史的Collector，两种输出同时开启不会消除Collector的内存开销。
+
+可回收执行记录和流式统计并不保证整个进程内存恒定：Global结果、版本覆盖/身份、恢复记账等正确性摘要仍随输入增长。多来源水位线协调及GPU适配也不在当前API内实现。
 
 ## 支持边界
 

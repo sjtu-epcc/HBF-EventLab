@@ -23,7 +23,7 @@ HostDriver::~HostDriver() {
 SendUnitId HostDriver::add_unit(Op op,std::vector<Fragment> fragments,std::optional<ContentKey> content,
                                std::optional<ReadGroup> group,bool replay,std::uint64_t pass) {
     if(fragments.empty())throw std::logic_error("empty send unit");
-    const SendUnitId id{++next_unit_};const auto ch=fragments.front().address.channel;
+    next_unit_=checked_add(next_unit_,1);const SendUnitId id{next_unit_};const auto ch=fragments.front().address.channel;
     Unit u{id,op,std::move(fragments),content,group};u.replay=replay;u.pass=pass;
     auto arrival=std::make_pair(Tick{},std::uint64_t{});
     if(!replay)for(const auto& f:u.fragments)
@@ -53,7 +53,7 @@ void HostDriver::release_units(Tick now) {
 }
 EventId HostDriver::schedule(Tick at,std::function<void()> f) {
     auto id=std::make_shared<EventId>();
-    *id=events_.schedule_at(at,EventPhase::Arrival,[this,id,f=std::move(f)]{owned_events_.erase(*id);f();});
+    *id=events_.schedule_at(at,EventPhase::Arrival,[this,id,f=std::move(f)]{owned_events_.erase(*id);f();reclaim();});
     owned_events_.insert(*id);return *id;
 }
 void HostDriver::request_pump(ChannelId ch) {
@@ -65,8 +65,7 @@ bool HostDriver::dependencies_ready(GlobalRequestId id) const {
     return true;
 }
 bool HostDriver::version_done(ContentKey key) const {
-    for(auto uid:versions_.at(key).normal)for(const auto&f:units_.at(uid).fragments)
-        if(work_.at(f.id).result==LogicalResult::Pending)return false;
+    if(versions_.at(key).unfinished)return false;
     const auto it=recovery_.tasks().find(key);
     return it==recovery_.tasks().end() || it->second.phase==RecoveryPhase::Completed || it->second.phase==RecoveryPhase::Failed;
 }
@@ -187,6 +186,12 @@ void HostDriver::accepted(CommandId id,const AcceptedNotice& notice) {
 void HostDriver::finish_work(LogicalWorkId id,bool success,const std::string& reason) {
     auto& work=work_.at(id);if(work.result!=LogicalResult::Pending)return; // historical success never rewritten
     work.result=success?LogicalResult::Success:LogicalResult::Failed;work.needs_recovery=false;
+    if(requests_.at(work.fragment.parent).op==Op::Write) {
+        auto& version=versions_.at({work.fragment.logical.block,requests_.at(work.fragment.parent).content});
+        if(!version.unfinished)throw std::logic_error("version completion underflow");
+        --version.unfinished;
+        if(success)version.successful[work.fragment.logical.page].set(work.fragment.logical.byte_offset/host_unit_bytes);
+    }
     auto& result=results_.at(work.fragment.parent);
     if(!result.remaining)throw std::logic_error("logical work completed twice");
     --result.remaining;
@@ -285,6 +290,7 @@ void HostDriver::receive(CommandId id,const DeliveredResponse& response) {
     attempts_.erase(it);unsettled_.at(block).erase(id);recovery_.settled(block,id);
     emit("response",u,id);advance();
     for(ChannelId ch=0;ch<channels_.size();++ch)request_pump(ch);
+    reclaim(); // all references used by this response/advance are now finished
 }
 void HostDriver::make_replay(ContentKey key,RecoveryTask& t) {
     std::vector<Fragment> page;
@@ -319,6 +325,7 @@ bool HostDriver::advance_recovery(ContentKey key,RecoveryTask& t) {
     const auto through=*t.through;
     recovery_.complete(key);retention_.unpin(key);
     auto& version=versions_.at(key);
+    for(PageId p=0;p<=through;++p)version.accepted[p].set();
     for(auto uid:version.normal) {
         auto& u=units_.at(uid);
         if(u.fragments.front().logical.page<=through) {

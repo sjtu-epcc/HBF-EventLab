@@ -35,20 +35,40 @@ void SimulationSession::set_completion_handler(std::function<void(const GlobalCo
     });
 }
 void SimulationSession::submit(const std::vector<GlobalRequest>& input) {
+    const auto r=try_submit(input);
+    if(r.disposition!=InputDisposition::Registered)
+        throw std::invalid_argument(r.disposition==InputDisposition::TooLarge?"input batch exceeds resident budget":"input backpressured; use try_submit");
+}
+void SimulationSession::set_input_capacity_handler(std::function<void(InputCapacity)> handler) {
+    outside_execution();healthy();
+    if(started_||input_closed_||!handler)throw std::logic_error("attach capacity handler before session input/advance/close");
+    host_.set_input_capacity_handler([this,handler=std::move(handler)](InputCapacity c) {
+        FlagScope feedback(in_feedback_);handler(c);
+    });
+}
+InputAdmission SimulationSession::try_submit(const std::vector<GlobalRequest>& input) {
     outside_execution();healthy();
     if(input_closed_)throw std::logic_error("external input is closed");
     for(const auto& r:input)
         if(r.not_before<input_floor() || (!accepts_at_floor() && r.not_before==input_floor()))
             throw std::invalid_argument("external request is before the open input boundary or in an already entered tick");
-    if(!started_) { host_.start_incremental(input);started_=true; }
-    else host_.submit(input);
+    if(!started_) {
+        auto result=host_.try_start_incremental(input);
+        started_=result.disposition==InputDisposition::Registered;return result;
+    }
+    return host_.try_submit(input);
 }
 void SimulationSession::submit_feedback(const std::vector<GlobalRequest>& input) {
+    const auto r=try_submit_feedback(input);
+    if(r.disposition!=InputDisposition::Registered)
+        throw std::invalid_argument(r.disposition==InputDisposition::TooLarge?"feedback batch exceeds resident budget":"feedback backpressured; retain it and use try_submit_feedback");
+}
+InputAdmission SimulationSession::try_submit_feedback(const std::vector<GlobalRequest>& input) {
     healthy();
-    if(!running_ || !in_feedback_)throw std::logic_error("feedback submission requires this session's completion event");
+    if(!running_ || !in_feedback_)throw std::logic_error("feedback submission requires this session's completion event or capacity event");
     // This is already an asynchronous Host event. It may create a new attempt at
     // the current Tick, but cannot enter the frozen batch that generated it.
-    host_.submit(input);
+    return host_.try_submit(input);
 }
 void SimulationSession::close_input() {
     outside_execution();healthy();input_closed_=true;
@@ -63,7 +83,7 @@ std::optional<Tick> SimulationSession::next_event_time() {
 }
 SessionReport SimulationSession::report(RunStatus status,const std::string& why) {
     return {{status,host_.workload_success(),events_.now(),events_.executed(),host_.activity(),device_.activity(),why},
-            input_closed_,input_floor(),accepts_at_floor(),events_.next_time()};
+            input_closed_,input_floor(),accepts_at_floor(),events_.next_time(),input_capacity()};
 }
 SessionReport SimulationSession::advance_before(Tick before) {
     outside_execution();

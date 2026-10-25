@@ -2,7 +2,7 @@
 
 适用项目版本：**0.5.0**。
 
-本文记录 HBF EventLab 的 168 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
+本文记录 HBF EventLab 的 172 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
 
 规范基准为 [OCP HBF Architecture Specification v0.7.0（03 AUG 2026）](https://www.opencompute.org/documents/ocp-hbf-architecture-specification-v0-7-0-final-pdf)，主要对照第 4、5、11 章。规范关系和项目选择必须分开记录；实现一个接口不等于证明任意替代实现都符合规范。
 
@@ -3352,11 +3352,11 @@
 | 规范依据／无直接依据说明 | OCP不规定模拟器会话、关闭或回调入口；普通逻辑内容、Device命令响应及credit边界仍沿用原模型。 |
 | 关联要求／条目 | [ADR-INPUT-02](#adr-input-02)；[ADR-INPUT-03](#adr-input-03) |
 | 选择理由 | 一次关闭能明确结束外部输入，同时允许已经启动的反馈链和内部恢复完成；专用入口防止关闭后的普通提交伪装为反馈。 |
-| 模型假设／参数依据 | 单一逻辑外部来源、同一模拟线程。close_input幂等且不可重新打开。submit_feedback只允许本会话完成回调内调用，且不能提交过去时刻；完成处理器在首次输入/推进/关闭前挂接。配置与故障复用统一装配，output文件由调用方管理。 |
+| 模型假设／参数依据 | 单一逻辑外部来源、同一模拟线程。close_input幂等且不可重新打开。submit_feedback只允许本会话完成或容量通知回调内调用，且不能提交过去时刻；完成处理器在首次输入/推进/关闭前挂接。配置与故障复用统一装配，output文件由调用方管理。 |
 | 实现位置（函数／成员） | [SimulationSession构造、set_completion_handler / submit_feedback / close_input](../src/runtime/simulation_session.cpp)；[HostDriver::start_incremental初始批次预检](../src/host/host_input.cpp)；[只读Host/Device视图](../include/hbf_eventlab/runtime/simulation_session.hpp)。 |
 | 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：first_atomic、close_work、close_empty、feedback_closed、feedback_guard、feedback_future、feedback_validation、causal_time、recovery；[online_session.cpp](../examples/online_session.cpp)展示外部关闭后的写完成驱动读。 |
 | 实现状态／验证状态 | 已实现；V1。 |
-| 已知限制 | 不创建线程、不提供同步锁或真实时间等待，不包含GPU桥接。暂未提供输入队列背压及历史回收，max_logical_fragments仍是累计保护额度。 |
+| 已知限制 | 不创建线程、不提供同步锁或真实时间等待，不包含GPU桥接。驻留输入背压与执行对象回收见[ADR-INPUT-07](#adr-input-07)和[ADR-INPUT-08](#adr-input-08)；max_logical_fragments仍是独立累计保护额度。 |
 
 <a id="adr-input-06"></a>
 
@@ -3375,6 +3375,78 @@
 | 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：open_drained、open_timeout、closed_stalled、missing_predecessor、limit_total、limit_tick、limit_round、time_empty、time_future、equivalent、callback_error、callback_model_error；暂停/继续与离线连续运行的统计及事件数一致。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 未捕获事件/回调异常终止会话，现场只供诊断，不尝试事务回滚或重放已调用回调；外部提交的契约错误可捕获后继续。WaitingForInput不证明所有未来输入都能使系统前进。 |
+
+<a id="adr-input-07"></a>
+
+#### ADR-INPUT-07｜输入按驻留逻辑片段原子计费，严格预算下整批背压并以事件通知释放。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；实现保障 |
+| 分类边界说明 | Host模拟器的驻留预算，不是MOCS、Pending或规范响应；不采用限制已送Device子命令数的child window。 |
+| 规范依据／无直接依据说明 | OCP未指定模拟器输入容量或生产者回调。已有Device接收、组装、顺序、恢复边界不改变。 |
+| 关联要求／条目 | [ADR-INPUT-01](#adr-input-01)；[ADR-INPUT-05](#adr-input-05)；[参数说明](parameters.md) |
+| 选择理由 | 以真实驻留逻辑工作计费，保持一个Host并让外部生产者明确承担未登记工作；先不加入补片预留策略。 |
+| 模型假设／参数依据 | max_resident_fragments默认0关闭；64B一份、burst64份，未来释放也计入，重试不另占逻辑额度。Registered整批登记；Backpressured整批未登记；TooLarge需拆批或改配置。容量通知按实际安全释放触发并合并，generation只表示进展。 |
+| 实现位置（函数／成员） | [InputAdmission / InputCapacity / input_capacity](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::admit_input / reclaim](../src/host/host_storage.cpp)；[SimulationSession::try_submit / try_submit_feedback / set_input_capacity_handler](../src/runtime/simulation_session.cpp)。 |
+| 验证测试与覆盖 | [host_resident.cpp](../tests/host_resident.cpp)：capacity、oversized、atomic_seal、invalid_full、future_budget、burst_budget、strict_timeout、strict_stall、callback_backpressure、lifetime_limit、configuration。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 不保证补齐前进性；可因预算分散超时或停滞。TooLarge先于完整预检返回。未登记请求由调用方保留，关闭输入前自行处理；有限CLI仍整份load并须一次容纳。 |
+
+<a id="adr-input-08"></a>
+
+#### ADR-INPUT-08｜回收终结且无活动引用的执行对象，保留正确性摘要和独立恢复数据。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；实现保障 |
+| 分类边界说明 | C++对象寿命与逻辑内容寿命分开，不回收仍影响未来校验、顺序或恢复的事实。 |
+| 规范依据／无直接依据说明 | OCP不规定Host模拟器容器及内存回收；既有内容身份和恢复输入契约必须保持。 |
+| 关联要求／条目 | [ADR-INPUT-02](#adr-input-02)；[ADR-INPUT-07](#adr-input-07)；[ADR-LOOP-H13](#adr-loop-h13) |
+| 选择理由 | 长期输入不必保留每次Work/Unit详细历史，同时避免从已删除对象推断前页成功，或从Device私有状态补恢复数据。 |
+| 模型假设／参数依据 | 增量模式在安全回调边界回收终结Work、无引用Unit及GlobalRequest；Attempt在响应终结时回收。PageRetry和活动recovery会延后回收；保持results_、Version::defined/accepted/successful/unfinished、内容顺序及WriteRetentionStore。计费归还以实际安全回收为准。 |
+| 实现位置（函数／成员） | [HostDriver::reclaim / storage](../src/host/host_storage.cpp)；[finish_work / version_done / advance_recovery](../src/host/host_driver.cpp)；[page_succeeded](../src/host/write_retry.cpp)；[Version](../include/hbf_eventlab/host/host_driver.hpp)。 |
+| 验证测试与覆盖 | [host_resident.cpp](../tests/host_resident.cpp)：summaries、sealed_summary、failed_summary、replay_collected、replay_merged、missing_retention、pending_retry、timeout_retry、retained_failure、long_input。覆盖旧页对象已删后的replay、恢复再失败、后继输入及迟到补片。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 有限模式保留原诊断历史；Global结果、内容摘要和恢复记账仍随输入增长，扫描回收未针对长期超大输入优化。驻留额度不是进程内存字节上限；保留区耗尽仍可使恢复失败。 |
+
+<a id="adr-input-09"></a>
+
+#### ADR-INPUT-09｜背压重试使用合法登记时间，外部首次产生时间仅作为独立统计元数据。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；统计口径 |
+| 分类边界说明 | 输入等待不能伪装成已发生的Host释放、链路移交或Device接收；不改变已有五个时刻。 |
+| 规范依据／无直接依据说明 | OCP未规定模拟器生产者时间；沿用排他时间前沿与同Tick因果规则。 |
+| 关联要求／条目 | [ADR-INPUT-04](#adr-input-04)；[ADR-INPUT-07](#adr-input-07)；[ADR-STAT-01](#adr-stat-01) |
+| 选择理由 | 避免容量重试把旧not_before回填到过去，同时能够测量外部产生到登记的等待。 |
+| 模型假设／参数依据 | offered_at可选，且不晚于登记时钟和not_before。登记后才观察InputRegistered；input_wait=registered-offered，source_end_to_end=finished-offered；未提供则不推断，没有新增调度事件。 |
+| 实现位置（函数／成员） | [GlobalRequest::offered_at](../include/hbf_eventlab/host/workload.hpp)；[prepare / register_input](../src/host/host_input.cpp)；[StatisticsCollector::record / summary / write_json](../src/statistics/collector.cpp)；[StatInputRegistered](../include/hbf_eventlab/interfaces/statistics_sink.hpp)。 |
+| 验证测试与覆盖 | [host_resident.cpp](../tests/host_resident.cpp)：offered_time、origin_invalid、callback_retry；[bounded_input.cpp](../examples/bounded_input.cpp)保留offered_at并更新时间后重试。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 原始生产时间由适配器诚实提供，核心无法自行验证外部事实；永未登记请求不进入后端统计。当前文本格式没有offered_at字段。 |
+
+<a id="adr-stat-08"></a>
+
+#### ADR-STAT-08｜统计历史按序列化字节阈值追加导出，跨flush保持身份及未完成生命周期。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；统计口径 |
+| 分类边界说明 | 统计输出缓冲属于程序基础设施，与HBF缓冲和模拟时间无关；不会建立第二份Assembly状态。 |
+| 规范依据／无直接依据说明 | OCP不规定统计文件格式或导出周期。 |
+| 关联要求／条目 | [ADR-STAT-03](#adr-stat-03)；[ADR-STAT-04](#adr-stat-04)；[ADR-STAT-06](#adr-stat-06)；[ADR-INPUT-08](#adr-input-08) |
+| 选择理由 | 追加原始观察事件可跨批重建延迟、Pending与Bank指标；不需按输入批次截断活动上下文，也不长期保留统计关联表。 |
+| 模型假设／参数依据 | JSONL schema 1，单流sequence稳定；默认65536字节阈值为工程选择，成功flush后清缓冲。单条超限完整直写；暂停只flush，最终finish写StreamEnd；写出失败终止sink。 |
+| 实现位置（函数／成员） | [StatisticsEventStream::observe / append / flush / finish，StatisticsFanout](../include/hbf_eventlab/statistics/event_stream.hpp)及[实现](../src/statistics/event_stream.cpp)；[CLI输出装配](../examples/minimal_loop.cpp)；[格式说明](statistics_event_stream.md)。 |
+| 验证测试与覆盖 | [event_stream.cpp](../tests/event_stream.cpp)：threshold、large_record、finish、escaping、write_failure、flush_failure、observational、replay、partial；[check_event_stream.py](../tests/check_event_stream.py)对比97/65536字节阈值与完整Collector，重建replay关联、Pending积分及Bank区间。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 非通用离线汇总器；原实验脚本仍读取完整JSON。单条记录及底层ostream有额外内存，磁盘量增长，不支持崩溃续写、fsync或后台I/O。同时开启Collector仍保留完整历史；析构不自动吞错flush。 |
 
 ## 5. 参数与模型假设
 

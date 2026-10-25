@@ -30,7 +30,11 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 
 同一个 `HostDriver` 支持两种输入模式：离线 `load()` 完整预检后 `start()`；增量 `start_incremental()` 后多次 `submit()`。两者共用拆分、候选、重试、恢复和统计逻辑。`host_input.cpp` 负责输入批次的预检、登记与释放事件，不另建一套 Host。`WorkloadReader::next()` 提供逐条文本解析，原 `read_workload()` 仍先读取完整文件，CLI 的离线检查边界保持不变。
 
-增量登记以逻辑块为单位维护内容版本：成功登记该块新内容的普通写后，旧版本不再接收外部普通写；旧在途工作和内部重试/replay继续。`Version::defined` 表示已登记的输入覆盖，`accepted` 表示暂定发送进度，两者都不是 Device 的 received bitmap。每个 Global 的全部逻辑子工作终结后，Host 可异步通知 `GlobalCompletion`，调用方可据此追加工作。
+增量登记以逻辑块为单位维护内容版本：成功登记该块新内容的普通写后，旧版本不再接收外部普通写；旧在途工作和内部重试/replay继续。`Version::defined` 表示已登记的输入覆盖，`accepted` 表示暂定发送进度，`successful` 表示已成功的逻辑片段；这些摘要均不替代 Device 的 received bitmap。每个 Global 的全部逻辑子工作终结后，Host 可异步通知 `GlobalCompletion`，调用方可据此追加工作。
+
+`host_storage.cpp` 负责增量输入容量和详细对象回收。`max_resident_fragments` 按尚未安全回收的 Work 计费，包含未来释放和依赖等待；burst仍按64个逻辑片段计费。容量不足整批退回，调用方保留请求，Host不建立另一份隐藏队列。Work终结且其Unit/Attempt和重试/恢复流程不再引用详细记录后，回收Work、Unit及不再使用的GlobalRequest；结果摘要、版本覆盖/成功位图和保留区独立存活。容量释放通知合并为事件，不能同步重入接收路径。该额度不等于MOCS、Pending、数据保留额度或整个进程内存上限。
+
+统计仍通过同一个 `IStatisticsSink` 观察真实事件。`StatisticsCollector` 用于完整历史分析；`StatisticsEventStream` 按序列化字节阈值输出JSONL后释放缓冲，不保存历史关联表。跨flush的Global、Work、Attempt、DLU generation和Bank ticket身份保持不变；离线消费者自行维护跨记录关联。详见[统计事件流](statistics_event_stream.md)。
 
 `SimulationRunner` 负责有限离线输入；在线入口为 `SimulationSession`，它拥有同一套 EventQueue、DeviceDriver、interleaver 和 HostDriver，不复制业务状态或另建 Host。`submit()` 登记外部输入，`advance_before(T)` 处理严格早于 T 的事件，`close_input()` 封闭外部来源；完成回调内的 `submit_feedback()` 仍可生成因果后续工作。会话只暴露 Host/Device 的只读视图，避免外部绕过时间和关闭边界。见[在线会话 API](usage.md#online-session)。
 

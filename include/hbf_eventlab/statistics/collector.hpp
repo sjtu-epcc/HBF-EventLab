@@ -11,6 +11,7 @@ struct GlobalTiming {
     std::size_t children=0,remaining=0,failed=0;
     std::optional<Tick> last_child_finished;
     std::string reason;
+    std::optional<Tick> offered,registered;
 };
 struct LogicalTiming {
     LogicalWorkId id; GlobalRequestId parent; ChannelAddress address;
@@ -112,6 +113,7 @@ public:
     void write_json(std::ostream&,Tick at,const std::string& stop_reason) const;
 private:
     void record(const StatGlobalDefined&); void record(const StatWorkDefined&);
+    void record(const StatInputRegistered&);
     void record(const StatGlobalReleased&); void record(const StatWorkFinished&);
     void record(const StatGlobalFinished&); void record(const StatAttemptStarted&);
     void record(const StatAttemptLinked&); void record(const StatAttemptAdvanced&);

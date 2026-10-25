@@ -14,6 +14,9 @@ struct GlobalRequest {
     std::vector<GlobalRequestId> after;
     Tick not_before{};
     std::optional<std::uint64_t> expected_content;
+    // Original producer time, retained across input-capacity retries. Metadata
+    // only: never schedules an event in the past. Must be <= not_before.
+    std::optional<Tick> offered_at;
 };
 struct ContentKey {
     LogicalBlockKey block;
@@ -47,6 +50,8 @@ struct HostConfiguration {
     std::uint32_t max_replay_passes=3;
     std::size_t retained_fragments=65536; // 4 MiB logical Host storage; 0 deliberately disables retention
     std::size_t max_logical_fragments=1048576;
+    // 0 disables this active-input budget; independent of the lifetime guard.
+    std::size_t max_resident_fragments=0;
     // Host policies, not OCP requirements. Zero retains fail-on-error behavior.
     std::uint32_t max_pending_retries=3; // additional attempts per refused command
     std::uint32_t max_timeout_retries=3; // additional whole-DLU assembly rounds

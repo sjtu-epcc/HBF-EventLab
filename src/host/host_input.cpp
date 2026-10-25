@@ -15,7 +15,7 @@ std::vector<HostDriver::PreparedRequest> HostDriver::prepare(const std::vector<G
     std::map<GlobalRequestId,const GlobalRequest*> ids;
     std::uint64_t count=next_work_;
     for(const auto& r:input) {
-        if(requests_.count(r.id) || !ids.emplace(r.id,&r).second)
+        if(results_.count(r.id) || !ids.emplace(r.id,&r).second)
             throw std::invalid_argument("duplicate Global ID");
         if(r.op!=Op::Read && r.op!=Op::Write)throw std::invalid_argument("invalid operation");
         if(r.op==Op::Write&&!r.after.empty())throw std::invalid_argument("LIMIT-WRITE-001: extra write dependencies unsupported");
@@ -24,14 +24,16 @@ std::vector<HostDriver::PreparedRequest> HostDriver::prepare(const std::vector<G
             throw std::invalid_argument("unaligned/empty Global range");
         (void)checked_add(r.address.value,r.bytes);
         count=checked_add(count,r.bytes/host_unit_bytes);
-        if(count>config_.max_logical_fragments)
+        if(config_.max_logical_fragments && count>config_.max_logical_fragments)
             throw std::invalid_argument("workload exceeds configured fragment limit");
         if(r.not_before<events_.now())throw std::invalid_argument("workload release time is in the past");
+        if(r.offered_at && r.not_before<*r.offered_at)throw std::invalid_argument("producer offer time exceeds release time");
+        if(r.offered_at && events_.now()<*r.offered_at)throw std::invalid_argument("producer offer time exceeds registration time");
     }
     std::map<GlobalRequestId,int> color;
     std::function<void(GlobalRequestId)> visit=[&](GlobalRequestId id) {
         // Previously committed dependencies cannot point at newly introduced IDs.
-        if(requests_.count(id))return;
+        if(results_.count(id))return;
         if(!ids.count(id))throw std::invalid_argument("unknown read dependency");
         if(color[id]==1)throw std::invalid_argument("cyclic read dependency");
         if(color[id]==2)return;
@@ -93,8 +95,9 @@ void HostDriver::register_input(std::vector<PreparedRequest> input) {
         requests_.emplace(r.id,r);
         results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/host_unit_bytes)});
         if(statistics_sink_)statistics_sink_->observe(StatGlobalDefined{r.id,r.op,r.bytes,r.not_before});
+        if(statistics_sink_ && r.offered_at)statistics_sink_->observe(StatInputRegistered{r.id,*r.offered_at,events_.now()});
         for(auto& f:item.fragments) {
-            f.id=LogicalWorkId{++next_work_};work_.emplace(f.id,Work{f});
+            next_work_=checked_add(next_work_,1);f.id=LogicalWorkId{next_work_};work_.emplace(f.id,Work{f});
             if(statistics_sink_)statistics_sink_->observe(StatWorkDefined{f.id,r.id,f.address,
                 r.op==Op::Write?std::optional<std::uint64_t>{r.content}:std::nullopt});
             std::optional<ContentKey> content;
@@ -107,6 +110,7 @@ void HostDriver::register_input(std::vector<PreparedRequest> input) {
                     version_order_[content->block].push_back(*content);
                 }
                 versions_.at(*content).defined[f.logical.page].set(f.logical.byte_offset/host_unit_bytes);
+                ++versions_.at(*content).unfinished;
             }
             if(r.op==Op::Write && config_.writes==WriteCommandMode::Burst4096) {
                 const PageKey key{*content,f.logical.page};
@@ -131,17 +135,21 @@ void HostDriver::register_input(std::vector<PreparedRequest> input) {
 
 void HostDriver::load(const std::vector<GlobalRequest>& input) {
     if(loaded_||started_)throw std::logic_error("Host workload already loaded");
-    register_input(prepare(input));
+    auto prepared=prepare(input);std::uint64_t count=0;
+    for(const auto& p:prepared)count=checked_add(count,p.fragments.size());
+    if(config_.max_resident_fragments && count>config_.max_resident_fragments)
+        throw std::invalid_argument("finite workload exceeds resident input budget; use incremental try_submit");
+    register_input(std::move(prepared));
     loaded_=true;
 }
 void HostDriver::submit(const std::vector<GlobalRequest>& input) {
-    if(!incremental_ || !started_)throw std::logic_error("submit requires start_incremental");
-    register_input(prepare(input));
+    const auto r=try_submit(input);
+    if(r.disposition!=InputDisposition::Registered)
+        throw std::invalid_argument(r.disposition==InputDisposition::TooLarge?"input batch exceeds resident budget":"input backpressured; use try_submit");
 }
 void HostDriver::start_incremental(const std::vector<GlobalRequest>& initial) {
-    if(loaded_||started_)throw std::logic_error("Host input mode already selected");
-    register_input(prepare(initial));
-    incremental_=true;loaded_=true;start();
+    const auto r=try_start_incremental(initial);
+    if(r.disposition!=InputDisposition::Registered)throw std::invalid_argument("initial input batch exceeds resident budget");
 }
 void HostDriver::start() {
     if(!loaded_||started_)throw std::logic_error("Host must load exactly once before start");

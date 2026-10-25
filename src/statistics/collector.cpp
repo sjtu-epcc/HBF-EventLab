@@ -68,6 +68,11 @@ void StatisticsCollector::record(const StatWorkDefined& e) {
     if(e.content)require(write_index_.emplace(std::make_tuple(e.address.channel,e.address.local.value,*e.content),e.id).second,
                          "statistics: duplicate write content fragment");
 }
+void StatisticsCollector::record(const StatInputRegistered& e) {
+    auto& g=globals_.at(e.id);
+    require(!g.registered && !(e.registered<e.offered) && !(g.scheduled_release<e.offered),"statistics: invalid input origin");
+    g.offered=e.offered;g.registered=e.registered;note(e.registered);
+}
 void StatisticsCollector::record(const StatGlobalReleased& e) {
     auto& g=globals_.at(e.id);
     require(!g.released && !g.finished && !(e.at<g.scheduled_release),"statistics: invalid release");
@@ -158,6 +163,9 @@ StatisticsSummary StatisticsCollector::summarize(Tick at) const {
     }
     for(const auto& entry:globals_) {
         const auto& g=entry.second;count(s.globals[g.op],g.result,g.finished&&!g.released);
+        const auto prefix=std::string(op_name(g.op))+".global."+outcome(g.result)+".";
+        if(g.offered&&g.registered)samples[prefix+"input_wait"].push_back(elapsed(*g.registered,*g.offered));
+        if(g.offered&&g.finished)samples[prefix+"source_end_to_end"].push_back(elapsed(*g.finished,*g.offered));
         if(g.finished&&g.released)samples[std::string(op_name(g.op))+".global."+outcome(g.result)+".end_to_end"].push_back(elapsed(*g.finished,*g.released));
     }
     for(const auto& entry:work_) {
@@ -209,7 +217,9 @@ void StatisticsCollector::write_json(std::ostream& destination,Tick at,const std
         out<<"{\"id\":"<<g.id.value<<",\"op\":"<<quote(op_name(g.op))<<",\"bytes\":"<<g.bytes
            <<",\"scheduled_release\":"<<g.scheduled_release.value<<",\"released\":";time_json(out,g.released);
         out<<",\"finished\":";time_json(out,g.finished);
-        out<<",\"result\":"<<quote(outcome(g.result))<<",\"remaining\":"<<g.remaining<<",\"reason\":"<<quote(g.reason)<<'}';
+        out<<",\"result\":"<<quote(outcome(g.result))<<",\"remaining\":"<<g.remaining<<",\"reason\":"<<quote(g.reason);
+        if(g.offered)out<<",\"offered\":"<<g.offered->value<<",\"registered\":"<<g.registered->value;
+        out<<'}';
     }
     out<<"],\"logical_work\":[";comma=false;
     for(const auto& entry:work_) {

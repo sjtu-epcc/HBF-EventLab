@@ -103,7 +103,8 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `host.read_hint_mode` | `tail_batch` | `tail_batch` 或 `all_regular`；前者在每 Global、每 channel 的最后一条读使用 Batch。 |
 | `host.max_open_dlus_per_channel` | `2` | 正数。Host 活跃写 DLU 数：从首条命令 Taken 到该 DLU 已移交命令全部收到响应；不是 Device Pending 数。 |
 | `host.retained_fragments` | `65536` | Host 恢复保留区额度，单位为代表 64B 内容的符号片段；0 禁用。默认相当于 4MiB 逻辑内容，不等于程序实际内存。 |
-| `host.max_logical_fragments` | `1048576` | 正数；原始逻辑片段累计输入上限。增量模式按整个 Host 生命周期累计，已经完成的输入也计入；超限批次拒绝。属于程序保护，不是当前队列容量、Device MOCS 或硬件容量。 |
+| `host.max_logical_fragments` | `1048576` | 原始逻辑片段累计输入保护上限；0关闭。整个Host生命周期累计，已完成输入也计入；超限为输入契约错误。不是当前驻留量或Device MOCS。 |
+| `host.max_resident_fragments` | `0` | 当前驻留逻辑片段上限；0关闭。按64B Work计费，显式4KiB burst也计64份，重试不重复计费；增量模式安全回收后归还。严格实际占用，不为未来补片预留。 |
 | `host.recovery.max_replay_passes` | `3` | 每恢复任务最多 replay 遍数，初始普通写不计；0 禁止 replay。重复响应及合并任务不重置预算。 |
 | `host.retry.max_pending_retries` | `3` | 每发送单元收到 0x4 后允许的额外尝试，初始发送不计；0 关闭。 |
 | `host.retry.max_timeout_retries` | `3` | 同内容／页／pass 的额外整页组装轮数，初始组装不计；0 关闭。 |
@@ -173,13 +174,15 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `run.rounds_per_tick` | `100000` | 同 Tick 因果轮次上限；0 不限制。 |
 | `output.trace` | `false` | 是否输出 Host／Device 事件日志。 |
 | `output.statistics_json` | 空字符串 | 统一统计 JSON 路径（schema 2），包含请求延迟、Pending曲线、DLU上下文历史、Bank操作、读窗口与实际读服务；空字符串关闭记录。精确历史有宿主内存开销，详见[统计说明](usage.md#统一统计)。 |
+| `output.statistics_events_jsonl` | 空字符串 | 追加观察事件流路径（schema 1）；CLI别名`--stats-events`。空字符串关闭。与完整JSON可同时开启，但后者仍保留完整历史。 |
+| `output.statistics_buffer_bytes` | `65536` | JSONL序列化缓冲阈值，字节，必须为正；最后调用flush/finish写出不足阈值的数据。单条超大记录完整直写，详见[内存边界](statistics_event_stream.md)。 |
 | `output.effective_config` | 空字符串 | 有效配置 INI 导出路径；空字符串关闭文件导出。 |
 
 这些运行限额不属于设备资源。基础 EventQueue 单独使用时默认总事件数不限；统一入口使用本表 RunLimits 作为程序级默认值。
 
 ## 有效配置与扩展
 
-在线 `SimulationSession` 复用解析后的运行配置。`advance_before(T)` 的 T 是一次正常让出执行权的排他终点，不是配置中的 `run.max_tick_ps`；后者仍是包含端点的绝对安全上限。暂停继续不重新获得事件预算。只有显式 `set_run_limits()` 才改变安全上限，累计计数不清零。`host.max_logical_fragments` 仍按整场会话累计；当前没有可回收的输入队列额度。会话不解释 `output` 文件路径或创建文件，调用方负责挂接统计、导出配置与输出结果。详见[在线会话API](usage.md#online-session)。
+在线 `SimulationSession` 复用解析后的运行配置。`advance_before(T)` 的 T 是一次正常让出执行权的排他终点，不是配置中的 `run.max_tick_ps`；后者仍是包含端点的绝对安全上限。暂停继续不重新获得事件预算。只有显式 `set_run_limits()` 才改变安全上限，累计计数不清零。长期增量输入可设 `host.max_logical_fragments=0`，并单独设置 `host.max_resident_fragments`；默认仍保留累计保护。有限CLI一次性load整个workload，若设置驻留上限，必须容纳整份输入，CLI不会自动改成流式读取。会话不解释 `output` 文件路径或创建文件，调用方负责挂接统计、导出配置与输出结果。详见[在线会话API](usage.md#online-session)。
 
 `--dump-config` 在运行前输出已经展开默认值、zone 大小和 Core 路由的配置。派生带宽、档位上限、逻辑容量和组装预算写为只读注释，主体可以再次经 `--config` 加载。重放导出文件时，如果其中的 output.effective_config 恰好指回输入文件，请用 `--dump-config another.ini` 覆盖，避免覆盖保护报错。
 

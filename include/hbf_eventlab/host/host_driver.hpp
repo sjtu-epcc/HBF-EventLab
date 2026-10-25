@@ -26,6 +26,15 @@ struct GlobalCompletion {
     WorkResult result;
     Tick at; // Final logical outcome time, not callback consumption time.
 };
+enum class InputDisposition { Registered, Backpressured, TooLarge };
+struct InputCapacity {
+    std::size_t limit=0,resident=0;
+    std::uint64_t generation=0; // increases when resident work is reclaimed
+};
+struct InputAdmission { InputDisposition disposition; std::uint64_t fragments; InputCapacity capacity; };
+struct HostStorage {
+    std::size_t requests,results,work,units,attempts,versions,retained;
+};
 class HostDriver {
 public:
     HostDriver(IHostPort&,EventQueue&,const IHostInterleaver&,HostConfiguration={},
@@ -41,9 +50,17 @@ public:
     // Batch validation is atomic for input-contract errors; no Device activity.
     // Existing or same-batch dependencies only. Burst pages must be complete in
     // this batch. not_before is absolute simulation time (must not be in the past).
-    // No queue-space backpressure yet: max_logical_fragments is a lifetime limit.
+    // Convenience submit throws if capacity rejects; try_submit returns normal
+    // backpressure without registration, callbacks, IDs, or content sealing.
     void submit(const std::vector<GlobalRequest>&);
     void submit(const GlobalRequest& request) { submit(std::vector<GlobalRequest>{request}); }
+    InputAdmission try_submit(const std::vector<GlobalRequest>&);
+    InputAdmission try_submit(const GlobalRequest& r) { return try_submit(std::vector<GlobalRequest>{r}); }
+    InputAdmission try_start_incremental(const std::vector<GlobalRequest>&);
+    InputCapacity input_capacity() const { return {config_.max_resident_fragments,work_.size(),input_generation_}; }
+    HostStorage storage() const;
+    // A coalesced event on reclaimed capacity, not a guarantee a batch fits.
+    void set_input_capacity_handler(std::function<void(InputCapacity)>);
     bool incremental_input() const { return incremental_; }
     // Attach once before load/start. Delivered asynchronously, exactly once for
     // each final Global result. The callback may submit but must not run events.
@@ -94,6 +111,8 @@ private:
         // Host input coverage, not Device received/Assembly state. Survives retries.
         std::map<PageId,std::bitset<fragments_per_dlu>> defined;
         std::map<PageId,std::bitset<fragments_per_dlu>> accepted;
+        std::map<PageId,std::bitset<fragments_per_dlu>> successful;
+        std::size_t unfinished=0;
         // Acceptance is tentative send progress, not a mirror of Device Assembly.
         std::map<PageId,PageRetry> retries;
         std::uint64_t next_pass=0;
@@ -113,6 +132,8 @@ private:
     struct Attempt {SendUnitId unit;TransferAttemptId transfer;bool accepted=false;};
     struct PreparedRequest { GlobalRequest request; std::vector<Fragment> fragments; };
     std::vector<PreparedRequest> prepare(const std::vector<GlobalRequest>&) const;
+    InputAdmission admit_input(const std::vector<GlobalRequest>&,bool initial);
+    void reclaim(); // only at stable callback boundaries, never while iterating units
     void register_input(std::vector<PreparedRequest>);
     void arm_releases(const std::vector<GlobalRequestId>&);
     SendUnitId add_unit(Op,std::vector<Fragment>,std::optional<ContentKey>,std::optional<ReadGroup>,bool replay=false,std::uint64_t pass=0);
@@ -173,6 +194,9 @@ private:
     IStatisticsSink* statistics_sink_=nullptr;
     std::function<void(const HostTrace&)> trace_;
     std::function<void(const GlobalCompletion&)> completion_;
+    std::function<void(InputCapacity)> input_capacity_handler_;
+    std::optional<EventId> input_capacity_event_;
+    std::uint64_t input_generation_=0;
 };
 } // namespace hbf_eventlab
 
