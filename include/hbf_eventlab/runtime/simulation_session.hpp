@@ -11,6 +11,7 @@ struct SessionReport {
     bool accepts_at_floor;
     std::optional<Tick> next_event;
     InputCapacity input_capacity;
+    bool feedback_yield=false; // Paused after an explicit callback handoff
 };
 
 // One logical external producer, all calls on the same simulation thread.
@@ -18,7 +19,7 @@ struct SessionReport {
 // waits, threads, sockets, or file I/O. The optional observer outlives this object.
 class SimulationSession {
 public:
-    explicit SimulationSession(ResolvedSimulationConfiguration, IStatisticsSink* = nullptr);
+    explicit SimulationSession(ResolvedSimulationConfiguration, IStatisticsSink* = nullptr,RuntimeProfile* = nullptr);
     SimulationSession(const SimulationSession&)=delete;
     SimulationSession& operator=(const SimulationSession&)=delete;
     void set_completion_handler(std::function<void(const GlobalCompletion&)>);
@@ -29,7 +30,8 @@ public:
     void submit(const GlobalRequest& r) { submit(std::vector<GlobalRequest>{r}); }
     InputAdmission try_submit(const std::vector<GlobalRequest>&);
     InputAdmission try_submit(const GlobalRequest& r) { return try_submit(std::vector<GlobalRequest>{r}); }
-    // Only within this session's completion/capacity callback, including after close.
+    // Only within this session's completion/capacity callback or resumed causal
+    // continuation, including after close.
     // It already runs as an event; Host release/pump obey same-tick causality.
     void submit_feedback(const std::vector<GlobalRequest>&);
     void submit_feedback(const GlobalRequest& r) { submit_feedback(std::vector<GlobalRequest>{r}); }
@@ -38,6 +40,14 @@ public:
     InputCapacity input_capacity() const { return host_.input_capacity(); }
     void close_input(); // idempotent; does not cancel accepted work or feedback
     SessionReport advance_before(Tick); // exclusive endpoint, not a run limit
+    // The producer promises no independent external input before this handoff.
+    // With no event and open input, returns WaitingForInput without jumping time.
+    SessionReport advance_until_yield();
+    void request_yield(); // only in this session's feedback callback; never recursive
+    // One-shot causal continuation of the last feedback yield, at the same Tick.
+    // Does not reopen that Tick to ordinary external submit or undo deadlines.
+    void resume_feedback(std::function<void()>);
+    bool can_resume_feedback() const { return feedback_available_; }
     SessionReport run_to_completion(); // requires external input closed
     // Absolute safety ceilings, preserved across pauses; explicit changes only.
     void set_run_limits(RunLimits);
@@ -55,7 +65,7 @@ private:
     void healthy() const;
     void start();
     SessionReport drive(std::optional<Tick>);
-    SessionReport report(RunStatus,const std::string&);
+    SessionReport report(RunStatus,const std::string&,bool feedback_yield=false);
     ResolvedSimulationConfiguration config_;
     EventQueue events_;
     DeviceDriver device_;
@@ -64,6 +74,7 @@ private:
     RunLimits limits_;
     bool input_closed_=false, started_=false;
     bool running_=false, in_feedback_=false;
+    bool yield_requested_=false, feedback_available_=false;
     std::optional<std::pair<RunStatus,std::string>> failure_;
 };
 } // namespace hbf_eventlab

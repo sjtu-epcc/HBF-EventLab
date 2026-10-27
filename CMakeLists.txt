@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(HBFEventLab VERSION 0.5.0 LANGUAGES CXX)
 add_library(hbf_eventlab
+    src/diagnostics/runtime_profile.cpp
     src/configuration/simulation_configuration.cpp
     src/host/host_configuration.cpp
     src/architecture/topology_configuration.cpp
@@ -49,6 +50,13 @@ else()
 endif()
 add_library(hbf_eventlab_workload_io src/adapters/workload_reader.cpp)
 target_link_libraries(hbf_eventlab_workload_io PUBLIC HBFEventLab::core)
+add_library(hbf_eventlab_tensor_bridge src/adapters/tensor_access_bridge.cpp)
+add_library(HBFEventLab::tensor_bridge ALIAS hbf_eventlab_tensor_bridge)
+target_link_libraries(hbf_eventlab_tensor_bridge PUBLIC HBFEventLab::core)
+add_executable(hbf_eventlab_tensor_bridge_demo examples/cpu_tensor_bridge.cpp)
+target_link_libraries(hbf_eventlab_tensor_bridge_demo PRIVATE HBFEventLab::tensor_bridge)
+add_executable(hbf_eventlab_runtime_bench examples/runtime_profile_bench.cpp)
+target_link_libraries(hbf_eventlab_runtime_bench PRIVATE HBFEventLab::tensor_bridge)
 add_executable(hbf_eventlab_demo examples/foundations_demo.cpp)
 target_link_libraries(hbf_eventlab_demo PRIVATE HBFEventLab::core)
 add_executable(hbf_eventlab_device_demo examples/device_loop_demo.cpp)
@@ -63,7 +71,43 @@ add_executable(hbf_eventlab_bounded_demo examples/bounded_input.cpp)
 target_link_libraries(hbf_eventlab_bounded_demo PRIVATE HBFEventLab::core)
 include(CTest)
 include(cmake/ExperimentPython.cmake)
+option(HBF_EVENTLAB_QWEN_EXPERIMENT "Build the optional external CUDA Qwen executor and online adapter" OFF)
+if(HBF_EVENTLAB_QWEN_EXPERIMENT)
+    add_subdirectory(experiments/qwen_online)
+endif()
 if(BUILD_TESTING)
+    add_executable(hbf_eventlab_runtime_profile_tests tests/runtime_profile.cpp)
+    target_link_libraries(hbf_eventlab_runtime_profile_tests PRIVATE HBFEventLab::core)
+    foreach(scenario nested disabled unwind export isolation admission normal replay timeout pending config)
+        add_test(NAME runtime_profile_${scenario} COMMAND hbf_eventlab_runtime_profile_tests ${scenario})
+        set_tests_properties(runtime_profile_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    add_test(NAME runtime_profile_cli COMMAND ${CMAKE_COMMAND}
+        -DBENCH=$<TARGET_FILE:hbf_eventlab_runtime_bench> -DCLI=$<TARGET_FILE:hbf_eventlab_cli>
+        -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR} -DOUT=${CMAKE_CURRENT_BINARY_DIR}/runtime-profile-$<CONFIG>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_runtime_profile.cmake)
+    set_tests_properties(runtime_profile_cli PROPERTIES TIMEOUT 60)
+    add_executable(hbf_eventlab_compute_tail_tests tests/compute_tail.cpp)
+    target_link_libraries(hbf_eventlab_compute_tail_tests PRIVATE HBFEventLab::tensor_bridge)
+    target_include_directories(hbf_eventlab_compute_tail_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    foreach(scenario tail zero empty limit overflow guards ranges identity)
+        add_test(NAME tensor_compute_${scenario} COMMAND hbf_eventlab_compute_tail_tests ${scenario})
+        set_tests_properties(tensor_compute_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    add_test(NAME tensor_bridge_demo COMMAND hbf_eventlab_tensor_bridge_demo)
+    add_executable(hbf_eventlab_feedback_tests tests/session_feedback.cpp)
+    target_link_libraries(hbf_eventlab_feedback_tests PRIVATE HBFEventLab::core)
+    foreach(scenario handoff zero_compute future_no_skip guards one_shot expired closed capacity error total_limit deadline reentrant empty)
+        add_test(NAME session_handoff_${scenario} COMMAND hbf_eventlab_feedback_tests ${scenario})
+        set_tests_properties(session_handoff_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+    add_executable(hbf_eventlab_tensor_bridge_tests tests/tensor_bridge.cpp)
+    target_link_libraries(hbf_eventlab_tensor_bridge_tests PRIVATE HBFEventLab::tensor_bridge)
+    foreach(scenario round_trip backpressure timing zero_compute aggregated multi_channel identity range registry too_large
+            timeout stalled limit replay failure no_retention observer burst reentrant closed failure_drain input_contract trace_error)
+        add_test(NAME tensor_bridge_${scenario} COMMAND hbf_eventlab_tensor_bridge_tests ${scenario})
+        set_tests_properties(tensor_bridge_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
     add_test(NAME bounded_input_demo COMMAND hbf_eventlab_bounded_demo)
     add_executable(hbf_eventlab_event_stream_tests tests/event_stream.cpp)
     target_link_libraries(hbf_eventlab_event_stream_tests PRIVATE HBFEventLab::core)
@@ -107,6 +151,9 @@ if(BUILD_TESTING)
     # Core-only users opt out explicitly; requested verification must never disappear.
     hbf_eventlab_find_experiment_python()
     if(HBF_EVENTLAB_EXPERIMENT_TESTS)
+        add_test(NAME experiment_qwen_audit_unit COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_qwen_online.py")
+        set_tests_properties(experiment_qwen_audit_unit PROPERTIES TIMEOUT 30)
         add_test(NAME statistics_stream_cli COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_event_stream.py"
             "$<TARGET_FILE:hbf_eventlab_cli>" "${CMAKE_CURRENT_SOURCE_DIR}/examples/workloads/normal.txt"

@@ -21,6 +21,7 @@ The project supports research into **Host–HBF coordination, access organizatio
 | Addressing and capacity | Component APIs provide Zone swaps, replacement with spare blocks in the same Bank, sparse compensation, and permanent logical retirement; CLI commands are not available for all of these capabilities. |
 | Run results | Completion, stalls, run limits, and model errors are distinguished, with separate checks that transient Host and Device activity has drained. |
 | Statistics | Optional JSON records request/attempt latency, per-channel Pending occupancy curves, fragment progress, and DLU context lifecycles, including timeouts, retries, and unfinished work. See [Statistics](docs/usage.md#统一统计). |
+| Program diagnostics | Default-off aggregate wall-time profiling of splitting, Host scheduling, history scans and reclamation. Separate from simulated latency; see [Runtime profiling](docs/runtime_profiling.md). |
 
 The media model uses `DataToken` to represent symbolic content. It does not store actual user bytes or NAND cell charge. Core Channel currently uses an ideal model with infinite bandwidth and zero latency; the fixed NAND latencies and buffer parameters cannot be used directly to predict real product performance.
 
@@ -106,6 +107,24 @@ The first line of a workload must be `HBF_EVENTLAB_WORKLOAD 1`, and request addr
 - `hbf_eventlab_demo`: a functional example that explicitly operates low-level components.
 
 The C++ namespace is `hbf_eventlab`, public headers are in [include/hbf_eventlab/](include/hbf_eventlab/), and the core CMake link target is `HBFEventLab::core`. See [Architecture](docs/architecture.md) for the division of responsibilities among interface declarations, policy implementations, and runtime state.
+
+For a CPU-only tensor callback producer, link `HBFEventLab::tensor_bridge` and run
+`hbf_eventlab_tensor_bridge_demo`. It registers immutable tensor ranges, submits
+Global children through the existing Host, waits on resident-capacity feedback,
+and yields on logical completion. The executor retains real bytes; HBF validates
+symbolic content. This requires no CUDA or model weights. See the
+[bridge contract and example](docs/tensor_bridge.md).
+
+An optional [Qwen CUDA integration experiment](docs/qwen_online.md) uses the same
+Host and bridge, with an externally supplied CUDA executor. It checks an independent
+CPU reference against native and HBF-connected GPU runs, including input-capacity
+backpressure, a final compute interval, and error aborts. Only a selected immutable
+weight range is constrained by HBF; real weights remain in the GPU executor.
+The default build does not require CUDA, PyTorch, or model weights.
+
+For the next GPU experiments, see the [GPU experiment handoff](docs/gpu_experiment_handoff.md)
+for the current incremental-Host path, multi-tensor coverage work, compute-time
+measurement, validation requirements, and division of responsibilities.
 
 ## Documentation
 

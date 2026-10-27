@@ -9,6 +9,8 @@ void HostDriver::set_completion_handler(std::function<void(const GlobalCompletio
 }
 
 std::vector<HostDriver::PreparedRequest> HostDriver::prepare(const std::vector<GlobalRequest>& input) const {
+    RuntimeScope timing(profile_,RuntimeRegion::Prepare);
+    if(profile_)profile_->add(RuntimeCounter::PrepareGlobals,input.size());
     // All input-dependent rejection precedes registration, statistics, and events.
     // Allocation failures or exceptions from user observers are fatal, not a
     // recoverable rejected submission. Never rebuild the full workload on append.
@@ -85,6 +87,7 @@ std::vector<HostDriver::PreparedRequest> HostDriver::prepare(const std::vector<G
 }
 
 void HostDriver::register_input(std::vector<PreparedRequest> input) {
+    RuntimeScope timing(profile_,RuntimeRegion::RegisterInput);
     std::map<PageKey,std::vector<Fragment>> burst;
     std::vector<PageKey> burst_order;
     std::vector<GlobalRequestId> added;
@@ -94,10 +97,12 @@ void HostDriver::register_input(std::vector<PreparedRequest> input) {
         added.push_back(r.id);
         requests_.emplace(r.id,r);
         results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/host_unit_bytes)});
+        if(profile_) {profile_->add(RuntimeCounter::RegisteredGlobals);profile_->peak(RuntimeCounter::ResultsSizePeak,results_.size());}
         if(statistics_sink_)statistics_sink_->observe(StatGlobalDefined{r.id,r.op,r.bytes,r.not_before});
         if(statistics_sink_ && r.offered_at)statistics_sink_->observe(StatInputRegistered{r.id,*r.offered_at,events_.now()});
         for(auto& f:item.fragments) {
             next_work_=checked_add(next_work_,1);f.id=LogicalWorkId{next_work_};work_.emplace(f.id,Work{f});
+            if(profile_)profile_->add(RuntimeCounter::RegisteredFragments);
             if(statistics_sink_)statistics_sink_->observe(StatWorkDefined{f.id,r.id,f.address,
                 r.op==Op::Write?std::optional<std::uint64_t>{r.content}:std::nullopt});
             std::optional<ContentKey> content;

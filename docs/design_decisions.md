@@ -2,7 +2,7 @@
 
 适用项目版本：**0.5.0**。
 
-本文记录 HBF EventLab 的 172 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
+本文记录 HBF EventLab 的 176 条设计决策，包括规范关系、条目性质、选择理由、实现位置、验证等级及已知限制。决策以 ADR 和 ADR-LOOP 标识，并通过关联要求和测试追溯其适用范围。
 
 规范基准为 [OCP HBF Architecture Specification v0.7.0（03 AUG 2026）](https://www.opencompute.org/documents/ocp-hbf-architecture-specification-v0-7-0-final-pdf)，主要对照第 4、5、11 章。规范关系和项目选择必须分开记录；实现一个接口不等于证明任意替代实现都符合规范。
 
@@ -282,6 +282,14 @@
 | [ADR-INPUT-04](#adr-input-04) | 在线推进使用排他终点，空区间同样封闭；外部输入不能插入已进入的Tick。 | 无直接规定 | 模型／输入假设；实现保障 | 已实现；V1 |
 | [ADR-INPUT-05](#adr-input-05) | 外部来源关闭与事件反馈分开，同一会话复用原Host和Device。 | 无直接规定 | 实现组织；实现机制 | 已实现；V1 |
 | [ADR-INPUT-06](#adr-input-06) | 正常暂停、等待输入与安全限额分开；完成判定同时检查来源和活动。 | 无直接规定 | 实现保障 | 已实现；V1 |
+| [ADR-INPUT-07](#adr-input-07) | 驻留逻辑片段预算、原子背压和容量事件。 | 无直接规定 | 模型／输入假设；实现保障 | 已实现；V1 |
+| [ADR-INPUT-08](#adr-input-08) | 回收执行对象，保留正确性摘要与恢复数据。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
+| [ADR-INPUT-09](#adr-input-09) | 产生时间独立于合法登记时间，统计输入等待。 | 无直接规定 | 统计口径；实现保障 | 已实现；V1 |
+| [ADR-STAT-08](#adr-stat-08) | 统计历史按字节阈值追加导出，身份跨flush不变。 | 无直接规定 | 实现机制；统计口径 | 已实现；V1 |
+| [ADR-BRIDGE-01](#adr-bridge-01) | 正常反馈交接与一次性同Tick续体，保留deadline和安全预算。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
+| [ADR-BRIDGE-02](#adr-bridge-02) | 固定tensor映射到Global范围，沿用block内容身份和原Host。 | 无直接规定 | 模型／输入假设；实现组织 | 已实现；V1 |
+| [ADR-BRIDGE-03](#adr-bridge-03) | 父访存按Global最终结果汇总，严格容量反馈不限制Device命令窗口。 | 无直接规定 | 实现机制；实现保障 | 已实现；V1 |
+| [ADR-BRIDGE-04](#adr-bridge-04) | 真实字节属于执行器，符号状态属于后端；计算时间显式输入。 | 无直接规定 | 模型／输入假设；统计口径 | 已实现；V1 |
 
 ### 3.1 跨组件决策关系
 
@@ -3320,7 +3328,7 @@
 | 实现位置（函数／成员） | [GlobalCompletion / set_completion_handler](../include/hbf_eventlab/host/host_driver.hpp)；[HostDriver::finish_work / schedule / activity](../src/host/host_driver.cpp)；[SimulationRunner::run增量模式检查](../src/runtime/simulation_runner.cpp)；[反馈追加示例](../examples/incremental_host.cpp)。 |
 | 验证测试与覆盖 | [host_incremental.cpp](../tests/host_incremental.cpp)：feedback、idle、recovered_sealed、observer、guards；[incremental_host.cpp](../examples/incremental_host.cpp)展示分批写与完成反馈产生读。 |
 | 实现状态／验证状态 | 已实现于增量Host接口；V1。 |
-| 已知限制 | 逻辑失败通知不保证旧在途操作已排空。有限SimulationRunner拒绝裸增量模式；在线协调由[ADR-INPUT-04](#adr-input-04)至[ADR-INPUT-06](#adr-input-06)的SimulationSession提供。GPU适配尚未提供。 |
+| 已知限制 | 逻辑失败通知不保证旧在途操作已排空。有限SimulationRunner拒绝裸增量模式；在线协调由[ADR-INPUT-04](#adr-input-04)至[ADR-INPUT-06](#adr-input-06)的SimulationSession提供。tensor适配见[ADR-BRIDGE-02](#adr-bridge-02)，可选外部CUDA执行器接入见[ADR-BRIDGE-06](#adr-bridge-06)。 |
 
 <a id="adr-input-04"></a>
 
@@ -3356,7 +3364,7 @@
 | 实现位置（函数／成员） | [SimulationSession构造、set_completion_handler / submit_feedback / close_input](../src/runtime/simulation_session.cpp)；[HostDriver::start_incremental初始批次预检](../src/host/host_input.cpp)；[只读Host/Device视图](../include/hbf_eventlab/runtime/simulation_session.hpp)。 |
 | 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：first_atomic、close_work、close_empty、feedback_closed、feedback_guard、feedback_future、feedback_validation、causal_time、recovery；[online_session.cpp](../examples/online_session.cpp)展示外部关闭后的写完成驱动读。 |
 | 实现状态／验证状态 | 已实现；V1。 |
-| 已知限制 | 不创建线程、不提供同步锁或真实时间等待，不包含GPU桥接。驻留输入背压与执行对象回收见[ADR-INPUT-07](#adr-input-07)和[ADR-INPUT-08](#adr-input-08)；max_logical_fragments仍是独立累计保护额度。 |
+| 已知限制 | 不创建线程、不提供同步锁或真实时间等待，会话本身不承担tensor映射，独立适配见[ADR-BRIDGE-02](#adr-bridge-02)。驻留输入背压与执行对象回收见[ADR-INPUT-07](#adr-input-07)和[ADR-INPUT-08](#adr-input-08)；max_logical_fragments仍是独立累计保护额度。 |
 
 <a id="adr-input-06"></a>
 
@@ -3370,7 +3378,7 @@
 | 规范依据／无直接依据说明 | OCP不规定模拟器运行状态或防失控预算。 |
 | 关联要求／条目 | [ADR-LOOP-F01](#adr-loop-f01)；[ADR-LOOP-F02](#adr-loop-f02)；[ADR-LOOP-F03](#adr-loop-f03)；[ADR-INPUT-04](#adr-input-04) |
 | 选择理由 | 避免外部输入暂时空闲被误判Completed/Stalled，也避免正常让出执行权被记为LimitReached或重新获得运行预算。 |
-| 模型假设／参数依据 | 到达边界且仍有未来事件为Paused；事件用尽且来源开放为WaitingForInput。来源关闭后，无事件且双方排空为Completed，否则Stalled。存在未来timeout/操作事件时继续推进。安全限额跨调用累计；可显式修改上限但不清零计数。 |
+| 模型假设／参数依据 | 到达边界且仍有未来事件或反馈明确请求交接为Paused；事件用尽且来源开放为WaitingForInput。来源关闭后，无事件且双方排空为Completed，否则Stalled。存在未来timeout/操作事件时继续推进。安全限额跨调用累计；可显式修改上限但不清零计数。 |
 | 实现位置（函数／成员） | [SimulationSession::drive / report / set_run_limits / run_to_completion](../src/runtime/simulation_session.cpp)；[SessionReport](../include/hbf_eventlab/runtime/simulation_session.hpp)；[RunStatus](../include/hbf_eventlab/runtime/simulation_runner.hpp)。 |
 | 验证测试与覆盖 | [session.cpp](../tests/session.cpp)：open_drained、open_timeout、closed_stalled、missing_predecessor、limit_total、limit_tick、limit_round、time_empty、time_future、equivalent、callback_error、callback_model_error；暂停/继续与离线连续运行的统计及事件数一致。 |
 | 实现状态／验证状态 | 已实现；V1。 |
@@ -3448,7 +3456,138 @@
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 非通用离线汇总器；原实验脚本仍读取完整JSON。单条记录及底层ostream有额外内存，磁盘量增长，不支持崩溃续写、fsync或后台I/O。同时开启Collector仍保留完整历史；析构不自动吞错flush。 |
 
+### tensor访存适配与反馈交接
+
+<a id="adr-bridge-01"></a>
+
+#### ADR-BRIDGE-01｜正常反馈交接与一次性同Tick续体，保留deadline和安全预算。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；实现保障 |
+| 分类边界说明 | 描述模拟程序如何交回执行权，不改变设备响应语义；不是硬件新增延迟。 |
+| 规范依据／无直接依据说明 | OCP不规定模拟器暂停或外部执行器协作API。 |
+| 关联要求／条目 | [ADR-INPUT-04](#adr-input-04)、[ADR-INPUT-05](#adr-input-05)、[ADR-INPUT-06](#adr-input-06)及原deadline批结算契约。 |
+| 选择理由 | 访存完成后允许执行器产生后续输入；不为零计算间隔虚加Tick，也不让调用者插入已过去的外部位置。 |
+| 模型假设／参数依据 | 反馈回调请求yield，run_next安全结束后Paused；一次性续体排入当前Tick正常Arrival。推进作废未用续体资格；普通外部提交边界不放宽，运行预算不重置。 |
+| 实现位置（函数／成员） | [SimulationSession::request_yield、resume_feedback、advance_until_yield、drive](../src/runtime/simulation_session.cpp)；[SessionReport::feedback_yield](../include/hbf_eventlab/runtime/simulation_session.hpp)。 |
+| 验证测试与覆盖 | [session_feedback.cpp](../tests/session_feedback.cpp)：handoff、zero_compute、future_no_skip、guards、one_shot、expired、closed、capacity、error、total_limit、deadline、reentrant、empty；原session_frozen_deadline继续覆盖不可分批结算。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 无界推进至反馈要求生产者保证此前没有未知独立输入；不提供多源水位线或并发线程协调。 |
+
+<a id="adr-bridge-02"></a>
+
+#### ADR-BRIDGE-02｜固定tensor映射到Global范围，沿用block内容身份和原Host。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；实现组织 |
+| 分类边界说明 | tensor注册和固定权重的边界来自当前适配器范围；原Host、Device和地址映射规则不修改。 |
+| 规范依据／无直接依据说明 | OCP不指定tensor名称、内容token或GPU回调接口。 |
+| 关联要求／条目 | [ADR-INPUT-02](#adr-input-02)及既有Global交织和不可回用内容契约。 |
+| 选择理由 | 在接入外部生产者时保留原发送、顺序、重试、恢复及统计语义；避免另写简化Host或给每页单独发明内容版本。 |
+| 模型假设／参数依据 | 范围64B对齐、合法且不重叠；同逻辑块的tensor使用相同不可变content。initialize仅一次普通写，access为只读访存；静态逻辑布局用于注册校验，不读取动态NAND状态。 |
+| 实现位置（函数／成员） | [TensorRegion、TensorAccessBridge::tensors_ / initialized_](../include/hbf_eventlab/adapters/tensor_access_bridge.hpp)；[构造、initialize、access、transfer](../src/adapters/tensor_access_bridge.cpp)。 |
+| 验证测试与覆盖 | [tensor_bridge.cpp](../tests/tensor_bridge.cpp)：round_trip、identity、registry、range、multi_channel、burst；[CPU示例](../examples/cpu_tensor_bridge.cpp)。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 适配器不支持tensor更新、KV写回、重叠别名或异步多生产者；后端本身仍保留更通用的增量写API。初始化覆盖和前页约束由输入负责。 |
+
+<a id="adr-bridge-03"></a>
+
+#### ADR-BRIDGE-03｜父访存按Global最终结果汇总，严格容量反馈不限制Device命令窗口。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 实现机制；实现保障 |
+| 分类边界说明 | Global分组是输入组织方式，不是MOCS、Pending、Bank容量或OCP命令定义。 |
+| 规范依据／无直接依据说明 | OCP不规定GPU访存到模拟器Global条目的拆分或应用层聚合。 |
+| 关联要求／条目 | [ADR-INPUT-03](#adr-input-03)、[ADR-INPUT-07](#adr-input-07)、[ADR-INPUT-09](#adr-input-09)。 |
+| 选择理由 | 允许一个父访存产生多个Global并等待恢复后的最终结果；容量不足时不丢失未登记范围，不以伪造完成让GPU继续。 |
+| 模型假设／参数依据 | global_chunk_bytes默认4096，正64B倍数，为适配器工程默认。按实际预算原子try_submit；等待足够空位再重试，offered_at不变。父完成取各子Global最终时刻最大值；任一最终失败停止未登记后缀，已登记子工作全部取得归属。 |
+| 实现位置（函数／成员） | [TensorBridgeConfiguration、TensorAccessResult、Active::outstanding / next / waiting_fragments](../include/hbf_eventlab/adapters/tensor_access_bridge.hpp)；[pump、completed、check_complete、finish](../src/adapters/tensor_access_bridge.cpp)。 |
+| 验证测试与覆盖 | [tensor_bridge.cpp](../tests/tensor_bridge.cpp)：aggregated、backpressure、too_large、timeout、stalled、limit、replay、failure、failure_drain、no_retention、input_contract、trace_error、closed。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 严格预算不保证完整local DLU形成；输入拒绝属于Host契约，不能伪造Device错误。finish仅汇报已登记的后端工作，调用方还须检查父访存success及未登记字节数。 |
+
+<a id="adr-bridge-04"></a>
+
+#### ADR-BRIDGE-04｜真实字节属于执行器，符号状态属于后端；计算时间显式输入。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；统计口径 |
+| 分类边界说明 | 是当前功能接入的抽象与测量边界，不声称实现真实NAND数据传输或GPU性能校准。 |
+| 规范依据／无直接依据说明 | OCP不定义模拟执行器的符号数据分工，也不提供本示例的计算间隔。 |
+| 关联要求／条目 | [ADR-BRIDGE-01](#adr-bridge-01)、[ADR-BRIDGE-02](#adr-bridge-02)及既有DataToken检查。 |
+| 选择理由 | 先验证直接调用、时间与完成反馈，同时让实际GPU计算器保留真实数据所有权；避免将模拟器自身运行耗时再次计入计算时间。 |
+| 模型假设／参数依据 | 单生产者、同步访存边界；下一产生时刻=当前完成时刻+显式compute。正间隔用排他推进，零间隔用因果续体；计算期间旧容量通知不提前开放新输入。核心桥接无CUDA依赖、墙钟换算或真实等待；可选CUDA执行器在桥接层之外。 |
+| 实现位置（函数／成员） | [TensorAccessBridge::transfer、Active::input_open / result.offered](../src/adapters/tensor_access_bridge.cpp)；[cpu_tensor_bridge.cpp中执行器数组、gate和compute参数](../examples/cpu_tensor_bridge.cpp)。 |
+| 验证测试与覆盖 | [tensor_bridge.cpp](../tests/tensor_bridge.cpp)：timing、zero_compute、observer、reentrant；示例验证CPU数组仍由执行器拥有，结果成功后才进行依赖计算。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 无计算/访存重叠模型；可选Qwen数值验证见[ADR-BRIDGE-06](#adr-bridge-06)。未来如采用GPU测得时间，必须单独测量计算区间并排除后端推进与访存等待。 |
+
+<a id="adr-bridge-05"></a>
+
+#### ADR-BRIDGE-05｜计算区间可独立推进，最后一次访存后的尾段也计入模拟时间。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；实现保障；统计口径 |
+| 分类边界说明 | 计算时间由外部执行器模型提供，不是OCP硬件规定；不改变既有事件顺序与deadline边界。 |
+| 规范依据／无直接依据说明 | OCP不规定GPU计算时延或协同模拟器的尾段API。 |
+| 关联要求／条目 | [ADR-BRIDGE-01](#adr-bridge-01)、[ADR-BRIDGE-04](#adr-bridge-04)。 |
+| 选择理由 | 最后一次内存访问不是推理完成；用独立推进接口计入尾段，避免伪造访存或把后端墙钟时间算入GPU计算。 |
+| 模型假设／参数依据 | advance_compute接受非负Tick；正值排他推进至当前时刻加duration，期间处理已有事件；0保留因果续体。溢出先拒绝，限额仍为LimitReached，不重置预算。 |
+| 实现位置（函数／成员） | [TensorComputeResult、TensorAccessBridge::advance_compute](../include/hbf_eventlab/adapters/tensor_access_bridge.hpp)；[实现](../src/adapters/tensor_access_bridge.cpp)。 |
+| 验证测试与覆盖 | [compute_tail.cpp](../tests/compute_tail.cpp)：tail、zero、empty、limit、overflow、guards、identity；[审计测试](../tests/test_qwen_online.py)：尾段遗漏、墙钟混入与时间分解；Qwen实际正/零间隔运行。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 同步、单生产者；不推导实际GPU算力，不模拟计算与访存重叠。 |
+
+<a id="adr-bridge-06"></a>
+
+#### ADR-BRIDGE-06｜可选CUDA执行器只对清单选中范围施加HBF约束，并用三方数值和公开事件验证。
+
+| 字段 | 记录 |
+|---|---|
+| 规范关系 | 无直接规定 |
+| 条目性质 | 模型／输入假设；实现组织；验证方法 |
+| 分类边界说明 | 是应用接入和验证范围，不声称实现OCP规定之外的GPU/HBM硬件。 |
+| 规范依据／无直接依据说明 | OCP未定义Qwen、tensor清单、CUDA回调或数值阈值。 |
+| 关联要求／条目 | [ADR-BRIDGE-02](#adr-bridge-02)、[ADR-BRIDGE-03](#adr-bridge-03)、[ADR-BRIDGE-04](#adr-bridge-04)、[ADR-BRIDGE-05](#adr-bridge-05)。 |
+| 选择理由 | 复用外部计算内核检验原Host在线路径，保留真实数据与符号状态分工；通过独立CPU参照和原生GPU对照发现数值或接入差异。 |
+| 模型假设／参数依据 | 外部CUDA权重常驻；清单中的单个只读范围映射到Global空间，普通Host初始化content=1。默认选8KiB、resident=64、chunk=4096；相邻回调固定1000ps、尾段5000ps为功能默认，非实测。每个父访问等待全部子Global最终归属，错误阻止CUDA继续。 |
+| 实现位置（函数／成员） | [SelectedRange::validate / intersection](../experiments/qwen_online/access_plan.hpp)；[driver.cpp的Args、注册/初始化、advance、访存gate与finish](../experiments/qwen_online/driver.cpp)；[run.py三方/异常运行](../experiments/qwen_online/run.py)；[verify.py的numerical / behavior / timeline](../experiments/qwen_online/verify.py)。 |
+| 验证测试与覆盖 | [compute_tail.cpp](../tests/compute_tail.cpp)：ranges；[审计器测试](../tests/test_qwen_online.py)；[Qwen复现](qwen_online.md)：CPU/native/HBF logits、hidden/KV、生成结果，地址交集、原Host内容评估、恰好一次完成、容量反馈与排空；持续program fail和读途中限额中止。 |
+| 实现状态／验证状态 | 已实现；V1。Windows CUDA实测；可选GPU实验不包含在默认CTest计数中。 |
+| 已知限制 | 选中子范围不能代表全部权重覆盖；不模拟真实NAND字节传输、KV写回、HBM容量、多GPU或异步重叠。外部执行器源码独立提供，发布其源码前须确认授权。 |
+
+<a id="adr-diagnostics-01"></a>
+
+#### ADR-DIAGNOSTICS-01｜默认关闭的程序性能诊断，与模拟行为统计分离。
+
+| 字段 | 内容 |
+|---|---|
+| 内容 | 使用单实例、固定大小的程序墙钟计时与工作量计数；区分inclusive与扣除已插桩子调用的self，默认不挂接诊断对象。 |
+| 规范关系 | 无直接规定。 |
+| 条目性质 | 工程实现机制。 |
+| 分类边界说明 | 测量模拟器程序执行成本，不属于模拟硬件时延。 |
+| 规范依据／无直接依据说明 | OCP不规定模拟器插桩、程序计时器和统计容器。 |
+| 关联要求／条目 | [ADR-BRIDGE-04](#adr-bridge-04)、[ADR-INPUT-08](#adr-input-08)。 |
+| 选择理由 | 分辨64B拆分、输入准入重复准备、命令生命周期和历史表扫描的实际成本，先测量再优化，避免用模拟Tick解释程序运行速度。 |
+| 模型假设／参数依据 | 默认关闭；steady_clock纳秒单位、固定大小的内存聚合，无设备模型参数。 |
+| 实现位置（函数／成员） | [RuntimeProfile／RuntimeScope](../include/hbf_eventlab/diagnostics/runtime_profile.hpp)；[Host](../src/host/host_driver.cpp)的pump／receive／advance；host_input的prepare／register_input、host_storage的admit_input／reclaim、GlobalRequestSplitter::split；Runner／Session推进边界。 |
+| 不变量 | 不修改准入顺序、64B粒度、内容身份、事件时序、重试、回收条件或设备资源；诊断计数不反馈给调度。 |
+| 验证测试与覆盖 | [runtime_profile测试](../tests/runtime_profile.cpp)和[CLI／CPU基准对照](../tests/check_runtime_profile.cmake)：默认关闭、嵌套／异常、拒绝路径、实际扫描计数、普通／replay／资源重试的语义一致。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 插桩有开销，self仍含未插桩子调用；covered_root不是整个进程耗时，不支持并发写同一诊断实例；见[详细口径](runtime_profiling.md)。 |
+
 ## 5. 参数与模型假设
+
 
 当前默认配置、单位与CLI/API入口统一记录在[参数说明](parameters.md)。具体选择理由保留在各ADR中，尤其是[功能时延](#adr-loop-m01)、[容量与几何](#adr-loop-m02)、[链路计费](#adr-loop-l04)、[replay预算](#adr-loop-h15)和[资源重试预算](#adr-loop-h25)。
 

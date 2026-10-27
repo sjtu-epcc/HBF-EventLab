@@ -138,6 +138,7 @@ Fields fields(SimulationConfiguration& c) {
     add("run.max_tick_ps",c.run.max_tick);add("run.total_events",c.run.events.total_events);
     add("run.events_per_tick",c.run.events.events_per_tick);add("run.rounds_per_tick",c.run.events.rounds_per_tick);
     add("output.trace",c.output.trace);add("output.statistics_json",c.output.statistics_json);add("output.effective_config",c.output.effective_config);
+    add("output.runtime_profile_json",c.output.runtime_profile_json);
     add("output.statistics_events_jsonl",c.output.statistics_events_jsonl);add("output.statistics_buffer_bytes",c.output.statistics_buffer_bytes);
     return out;
 }

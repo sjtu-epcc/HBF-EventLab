@@ -102,7 +102,7 @@ void feedback_closed() {
     check(f.finish().run.workload_success&&done.size()==3,"closed external source permits internal feedback chain");
 }
 void feedback_guard() {
-    Fixture f;rejects([&]{f.s.submit_feedback(read(2));},"completion event");
+    Fixture f;rejects([&]{f.s.submit_feedback(read(2));},"feedback event");
     f.s.set_completion_handler([&](const GlobalCompletion& c){
         rejects([&]{f.s.submit(read(2,f.s.now()));},"not reentrant");
         rejects([&]{f.s.advance_before(Tick{2000000});},"not reentrant");
@@ -111,7 +111,7 @@ void feedback_guard() {
         if(c.result.id.value==1)f.s.submit_feedback(read(2,f.s.now()));
     });
     f.s.submit(write(1));check(f.finish().run.workload_success,"feedback entry only inside callback");
-    rejects([&]{f.s.submit_feedback(read(3,f.s.now()));},"completion event");
+    rejects([&]{f.s.submit_feedback(read(3,f.s.now()));},"feedback event");
 }
 void feedback_future() {
     Fixture f;f.s.set_completion_handler([&](const GlobalCompletion& c){if(c.result.id.value==1)f.s.submit_feedback(read(2,Tick{10000000}));});

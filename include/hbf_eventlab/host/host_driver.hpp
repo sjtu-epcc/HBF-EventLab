@@ -67,6 +67,9 @@ public:
     void set_completion_handler(std::function<void(const GlobalCompletion&)>);
     // Use the same sink as DeviceDriver, before load. The sink outlives this Host.
     void set_statistics_sink(IStatisticsSink&);
+    // Optional program diagnostics. Attach once before input/start; outlives Host.
+    void set_runtime_profile(RuntimeProfile&);
+    RuntimeProfile* runtime_profile() const { return profile_; }
     HostActivity activity() const;
     const std::map<GlobalRequestId,WorkResult>& results() const {return results_;}
     const HostStatistics& statistics() const {return stats_;}
@@ -191,6 +194,7 @@ private:
     std::uint64_t next_enqueue_=0;
     bool loaded_=false,started_=false,incremental_=false;
     HostStatistics stats_;
+    RuntimeProfile* profile_=nullptr;
     IStatisticsSink* statistics_sink_=nullptr;
     std::function<void(const HostTrace&)> trace_;
     std::function<void(const GlobalCompletion&)> completion_;

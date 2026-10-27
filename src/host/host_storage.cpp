@@ -19,6 +19,7 @@ InputAdmission HostDriver::try_start_incremental(const std::vector<GlobalRequest
     return admit_input(input,true);
 }
 InputAdmission HostDriver::admit_input(const std::vector<GlobalRequest>& input,bool initial) {
+    RuntimeScope timing(profile_,RuntimeRegion::AdmitInput);
     std::uint64_t count=0;
     for(const auto& r:input) {
         if(!r.bytes||r.bytes%host_unit_bytes)throw std::invalid_argument("unaligned/empty Global range");
@@ -26,20 +27,27 @@ InputAdmission HostDriver::admit_input(const std::vector<GlobalRequest>& input,b
     }
     // Do not materialize an arbitrarily large rejected range. TooLarge is not a
     // promise that all other input contracts have passed validation.
-    if(config_.max_resident_fragments && count>config_.max_resident_fragments)
+    if(config_.max_resident_fragments && count>config_.max_resident_fragments) {
+        if(profile_)profile_->add(RuntimeCounter::InputTooLarge);
         return {InputDisposition::TooLarge,count,input_capacity()};
+    }
     auto prepared=prepare(input); // all ordinary contract errors precede mutation
-    if(config_.max_resident_fragments && count>config_.max_resident_fragments-work_.size())
+    if(config_.max_resident_fragments && count>config_.max_resident_fragments-work_.size()) {
+        if(profile_) {profile_->add(RuntimeCounter::InputBackpressured);profile_->add(RuntimeCounter::BackpressuredFragments,count);}
         return {InputDisposition::Backpressured,count,input_capacity()};
+    }
     register_input(std::move(prepared));
     if(initial) {incremental_=true;loaded_=true;start();}
+    if(profile_)profile_->add(RuntimeCounter::InputRegistered);
     return {InputDisposition::Registered,count,input_capacity()};
 }
 void HostDriver::reclaim() {
+    RuntimeScope timing(profile_,RuntimeRegion::Reclaim);
     if(!incremental_)return; // preserve finite-workload baseline and diagnostics
     const auto before=work_.size();
     std::set<SendUnitId> retired;
     for(auto it=units_.begin();it!=units_.end();) {
+        if(profile_)profile_->add(RuntimeCounter::ReclaimUnitVisits);
         const auto& u=it->second;
         bool safe=u.stage==UnitStage::Done||u.stage==UnitStage::Cancelled;
         if(u.content) {
@@ -55,8 +63,12 @@ void HostDriver::reclaim() {
         if(!u.replay)for(const auto& f:u.fragments)
             if(work_.at(f.id).result==LogicalResult::Pending)safe=false;
         if(!safe) {++it;continue;}
-        if(!u.replay)for(const auto& f:u.fragments)work_.erase(f.id);
+        if(!u.replay)for(const auto& f:u.fragments) {
+            const auto erased=work_.erase(f.id);
+            if(profile_)profile_->add(RuntimeCounter::ReclaimedWork,erased);
+        }
         retired.insert(u.id);it=units_.erase(it);
+        if(profile_)profile_->add(RuntimeCounter::ReclaimedUnits);
     }
     // Remove all indices before later events can dereference retired IDs.
     for(auto& v:versions_) {
@@ -72,7 +84,9 @@ void HostDriver::reclaim() {
     for(const auto& u:units_)if(!u.second.replay)
         for(const auto& f:u.second.fragments)referenced.insert(f.parent);
     for(auto it=requests_.begin();it!=requests_.end();)
-        if(results_.at(it->first).state!=LogicalResult::Pending && !referenced.count(it->first))it=requests_.erase(it);
+        if(results_.at(it->first).state!=LogicalResult::Pending && !referenced.count(it->first)) {
+            it=requests_.erase(it);if(profile_)profile_->add(RuntimeCounter::ReclaimedRequests);
+        }
         else ++it;
     for(auto it=release_globals_.begin();it!=release_globals_.end();) {
         auto& ids=it->second;

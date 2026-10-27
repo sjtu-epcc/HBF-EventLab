@@ -8,7 +8,7 @@ struct FlagScope {
     ~FlagScope() { flag=false; }
 };
 }
-SimulationSession::SimulationSession(ResolvedSimulationConfiguration config,IStatisticsSink* sink)
+SimulationSession::SimulationSession(ResolvedSimulationConfiguration config,IStatisticsSink* sink,RuntimeProfile* profile)
     :config_(std::move(config)),device_(config_.description(),config_.values().execution,events_),
      interleaver_(config_.values().address.global_base,config_.description().geometry().host_channels,
                   config_.description().geometry().channel_bytes(),config_.values().address.interleave_bytes),
@@ -16,6 +16,7 @@ SimulationSession::SimulationSession(ResolvedSimulationConfiguration config,ISta
     events_.set_limits(limits_.events);
     device_.set_program_outcome(make_program_outcome(config_.values().faults));
     if(sink) { device_.set_statistics_sink(*sink);host_.set_statistics_sink(*sink); }
+    if(profile)host_.set_runtime_profile(*profile);
 }
 void SimulationSession::outside_execution() const {
     if(running_)throw std::logic_error("session operation is external-only and not reentrant");
@@ -65,7 +66,7 @@ void SimulationSession::submit_feedback(const std::vector<GlobalRequest>& input)
 }
 InputAdmission SimulationSession::try_submit_feedback(const std::vector<GlobalRequest>& input) {
     healthy();
-    if(!running_ || !in_feedback_)throw std::logic_error("feedback submission requires this session's completion event or capacity event");
+    if(!running_ || !in_feedback_)throw std::logic_error("feedback submission requires this session's feedback event");
     // This is already an asynchronous Host event. It may create a new attempt at
     // the current Tick, but cannot enter the frozen batch that generated it.
     return host_.try_submit(input);
@@ -81,9 +82,25 @@ void SimulationSession::set_run_limits(RunLimits limits) {
 std::optional<Tick> SimulationSession::next_event_time() {
     outside_execution();return events_.next_time();
 }
-SessionReport SimulationSession::report(RunStatus status,const std::string& why) {
+SessionReport SimulationSession::report(RunStatus status,const std::string& why,bool yielded) {
     return {{status,host_.workload_success(),events_.now(),events_.executed(),host_.activity(),device_.activity(),why},
-            input_closed_,input_floor(),accepts_at_floor(),events_.next_time(),input_capacity()};
+            input_closed_,input_floor(),accepts_at_floor(),events_.next_time(),input_capacity(),yielded};
+}
+void SimulationSession::request_yield() {
+    healthy();
+    if(!running_||!in_feedback_)throw std::logic_error("yield requires this session's feedback callback");
+    yield_requested_=true;
+}
+void SimulationSession::resume_feedback(std::function<void()> callback) {
+    outside_execution();healthy();
+    if(!feedback_available_||!callback)throw std::logic_error("resume requires an unused feedback yield");
+    events_.schedule_at(events_.now(),EventPhase::Arrival,[this,callback=std::move(callback)] {
+        FlagScope feedback(in_feedback_);callback();
+    });
+    feedback_available_=false;
+}
+SessionReport SimulationSession::advance_until_yield() {
+    outside_execution();return drive(std::nullopt);
 }
 SessionReport SimulationSession::advance_before(Tick before) {
     outside_execution();
@@ -97,7 +114,9 @@ SessionReport SimulationSession::run_to_completion() {
     return drive(std::nullopt);
 }
 SessionReport SimulationSession::drive(std::optional<Tick> before) {
+    RuntimeScope timing(host_.runtime_profile(),RuntimeRegion::EventRun);
     if(failure_)return report(failure_->first,failure_->second);
+    feedback_available_=false;yield_requested_=false;
     FlagScope execution(running_);
     try {
         start();
@@ -111,7 +130,8 @@ SessionReport SimulationSession::drive(std::optional<Tick> before) {
             // A normal pause makes a promise about the entire empty interval,
             // not just the timestamp of the last hardware event.
             if(!next || (before && !(*next<*before))) {
-                const Tick endpoint=*before; // unbounded drive requires closed input
+                if(!before)return report(RunStatus::WaitingForInput,"No live event; producer must supply input or close");
+                const Tick endpoint=*before;
                 if(limits_.max_tick && *limits_.max_tick<endpoint) {
                     events_.advance_idle_to(*limits_.max_tick);
                     return report(RunStatus::LimitReached,"Requested horizon exceeds simulated-time ceiling; state retained");
@@ -125,6 +145,10 @@ SessionReport SimulationSession::drive(std::optional<Tick> before) {
                 return report(RunStatus::LimitReached,"Next event exceeds simulated-time ceiling; state retained");
             }
             events_.run_next(); // normal rounds and indivisible deadline settlement
+            if(yield_requested_) {
+                feedback_available_=true;
+                return report(RunStatus::Paused,"Feedback requested a causal handoff; state retained",true);
+            }
         }
     } catch(const EventLimitReached& e) { return report(RunStatus::LimitReached,e.what()); }
       catch(const std::invalid_argument& e) { failure_={{RunStatus::ModelError,e.what()}}; }

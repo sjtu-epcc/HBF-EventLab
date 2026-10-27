@@ -225,6 +225,8 @@ CLI的 `HOST` 行同时报告命令尝试和逻辑工作结果。计数单位如
 
 ## 统一统计
 
+模拟器程序自身的耗时使用独立、默认关闭的`--runtime-profile FILE`，支持拆分、准备、登记、发送、状态推进、历史结果扫描和回收的聚合计时。它与下面的模拟时间统计分开，详见[程序性能诊断](runtime_profiling.md)。
+
 ```powershell
 .\build\Release\hbf_eventlab_cli.exe examples\workloads\normal.txt --stats-json build\normal-statistics.json
 .\build\Release\hbf_eventlab_cli.exe examples\workloads\recovery.txt --fail-sequence 2 --stats-json build\recovery-statistics.json
@@ -450,22 +452,25 @@ auto done = session.run_to_completion();
 |---|---|
 | `submit(request/batch)` | 仅在推进函数之外调用。使用已有 Global 身份、原子预检和内容封闭规则；拒绝关闭来源、过去时间或已经进入的 Tick。首次非法批次不启动Host，也不消耗ID。 |
 | `advance_before(T)` | 执行所有 `<T` 的事件及其同 Tick 因果轮次、deadline，保留 T 的事件。空区间也推进到 T，并封闭 `<T` 的外部输入位置；不生成占位事件。调用方必须先提交该区间中所有可能的外部输入。 |
-| `submit_feedback(request/batch)` | 仅在本会话注册的 Global 完成或容量通知回调内合法；使用原Host，允许当前 Tick 和未来时刻，不允许过去。Host 的发射仍经事件推进，不同步进入Device。外部不能把它当作关闭后的提交后门。 |
+| `submit_feedback(request/batch)` | 仅在本会话注册的 Global 完成、容量通知或显式续体回调内合法；使用原Host，允许当前 Tick 和未来时刻，不允许过去。Host 的发射仍经事件推进，不同步进入Device。外部不能把它当作关闭后的提交后门。 |
 | `try_submit`／`try_submit_feedback` | 与对应提交入口相同的时间和来源边界；容量拒绝用`InputAdmission`返回，不注册部分工作。其他输入契约错误仍抛异常。 |
 | `input_capacity()`／`set_input_capacity_handler()` | 查询limit/resident/generation；在输入、推进或关闭之前挂接容量处理器，安全回收后通过合并事件通知当前值。通知不是名额预留或提交必成功的承诺。 |
 | `close_input()` | 幂等关闭外部来源，不能重新打开；保留已登记未来工作、内部重试/replay和事件反馈。关闭不验证输入必然能够成功。 |
-| `run_to_completion()` | 仅输入关闭后可调用；推进到排空、停滞、运行限额或错误，不能对开放来源无限跳时。 |
+| `run_to_completion()` | 仅输入关闭后可调用；推进到排空、停滞、运行限额或错误，也遵守回调明确请求的正常交接。 |
+| `advance_until_yield()` | 单生产者保证无更早独立外部输入时，推进至反馈请求的交接或其他停止条件；无事件且来源开放时在当前时刻返回WaitingForInput。 |
+| `request_yield()` | 仅反馈回调内提出；当前事件安全结束后返回Paused和feedback_yield=true，不额外推进未来事件、不重置限额。 |
+| `resume_feedback(callback)` | 反馈交接后的一次性同Tick续体，异步执行并允许try_submit_feedback；再次推进会作废未使用资格，普通外部submit边界不放宽。 |
 | `set_run_limits(limits)` | 显式更改绝对安全上限，保留已执行事件数及当前 Tick 的计数／轮次；普通暂停继续不重置预算。时间上限不能退到当前时钟之前。当前上限由 `run_limits()` 查询，`configuration()` 保留初始配置快照。 |
 | `next_event_time()` | 下一个内部事件时间；只供外部协调，不代表不存在更早的外部输入。 |
 
 完成处理器须在首次提交、推进或关闭之前挂接。所有调用在同一模拟线程串行进行；会话不创建线程，不要求GPU采用特定线程模型。多个外部来源应由适配器提供一致次序和安全时间边界。完成回调可以查询结果、调用 `submit_feedback()`，不能重入推进函数、关闭来源或修改限额。要长期保留 `GlobalCompletion` 时由调用方复制结果。
 
-`SessionReport` 中的 `run` 含状态、逻辑成功标志、时钟、累计执行数和 Host/Device 活动摘要；另有 `input_closed`、`input_floor`、`accepts_at_floor`、`next_event`和`input_capacity`。外部输入必须满足 `at>input_floor`，或在 `accepts_at_floor=true` 时取等号。正常到达 T 时通常边界为 `(T, true)`；安全限额可能停在一个已经开始的 Tick，这时边界为 `(T, false)`，外部不得插入该 Tick。再次使用已经进入的 Tick 作为排他暂停终点也会被拒绝。
+`SessionReport` 中的 `run` 含状态、逻辑成功标志、时钟、累计执行数和 Host/Device 活动摘要；另有 `input_closed`、`input_floor`、`accepts_at_floor`、`next_event`、`input_capacity`和`feedback_yield`。外部输入必须满足 `at>input_floor`，或在 `accepts_at_floor=true` 时取等号。正常到达 T 时通常边界为 `(T, true)`；安全限额可能停在一个已经开始的 Tick，这时边界为 `(T, false)`，外部不得插入该 Tick。再次使用已经进入的 Tick 作为排他暂停终点也会被拒绝。
 
 | 结果 | 判定 |
 |---|---|
-| `Paused` | 到达正常排他终点，下一内部事件在终点或之后；暂停动作不额外计事件，已经执行的事件正常记账，预算不重置。 |
-| `WaitingForInput` | 内部事件已经用尽、外部来源仍开放；时钟仍提交到本次安全终点。即使暂时排空也不报告整个任务完成；若还有未满足依赖，摘要仍保留它们。 |
+| `Paused` | 到达正常排他终点，或反馈显式请求交接；后者feedback_yield=true，可能早于给定终点返回。暂停动作不额外计事件，预算不重置；续体本身是正常计费事件。 |
+| `WaitingForInput` | 内部事件用尽、来源仍开放；advance_before提交到安全终点，advance_until_yield停留当前时间。暂时排空不等于整个任务完成；未满足依赖保留在摘要中。 |
 | `Completed` | 输入已关闭、事件用尽且Host和Device临时活动均排空。逻辑失败通过 `workload_success=false` 另报。可能早于请求的暂停终点返回。 |
 | `Stalled` | 输入已关闭、事件用尽，但仍有未完成活动。未来timeout、窗口或介质完成事件存在时，不作此判断。 |
 | `LimitReached` | 下一执行动作或请求的空区间推进会超过安全上限；状态保留，可显式提高限额后继续。时间上限是包含端点的绝对上限，与排他暂停终点不同。 |
@@ -508,8 +513,14 @@ cmake --build build --config Debug --target hbf_eventlab_bounded_demo
 
 CLI可用`--stats-events events.jsonl --set output.statistics_buffer_bytes=65536`按序列化字节阈值导出事件流。长期C++会话可单独挂接`StatisticsEventStream`，暂停时`flush()`、最终停止时`finish()`；flush不终结活动请求或DLU。详见[事件格式、生命周期和内存边界](statistics_event_stream.md)。`--stats-json`仍启用保存全部历史的Collector，两种输出同时开启不会消除Collector的内存开销。
 
-可回收执行记录和流式统计并不保证整个进程内存恒定：Global结果、版本覆盖/身份、恢复记账等正确性摘要仍随输入增长。多来源水位线协调及GPU适配也不在当前API内实现。
+可回收执行记录和流式统计并不保证整个进程内存恒定：Global结果、版本覆盖/身份、恢复记账等正确性摘要仍随输入增长。多来源水位线协调由外部生产者负责；tensor/GPU适配作为独立层调用会话API。
 
 ## 支持边界
 
 完整响应子集、输入限制和未实现功能见[支持范围与限制](scope_and_limitations.md)。验证矩阵、结果及复现步骤见[验证说明](verification.md)。
+
+## Tensor 访存适配
+
+可链接`HBFEventLab::tensor_bridge`，以`TensorAccessBridge::initialize/access/advance_compute/finish`驱动原Host。使用固定计算间隔、同Tick因果续体及严格驻留容量反馈，核心适配器不需要CUDA。构建、结果汇总、失败处理和数据边界见[tensor桥接说明](tensor_bridge.md)。
+
+可选的`HBF_EVENTLAB_QWEN_EXPERIMENT=ON`构建`hbf_eventlab_qwen`，要求CUDA和显式外部执行器路径。三方数值核验、选中tensor范围、环境准备、CLI与复现命令见[Qwen在线实验](qwen_online.md)。默认CTest不自动运行需GPU和模型权重的实验。

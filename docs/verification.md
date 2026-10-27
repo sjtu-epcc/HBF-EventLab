@@ -6,21 +6,24 @@
 
 ## 1. 验证版本与环境
 
-默认完整测试集共 **396 项**（385项核心测试＋11项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为385项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+默认完整测试集共 **454 项**（442项核心测试＋12项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为442项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-25 | 396/396通过，0失败 | 93.30s |
-| Release | 2026-10-25 | 396/396通过，0失败 | 15.77s |
+| Debug | 2026-10-27 | 454/454通过，0失败 | 362.88s |
+| Release | 2026-10-27 | 454/454通过，0失败 | 56.68s |
 
-上述两个配置各按 `ctest --parallel 4` 运行，测试期间同时执行了其他验证工作；耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
+上述两个配置各按串行 CTest 运行，测试期间同时执行了其他验证工作；耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-396项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、127个Host行为场景、1个增量Host示例、32个在线会话场景、2个会话/容量示例、45个统计场景、26个配置场景、28个CLI场景、10个读调度/窗口观察场景和11个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
+454项由35个基础行为场景、34个生命周期/事件场景、44个Device场景、1个Device示例、127个Host行为场景、1个增量Host示例、45个在线会话场景、3个会话/容量/桥接示例、23个tensor桥接场景、8个计算尾段/选区场景、45个统计场景、26个配置场景、28个CLI场景、12个程序性能诊断场景、10个读调度/窗口观察场景和12个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
+| 程序性能诊断 | runtime_profile_nested／disabled／unwind／export／isolation／admission／normal／replay／timeout／pending／config／cli | 确定性嵌套与自身计时、异常、固定聚合、默认关闭、准备后背压计数；开关对照模拟事件流、Tick、结果和排空一致；配置和输出冲突检查。详见[诊断口径](runtime_profiling.md)。 |
+| 计算尾段与选区 | tensor_compute_tail、zero、empty、limit、overflow、guards、ranges、identity | 最后访存后独立推进，不造虚拟命令；零时延保留反馈；限额、溢出、重入、子范围交集与既有内容身份。 |
+| Qwen审计器 | experiment_qwen_audit_unit | 8项无CUDA的Python检查：时间分解、尾段遗漏、墙钟混入、回调缺失/失败、非有限计时、生成结果不一致及范围并集。真实GPU三方实验另行执行。 |
 | 地址与接收 | address_mapping、admission、shared_credit | 地址单位、双映射、共享credit与响应生命周期。 |
 | 写组装与恢复语义 | overlap_restart、timeout_retry、replay_prefix、replay_merge | 覆盖预检查、同页重试、失败前缀与终点合并。 |
 | 容量事务 | capacity_atomicity、capacity_hole_failure、retirement_write_swap | 失败不部分提交，实际物理所有权与永久逻辑退役。 |
@@ -54,6 +57,10 @@
 | 在线反馈 | session_feedback_closed、session_feedback_guard、session_feedback_future、session_feedback_validation、session_causal_time、session_demo | 关闭后仍允许完成事件产生工作；禁止外部伪装反馈和重入，未来反馈阻止提前完成，不制造额外Tick。 |
 | 在线限额与诊断 | session_limit_total、session_limit_tick、session_limit_round、session_time_empty、session_time_future、session_entered_tick、session_callback_error、session_callback_model_error | 跨暂停保留预算、显式提高后继续、空区间也受时间上限约束、异常不重复执行回调。 |
 | 在线deadline与恢复 | session_open_timeout、session_frozen_deadline、session_deadline_endpoint、session_deadline_feedback、session_recovery、session_equivalent | 冻结批次不被反馈穿插，Host释放不能代替Device接受，旧timeout不能被复活；同一Host恢复跨暂停继续，连续与分段运行统计/事件数一致。 |
+| 反馈交接与续体 | session_handoff_handoff、zero_compute、future_no_skip、guards、one_shot、expired、closed、capacity、error、total_limit、deadline、reentrant、empty | 完成时刻正常让出、无未来跳跃、一次性异步续体、外部边界不放宽、限额不重置；已timeout上下文不复活。 |
+| tensor与Global对应 | tensor_bridge_round_trip、aggregated、multi_channel、identity、range、registry、burst、closed、tensor_bridge_demo | 原Host路由和内容身份、父结果取全部Global最终时刻、同块身份一致；初始化/读取/关闭及独立CPU数据。 |
+| 桥接时间与容量 | tensor_bridge_backpressure、timing、zero_compute、too_large、observer、reentrant | 原始产生时刻保留，计算期间不因旧容量通知提前登记；严格驻留反馈、同Tick续体、统计不改结果。 |
+| 桥接失败与排空 | tensor_bridge_timeout、stalled、limit、replay、failure、failure_drain、no_retention、input_contract、trace_error | 真实超时/停滞/限额；原Host合并replay；已登记子结果取得归属，未登记后缀不伪造成功；契约及回调错误可见。 |
 | 驻留输入契约 | host_resident_capacity、oversized、atomic_seal、invalid_full、future_budget、burst_budget、lifetime_limit、configuration | 原子拒绝不留ID/事件/封闭；未来输入与burst按逻辑片段收费；累计保护独立、配置往返一致。 |
 | 严格预算与反馈 | host_resident_strict_timeout、strict_stall、callback_retry、callback_backpressure、offered_time、origin_invalid、bounded_input_demo | 不预留补片额度；真实超时/停滞；容量事件驱动保留项重试；关闭后内部反馈继续，原始产生时间独立统计。 |
 | 执行对象回收 | host_resident_summaries、sealed_summary、failed_summary、replay_collected、replay_merged、missing_retention、pending_retry、timeout_retry、retained_failure、long_input | 保留前页事实/内容封闭/结果；旧页Work和Unit已删后replay；重试活动不提前回收，缺数据明确失败；重复输入后详细对象排空。 |
@@ -266,3 +273,11 @@ python experiments/read_scheduling/plot.py out/read-scheduling-minimal
 生成/运行/分析使用Python标准库；绘图需要matplotlib。输出目录必须是新目录。此实验报告逐请求延迟和最大值，不把少量样本的分位数作为真实workload的尾延迟结论。
 
 公共层重构的结果保持性检查：对已有32个容量案例、4个交织案例、4个Host策略案例、14个读调度案例，共54个案例的原始统计和有效配置进行独立副本重分析，全部已有汇总指标一致（不比较CLI进程墙钟耗时）。四组绘图入口均成功导出；共享层未改变C++执行语义。重分析副本保留原始来源并单独记录新源码哈希，不覆盖历史结果。
+
+## 可选Qwen在线验证
+
+默认454项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](qwen_online.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已构建，本次未重新运行真实GPU数值实验。
+
+2026-10-26在Windows、MSVC 19.43、CUDA 12.9.1、RTX 4070 Laptop GPU完成：独立CPU参照、原生GPU、HBF接入GPU三方生成结果一致；logits最大绝对误差约6.53e-5、RMSE约7.25e-6，低于运行前确定的阈值；两个GPU模式的全部快照逐字节一致。默认选区为8KiB，50个Global、3200次命令尝试终结，25次输入容量背压，Host/Device排空。
+
+附加验证覆盖非零tensor偏移与零计算间隔、初始化持续program fail的错误中止及排空、选中读途中运行限制的错误中止和未完成诊断。计算尾段明确计入；模拟时间不来自程序墙钟。该实验只验证所选权重子范围的在线契约，不证明整个模型的所有访存已经通过HBF，也不是校准后的GPU–HBF性能结果。配置、范围、阈值与完整复现命令统一见[Qwen实验说明](qwen_online.md)。

@@ -1,0 +1,19 @@
+#include "experiments/qwen_online/access_plan.hpp"
+#include <iostream>
+using namespace hbf_eventlab;
+namespace {
+void check(bool b,const char* why){if(!b)throw std::runtime_error(why);}
+template<class F>void rejects(F f){try{f();}catch(const std::exception&){return;}throw std::runtime_error("expected rejection");}
+SimulationConfiguration config(){SimulationConfiguration c;c.device.geometry.host_channels=1;c.host.max_resident_fragments=64;return c;}
+std::vector<TensorRegion> regions(){return {{"w",GlobalByteAddress{},8192,1}};}
+void tail(){TensorAccessBridge b(resolve_configuration(config()),regions());check(b.initialize("w").success,"init");auto r=b.access("w",0,8192);check(r.success,"read");auto count=b.session().host().statistics().handed;
+ auto t=b.advance_compute(Tick{4321});check(t.success&&t.started==*r.completed&&t.at.value==r.completed->value+4321,"tail endpoint");auto done=b.finish();check(done.run.status==RunStatus::Completed&&done.run.at==t.at&&done.run.host.drained()&&done.run.device.drained(),"tail retained and drained");check(b.session().host().statistics().handed==count,"tail never creates dummy command");}
+void zero(){TensorAccessBridge b(resolve_configuration(config()),regions());check(b.initialize("w").success,"init");auto before=b.session().now();check(b.advance_compute(Tick{}).success&&b.session().now()==before,"zero no time");auto r=b.access("w",0,64);check(r.success&&r.offered==before,"feedback preserved");b.finish();}
+void empty(){TensorAccessBridge b(resolve_configuration(config()),regions());auto r=b.advance_compute(Tick{42});check(r.success&&r.at==Tick{42},"idle compute");check(b.initialize("w").success,"init after compute");b.finish();}
+void limit(){auto c=config();c.run.max_tick=Tick{20};TensorAccessBridge b(resolve_configuration(c),regions());auto r=b.advance_compute(Tick{30});check(!r.success&&r.stop==RunStatus::LimitReached&&r.at==Tick{20},"limit stays a limit");rejects([&]{b.initialize("w");});}
+void overflow(){auto c=config();c.run.max_tick.reset();TensorAccessBridge b(resolve_configuration(c),{});check(b.advance_compute(Tick{UINT64_MAX-1}).success,"large idle");rejects([&]{b.advance_compute(Tick{2});});check(b.session().now()==Tick{UINT64_MAX-1},"overflow does not mutate clock");}
+void guards(){TensorAccessBridge b(resolve_configuration(config()),regions());b.set_trace([&](const auto&){rejects([&]{b.advance_compute(Tick{1});});});check(b.initialize("w").success,"nonreentrant observer");b.finish();rejects([&]{b.advance_compute(Tick{});});}
+void ranges(){qwen_online::SelectedRange r{"w",16384,4096,8192};r.validate();check(r.intersection("other",0,64)==std::nullopt,"unselected tensor");check(!r.intersection("w",0,4096),"half-open edge");check(r.intersection("w",0,8192)==std::make_optional(std::make_pair(std::uint64_t(0),std::uint64_t(4096))),"left intersection");check(r.intersection("w",8192,8192)==std::make_optional(std::make_pair(std::uint64_t(4096),std::uint64_t(4096))),"right intersection");rejects([&]{r.intersection("w",UINT64_MAX,64);});rejects([&]{r.intersection("w",4097,64);});rejects([]{qwen_online::SelectedRange{"w",4096,0,64}.validate();});}
+void identity(){auto c=config();TensorAccessBridge b(resolve_configuration(c),regions());check(b.initialize("w").success,"normal symbolic init");b.advance_compute(Tick{7});check(b.access("w",4096,4096).success,"same content after compute");b.advance_compute(Tick{11});check(b.access("w",0,4096).success,"slice identity retained");auto r=b.finish();check(r.run.workload_success,"same block identity");}
+}
+int main(int argc,char** argv){try{const std::map<std::string,void(*)()> cases={{"tail",tail},{"zero",zero},{"empty",empty},{"limit",limit},{"overflow",overflow},{"guards",guards},{"ranges",ranges},{"identity",identity}};if(argc!=2)throw std::runtime_error("scenario required");cases.at(argv[1])();std::cout<<"PASS compute "<<argv[1]<<'\n';}catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<'\n';return 1;}}

@@ -40,12 +40,17 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 
 会话的外部输入边界直接由 EventQueue 的当前时刻和同 Tick 执行状态派生，不维护第二份时钟。空区间使用 `advance_idle_to()` 推进时钟，不生成虚假事件、不重置累计事件数；已进入的 Tick（包括冻结但尚未执行完的 deadline 批次）不能再接受外部插入。内部反馈遵守原有同 Tick 轮次。`activity().drained()` 只描述临时活动；输入仍开放时不报告 Completed，已关闭且无事件但未排空时报告 Stalled。
 
+`TensorAccessBridge`是独立链接的可选适配层：将固定tensor的offset/bytes转成Global子范围，通过SimulationSession复用原Host并汇总父访存结果。它只持有注册表、当前父访存、未登记偏移和已登记Global集合，不维护MOCS、DLU组装或replay副本；执行器继续拥有真实数据。`advance_compute()`还可独立推进未选择的访存间隔和末尾计算，不制造虚拟命令。CPU示例与可选[Qwen CUDA实验](qwen_online.md)共用此接口，详见[tensor桥接](tensor_bridge.md)。
+
+会话可在反馈回调中接收`request_yield()`，当前事件结束后正常暂停，尚未发生的未来事件保持待执行。一次性`resume_feedback()`将续体安排为当前Tick的后续正常事件，支持零计算间隔；普通外部输入边界保持不变。冻结deadline批次仍整体结算。`advance_until_yield()`要求调用方保证没有更早的独立外部输入；没有此保证时仍应使用有界推进。
+
 ## 2. 接口与职责边界
 
 | 组件 | 职责与主要入口 |
 |---|---|
 | `StaticDeviceDescription`、`ExecutionConfiguration` | 冻结几何、能力和运行参数；保持参数校验与运行状态分离。 |
 | `IHostInterleaver`、`GlobalRequestSplitter` | Global 字节地址交织与范围拆分，保留逻辑片段的 Global 归属。 |
+| `TensorAccessBridge` | 固定tensor注册、Global分组和父访存汇总、严格驻留预算反馈与同步时间交接；不直接操作Device。 |
 | `HostDriver` | 输入校验、合法候选、发送与反馈、内容版本、页级资源重试、Global 最终结果。 |
 | `IHostSendPolicy` | 在 Host 已过滤的合法候选中选择发送优先级；内建 `fcfs`（默认）与 `fill_open`。 |
 | `IHostPort` | 事务移交、异步正式接受通知、最终响应；读写响应类型分开。 |
@@ -207,6 +212,8 @@ Runner只查询各所有者摘要。有未来timeout、窗口或完成事件就�
 容量协调器提交前检查排空、数据可丢弃、健康资源与密度，准备候选后同步失效，再一致提交。失效回调不可重入修改或获取新pin；异常保留旧映射与quiesce，已经发生的物理损坏不回滚。附着的映射组件不能绕过协调器修改。
 
 ## 11. 统计观察边界
+
+程序性能诊断采用独立的`RuntimeProfile`，不借用模拟事件统计或Tick。Host、Runner／Session及tensor适配器可挂接同一调用方持有的实例；默认不挂接。固定大小的区域汇总区分包含子调用和自身墙钟时间，实际扫描计数只随既有遍历更新；不保存逐调用历史、不反馈给调度、不引入事件。详见[程序性能诊断](runtime_profiling.md)。
 
 Host与Device通过`IStatisticsSink`发布已经发生的生命周期事实；`StatisticsCollector`只保存观察历史及汇总，不参与发送、组装或资源调度。请求统计与Pending统计共用一个sink；默认不挂接，开启后也不添加采样事件或模拟Tick。
 

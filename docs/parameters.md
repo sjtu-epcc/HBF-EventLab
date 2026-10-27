@@ -177,6 +177,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `output.statistics_events_jsonl` | 空字符串 | 追加观察事件流路径（schema 1）；CLI别名`--stats-events`。空字符串关闭。与完整JSON可同时开启，但后者仍保留完整历史。 |
 | `output.statistics_buffer_bytes` | `65536` | JSONL序列化缓冲阈值，字节，必须为正；最后调用flush/finish写出不足阈值的数据。单条超大记录完整直写，详见[内存边界](statistics_event_stream.md)。 |
 | `output.effective_config` | 空字符串 | 有效配置 INI 导出路径；空字符串关闭文件导出。 |
+| `output.runtime_profile_json` | 空字符串 | 程序性能诊断JSON；CLI别名`--runtime-profile FILE`。默认关闭，测量程序墙钟与工作量，不影响模拟Tick；见[诊断口径](runtime_profiling.md)。 |
 
 这些运行限额不属于设备资源。基础 EventQueue 单独使用时默认总事件数不限；统一入口使用本表 RunLimits 作为程序级默认值。
 
@@ -195,3 +196,9 @@ C++ 装配流程位于 [统一配置实现](../src/configuration/simulation_conf
 容量交互实验的扫描轴和固定条件见[实验参数](../experiments/capacity/README.md#固定条件与扫描变量)。计划JSON是实验工具的矩阵入口，由工具生成此处定义的标准配置；未引入另一套设备参数解释。每组`effective.ini`保留全部默认值和派生值。
 
 [交织与到达间隔实验](../experiments/interleave_arrival/README.md#固定条件与矩阵)同样生成标准配置；计划中的`delta_ps`用于生成workload的`at`，不是新增设备时延参数。固定MOCS/Pending预算，扫描交织粒度和Host端释放间隔，保留实际链路、接收与组装等待。
+
+## tensor适配器输入选项
+
+`TensorBridgeConfiguration::global_chunk_bytes`默认4096字节，必须为正的64B倍数，通过适配器构造函数提供。它只组织父访存的Global子范围，不是设备几何或命令窗口，因此不增加核心INI配置项。`access()`的`compute`是本次访存前的显式计算Tick数；默认0使用因果续体。`advance_compute()`独立推进相同单位的计算区间及尾段。tensor范围与content由注册表给出。详见[tensor桥接](tensor_bridge.md)。
+
+可选Qwen实验的`--tensor/--offset/--bytes`、`--max-new`、`--compute-ps/--tail-ps`属于外部执行器/输入模型，保留在实验CLI，不加入核心INI。`--resident`覆盖既有Host预算，`--config`使用既有后端解析；具体默认值、覆盖优先级和选中范围限制见[Qwen参数表](qwen_online.md#运行)。固定计算间隔不来自OCP或GPU实测，不能与链路/介质校准参数混为一谈。

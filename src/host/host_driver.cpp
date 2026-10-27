@@ -1,6 +1,10 @@
 #include "hbf_eventlab/host/host_driver.hpp"
 #include <algorithm>
 namespace hbf_eventlab {
+void HostDriver::set_runtime_profile(RuntimeProfile& profile) {
+    if(loaded_||started_||profile_)throw std::logic_error("attach runtime profile once before Host input/start");
+    profile_=&profile;splitter_.set_runtime_profile(profile_);
+}
 void HostDriver::set_statistics_sink(IStatisticsSink& sink) {
     if(loaded_||started_||statistics_sink_)throw std::logic_error("attach Host statistics once before load");
     statistics_sink_=&sink;
@@ -112,6 +116,7 @@ void HostDriver::emit(const char* action,const Unit& u,CommandId command) {
     if(trace_)trace_({action,events_.now(),command,u.id,u.fragments.front().logical.block,u.pass});
 }
 void HostDriver::pump(ChannelId ch) {
+    RuntimeScope timing(profile_,RuntimeRegion::Pump);
     auto& channel=channels_[ch];
     if(channel.wait) {port_.notifications().cancel(*channel.wait);channel.wait.reset();}
     advance();
@@ -120,11 +125,13 @@ void HostDriver::pump(ChannelId ch) {
     for(;;) {
         std::vector<HostSendCandidate> candidates;
         for(auto uid:channel.queue) {
+            if(profile_)profile_->add(RuntimeCounter::PumpQueueVisits);
             const auto& u=units_.at(uid);if(tried.count(uid)||!eligible(u))continue;
             const bool open=u.content && channel.open.count({*u.content,u.fragments.front().logical.page});
             candidates.push_back({uid,open,u.replay,u.enqueue_sequence});
         }
         if(candidates.empty())break;
+        if(profile_)profile_->add(RuntimeCounter::PumpCandidates,candidates.size());
         const auto chosen=policy_->select(candidates);
         if(std::none_of(candidates.begin(),candidates.end(),[&](const auto& c){return c.id==chosen;}))
             throw std::logic_error("Host policy selected a noncandidate");
@@ -134,6 +141,7 @@ void HostDriver::pump(ChannelId ch) {
         LocalTransaction tx{{command,u.op,f.address,static_cast<std::uint32_t>(u.fragments.size()*64),0,u.hint,u.group},{}};
         if(u.op==Op::Write)for(const auto& fragment:u.fragments)tx.data.push_back(fragment.data);
         const auto life=std::weak_ptr<bool>(alive_);
+        if(profile_)profile_->add(RuntimeCounter::HandoffAttempts);
         const auto handoff=port_.try_submit(tx,[this,life,command](const auto& response) {
             if(auto live=life.lock();live&&*live)receive(command,response);
         },[this,life,command](const auto& notice) {
@@ -145,6 +153,7 @@ void HostDriver::pump(ChannelId ch) {
             continue;
         }
         if(!handoff.attempt)throw std::logic_error("Taken without attempt identity");
+        if(profile_)profile_->add(RuntimeCounter::HandoffTaken);
         u.capacity_at_handoff=capacity_progress_[ch];u.order_retry_allowed=false;
         if(u.retry==RetryKind::PendingLimit) {++u.pending_retries;++stats_.pending_retry_commands;}
         else if(u.retry==RetryKind::Timeout && u.handoffs)++stats_.timeout_retry_commands;
@@ -226,6 +235,7 @@ void HostDriver::abort_version(ContentKey key,const std::string& reason) {
     }
 }
 void HostDriver::receive(CommandId id,const DeliveredResponse& response) {
+    RuntimeScope timing(profile_,RuntimeRegion::Receive);
     auto it=attempts_.find(id);
     if(it==attempts_.end()||it->second.transfer!=response.attempt)throw std::logic_error("duplicate/mismatched Host response");
     auto& u=units_.at(it->second.unit);const auto block=u.fragments.front().logical.block;
@@ -343,6 +353,7 @@ bool HostDriver::advance_recovery(ContentKey key,RecoveryTask& t) {
     return true;
 }
 void HostDriver::advance() {
+    RuntimeScope timing(profile_,RuntimeRegion::Advance);
     // Finite metadata closure. Never use zero-Tick self-polling while hardware waits.
     bool changed;
     do {
@@ -364,7 +375,16 @@ void HostDriver::advance() {
     } while(changed);
     // A canceled dependent request has no future release obligation. Do not let
     // an obsolete far-future arrival turn a fully settled workload into LimitReached.
-    const bool settled=std::all_of(results_.begin(),results_.end(),[](const auto& r){return r.second.state!=LogicalResult::Pending;});
+    bool settled;
+    if(profile_) {
+        RuntimeScope scan(profile_,RuntimeRegion::ResultsScan);
+        std::uint64_t visited=0;
+        settled=std::all_of(results_.begin(),results_.end(),[&](const auto& r){++visited;return r.second.state!=LogicalResult::Pending;});
+        profile_->add(RuntimeCounter::ResultsEntriesVisited,visited);
+        profile_->peak(RuntimeCounter::ResultsSizePeak,results_.size());
+    } else {
+        settled=std::all_of(results_.begin(),results_.end(),[](const auto& r){return r.second.state!=LogicalResult::Pending;});
+    }
     if(settled) {
         for(const auto& event:release_events_) {events_.cancel(event.second);owned_events_.erase(event.second);}
         release_events_.clear();

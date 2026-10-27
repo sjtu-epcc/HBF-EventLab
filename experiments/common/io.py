@@ -5,7 +5,11 @@ import json
 from pathlib import Path
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    result = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(4 * 1024 * 1024), b""):
+            result.update(block)
+    return result.hexdigest()
 
 def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")

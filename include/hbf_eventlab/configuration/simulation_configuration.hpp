@@ -26,6 +26,7 @@ struct FaultConfiguration {
 struct OutputConfiguration {
     bool trace=false;
     std::string statistics_json;
+    std::string runtime_profile_json; // program diagnostics, empty means disabled
     std::string effective_config;
     std::string statistics_events_jsonl;
     std::size_t statistics_buffer_bytes=65536;
