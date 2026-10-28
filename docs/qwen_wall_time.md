@@ -58,6 +58,6 @@ cmake --build build-qwen/teammate --config Release --target gpu_hbf_qwen
 
 ## 后续定位方向
 
-大案例的活动片段数受限，并不意味着每次推进只访问这些活动对象。当前`HostDriver::advance()`会通过`std::all_of(results_)`检查所有Global是否结束；`results_`保留已完成摘要，当前Pending条目通常位于这些摘要之后，故扫描长度随历史增长。`SimulationSession::report()`和Host活动查询也会遍历摘要；回收、发送资格和恢复检查同样需纳入profile。
+大案例的活动片段数受限，并不意味着每次推进只访问这些活动对象。本实验记录对应的旧实现通过`HostDriver::advance()`中的`std::all_of(results_)`检查所有Global是否结束；保留的成功摘要使扫描长度随历史增长，Host活动及成功查询也遍历摘要。后续实现已用未完成／最终失败计数替代这三处扫描，见[设计决策](design_decisions.md#adr-host-efficiency-01)；本文原有墙钟记录不因此改写为优化后的测量。
 
-若固定尺寸的后续访问逐渐变慢，这些位置应优先用采样profile验证。可以考虑维护未完成计数、按状态变化驱动检查、将活动索引与历史结果查询分离，同时保留内容身份、依赖、恢复和完成恰好一次契约。本实验只加入测量，不修改这些执行逻辑，也不将代码检查当作已测得的函数耗时占比。
+后续仍需测量回收、发送资格、恢复检查和重复输入准备。诊断方式见[程序性能诊断](runtime_profiling.md)。本次完成计数优化没有改变内容身份、依赖、恢复或恰好一次完成契约，也没有缩小历史表的内存占用；CPU基准收益不能直接当作真实Qwen或全权重实验的收益。

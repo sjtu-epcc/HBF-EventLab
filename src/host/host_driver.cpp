@@ -202,11 +202,19 @@ void HostDriver::finish_work(LogicalWorkId id,bool success,const std::string& re
         if(success)version.successful[work.fragment.logical.page].set(work.fragment.logical.byte_offset/host_unit_bytes);
     }
     auto& result=results_.at(work.fragment.parent);
-    if(!result.remaining)throw std::logic_error("logical work completed twice");
+    if(result.state!=LogicalResult::Pending||!result.remaining)throw std::logic_error("logical work completed twice");
     --result.remaining;
     if(success)++stats_.logical_success;
     else {++stats_.logical_failed;++result.failed;if(result.reason.empty())result.reason=reason;}
-    if(!result.remaining)result.state=result.failed?LogicalResult::Failed:LogicalResult::Success;
+    if(!result.remaining) {
+        if(!unfinished_globals_)throw std::logic_error("Global completion count underflow");
+        result.state=result.failed?LogicalResult::Failed:LogicalResult::Success;
+        --unfinished_globals_;
+        if(result.state==LogicalResult::Failed)++failed_globals_;
+        // All logical fragments are terminal, including those completed by retry,
+        // replay or cancellation. Attempts alone never change these aggregates.
+        // Update before statistics and the separately scheduled completion event.
+    }
     if(statistics_sink_) {
         statistics_sink_->observe(StatWorkFinished{id,events_.now(),success,success?std::string{}:reason});
         if(!result.remaining)statistics_sink_->observe(StatGlobalFinished{result.id,events_.now(),
@@ -376,14 +384,9 @@ void HostDriver::advance() {
     // A canceled dependent request has no future release obligation. Do not let
     // an obsolete far-future arrival turn a fully settled workload into LimitReached.
     bool settled;
-    if(profile_) {
-        RuntimeScope scan(profile_,RuntimeRegion::ResultsScan);
-        std::uint64_t visited=0;
-        settled=std::all_of(results_.begin(),results_.end(),[&](const auto& r){++visited;return r.second.state!=LogicalResult::Pending;});
-        profile_->add(RuntimeCounter::ResultsEntriesVisited,visited);
-        profile_->peak(RuntimeCounter::ResultsSizePeak,results_.size());
-    } else {
-        settled=std::all_of(results_.begin(),results_.end(),[](const auto& r){return r.second.state!=LogicalResult::Pending;});
+    {
+        RuntimeScope check(profile_,RuntimeRegion::CompletionCheck);
+        settled=unfinished_globals_==0;
     }
     if(settled) {
         for(const auto& event:release_events_) {events_.cancel(event.second);owned_events_.erase(event.second);}
@@ -397,14 +400,14 @@ void HostDriver::advance() {
 }
 HostActivity HostDriver::activity() const {
     HostActivity a;
-    for(const auto& r:results_)a.unfinished_global+=r.second.state==LogicalResult::Pending;
+    a.unfinished_global=unfinished_globals_;
     for(const auto& c:channels_) {a.queued_units+=c.queue.size();a.subscriptions+=c.wait.has_value();}
     a.unsettled_attempts=attempts_.size();a.recoveries=recovery_.active_count();
     for(const auto& v:versions_)for(const auto& p:v.second.retries)a.recoveries+=p.second.active;
     a.events=owned_events_.size();return a;
 }
 bool HostDriver::workload_success() const {
-    for(const auto& r:results_)if(r.second.state!=LogicalResult::Success)return false;return true;
+    return unfinished_globals_==0&&failed_globals_==0;
 }
 std::string HostDriver::waiting_reason() const {
     if(!started_)return "HostNotStarted";

@@ -29,8 +29,9 @@ C++调用方创建`RuntimeProfile`，在开始输入前调用`HostDriver::set_ru
 | `admit_input` | 增量输入准入，包括准备、剩余容量检查和登记；有限CLI的load不经过此项。 |
 | `pump` | Host发送候选扫描、策略选择、构造本地事务和链路移交尝试。 |
 | `receive` | Host处理一个命令响应，包括可能触发的推进和回收。 |
-| `advance` | Host状态推进，包括恢复／重试及历史完成检查。 |
-| `results_scan` | advance中实际的`std::all_of(results_)`，保留原有提前退出行为。 |
+| `advance` | Host状态推进，包括恢复／重试及Global完成计数查询。 |
+| `completion_check` | advance中读取未完成Global计数；每次advance执行一次，不遍历历史。 |
+| `results_scan` | 兼容旧诊断报告保留的区域；当前Host不执行此扫描，数值为0。 |
 | `reclaim` | 详细Work／Unit／Global对象及索引回收；仍按原有安全条件执行。 |
 | `event_run` | `SimulationRunner::run()`或`SimulationSession::drive()`，包含事件执行、状态检查及同步回调。 |
 
@@ -52,12 +53,12 @@ C++调用方创建`RuntimeProfile`，在开始输入前调用`HostDriver::set_ru
 | `backpressured_fragments` | 本次已经prepare、随后因剩余容量不足被拒绝的片段数，可能重复计同一外部请求。 |
 | `pump_queue_visits / pump_candidates` | 队列元素访问数／每次选择时合法候选数量之和，同一候选可能重复统计。 |
 | `handoff_attempts / handoff_taken` | 进入`port.try_submit`的次数／返回Taken的次数，不是Global数量。 |
-| `results_entries_visited` | advance的完成检查实际调用谓词次数，不用“表大小×调用数”估算。 |
-| `results_size_peak` | 成功登记／执行完成检查时观察到的历史结果表最大条目数。 |
+| `results_entries_visited` | 兼容旧报告保留；当前Host完成查询不扫描历史，值为0。旧版记录实际谓词调用次数。 |
+| `results_size_peak` | 成功登记时观察到的历史结果表最大条目数；保留历史摘要的内存仍存在。 |
 | `reclaim_unit_visits` | 回收扫描访问的Unit数，不表示这些Unit已被删除。 |
 | `reclaimed_work / reclaimed_units / reclaimed_requests` | 实际删除的详细对象数，保留的results摘要与retention不算回收。 |
 
-诊断只读现有状态并累加固定大小的计数，不额外扫描容器。特别是**没有**提前移动`admit_input()`的剩余容量检查，也没有优化`results_`扫描；这些成本正是待测对象。
+诊断只读现有状态并累加固定大小的计数，不额外扫描容器。Host的历史完成扫描已经替换为精确计数，见[设计决策](design_decisions.md#adr-host-efficiency-01)。`admit_input()`的剩余容量检查仍在prepare之后；重复准备、pump和reclaim的成本仍需分别测量。JSON schema仍为1，新增`completion_check`，旧扫描字段保留为0，避免把常数查询冒充历史扫描。
 
 ## 不需要GPU的复现
 
@@ -67,14 +68,35 @@ C++调用方创建`RuntimeProfile`，在开始输入前调用`HostDriver::set_ru
 .\build\Release\hbf_eventlab_runtime_bench.exe 32 4
 .\build\Release\hbf_eventlab_runtime_bench.exe 32 4 build\profile-32.json
 .\build\Release\hbf_eventlab_runtime_bench.exe 128 4 build\profile-128.json
+.\build\Release\hbf_eventlab_runtime_bench.exe 128 24
 ```
 
 stdout包含程序墙钟、最终Tick、事件数、Global数、响应数和介质操作数。比较开关时除墙钟外这些字段应一致。建议交替开关、重复至少三次并报告中位数；不要在构建或其他重负载验证同时运行时比较墙钟。CTest不设性能阈值，避免机器速度影响功能验证。
 
 可选Qwen可在原命令后加`--profile on`，得到`<output-prefix>.profile.json`；默认`off`，仅HBF模式可开启。实验程序自行管理输出前缀，不使用核心INI的输出路径。`--detail off --profile on`保留聚合诊断、关闭大量逐命令统计，仍保留原有访存／进度报告。其他选区、权重、计算间隔及数值核验要求见[Qwen实验](qwen_online.md)。
 
-优先观察：split占比是否大；输入背压导致多少重复拆分；results扫描平均访问数`results_entries_visited / results_scan.calls`是否随历史增长；pump、reclaim是否也有大量重复扫描。它们是优化线索，不应把单项较大直接解释为已经证明的唯一瓶颈。
+优先观察：split占比是否大；输入背压导致多少重复拆分；pump、reclaim是否也有大量重复扫描。对旧报告可观察`results_entries_visited / results_scan.calls`随历史增长的趋势；当前两项均为0，不应计算0/0。这些是优化线索，不应把单项较大直接解释为唯一瓶颈。
 
 ## 验证
 
 `runtime_profile_*`覆盖确定性假时钟下的嵌套／自身计时、异常展开、隔离、输出错误、默认关闭、增量容量拒绝计数，以及普通完成、program-fail replay、Pending满重试和组装超时重试的开关对照。对照逐字比较模拟事件流，同时检查Tick、事件数、最终结果和排空。CLI测试检查配置、JSON字段、输出路径冲突；CPU基准检查历史表峰值、重复拆分和开关语义一致。
+
+`host_completion_*`在每个统计观察点和事件返回后，用测试侧全表扫描核对计数查询。12个场景覆盖拒绝的原子性、未来释放、反馈新增、replay、Pending/timeout重试、依赖取消、恢复失败、详细对象回收和跨Global burst。传入`--snapshot FILE`可导出确定性事件流及结果摘要，用于跨版本逐字比较；生产代码不执行测试侧扫描。
+
+<a id="completion-count-comparison"></a>
+
+## 历史完成查询优化对照（2026-10-27）
+
+基线为`ab821bc`，对照版本使用[Global完成计数](design_decisions.md#adr-host-efficiency-01)。同一Windows机器、MSVC 19.43 x64 Release，使用上述CPU基准；两版本各预热一次`32 4`，然后每个规模交替运行三次，期间不并行执行构建或测试。下表是**关闭诊断**时基准自身报告的程序墙钟中位数，括号为最小—最大值；不包含进程启动、GPU计算或模型文件加载。
+
+| 初始化页数 × 读取遍数 | Global总数 | 基线（秒） | 优化后（秒） | 中位耗时减少 |
+|---|---:|---:|---:|---:|
+| 32 × 4 | 160 | 0.877（0.858—0.887） | 0.832（0.829—0.832） | 5.1% |
+| 128 × 4 | 640 | 4.036（3.949—4.048） | 3.423（3.423—3.451） | 15.2% |
+| 128 × 24 | 3200 | 33.042（32.626—33.973） | 20.755（20.520—20.786） | 37.2% |
+
+全部对照运行的最终Tick、事件数、Global数、响应数、program/sense/cache-hit数量一致。最大案例均为3,561,761个事件、204,800次命令响应；另外12个生命周期场景使用相同测试驱动，优化前后事件流及最终结果快照逐字一致。完整Debug/Release回归见[验证记录](verification.md)。
+
+单独开启诊断运行`128 24`：基线的完成扫描实际访问1,300,936,256个历史条目，812,953次扫描累计11.388秒；优化后旧扫描区域及访问次数均为0，812,953次`completion_check`累计0.034秒。后者包含插桩开销，不应解释为整数比较本身的耗时。两版结果表峰值仍为3200，历史摘要没有因优化而被丢弃。
+
+这些结果只说明当前CPU基准中的程序效率；小案例收益较小。它们不是硬件性能、全权重Qwen运行时间或跨平台加速保证。历史摘要的内存、发送／回收／恢复扫描、输入背压前的重复准备仍需后续定位。

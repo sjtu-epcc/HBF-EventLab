@@ -14,7 +14,7 @@ std::uint64_t steady_ns() noexcept {
         std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 constexpr const char* regions[]={"split","prepare","register_input","admit_input","pump","receive",
-    "advance","results_scan","reclaim","event_run"};
+    "advance","results_scan","reclaim","event_run","completion_check"};
 constexpr const char* counters[]={"split_fragments","prepare_globals","registered_globals","registered_fragments",
     "input_registered","input_backpressured","input_too_large","backpressured_fragments",
     "pump_queue_visits","pump_candidates","handoff_attempts","handoff_taken",

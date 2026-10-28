@@ -173,6 +173,10 @@ private:
     std::vector<Channel> channels_;
     std::map<GlobalRequestId,GlobalRequest> requests_;
     std::map<GlobalRequestId,WorkResult> results_;
+    // Exact aggregates of results_, owned by registration and final transition.
+    // Count Globals (including future releases), never attempts, fragments or DLUs.
+    // Retained history is still used for dependencies and duplicate-ID checks.
+    std::size_t unfinished_globals_=0,failed_globals_=0;
     std::map<LogicalWorkId,Work> work_;
     std::map<SendUnitId,Unit> units_;
     std::map<ContentKey,Version> versions_;

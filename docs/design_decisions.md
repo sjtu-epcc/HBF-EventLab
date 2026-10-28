@@ -3582,9 +3582,26 @@
 | 模型假设／参数依据 | 默认关闭；steady_clock纳秒单位、固定大小的内存聚合，无设备模型参数。 |
 | 实现位置（函数／成员） | [RuntimeProfile／RuntimeScope](../include/hbf_eventlab/diagnostics/runtime_profile.hpp)；[Host](../src/host/host_driver.cpp)的pump／receive／advance；host_input的prepare／register_input、host_storage的admit_input／reclaim、GlobalRequestSplitter::split；Runner／Session推进边界。 |
 | 不变量 | 不修改准入顺序、64B粒度、内容身份、事件时序、重试、回收条件或设备资源；诊断计数不反馈给调度。 |
-| 验证测试与覆盖 | [runtime_profile测试](../tests/runtime_profile.cpp)和[CLI／CPU基准对照](../tests/check_runtime_profile.cmake)：默认关闭、嵌套／异常、拒绝路径、实际扫描计数、普通／replay／资源重试的语义一致。 |
+| 验证测试与覆盖 | [runtime_profile测试](../tests/runtime_profile.cpp)和[CLI／CPU基准对照](../tests/check_runtime_profile.cmake)：默认关闭、嵌套／异常、拒绝路径、完成查询与旧扫描零计数、普通／replay／资源重试的语义一致。 |
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 插桩有开销，self仍含未插桩子调用；covered_root不是整个进程耗时，不支持并发写同一诊断实例；见[详细口径](runtime_profiling.md)。 |
+
+<a id="adr-host-efficiency-01"></a>
+
+#### ADR-HOST-EFFICIENCY-01｜Global完成汇总在状态转换时维护，不反复扫描历史。
+
+| 字段 | 内容 |
+|---|---|
+| 内容 | Host保存未完成Global数和最终失败Global数；历史结果仍保留，用于结果查询、依赖及ID去重。 |
+| 规范关系 | 无直接规定。 |
+| 条目性质 | 工程实现机制。 |
+| 选择理由 | 在线输入持续积累历史摘要；每次推进重新扫描使相同尺寸的新工作越来越昂贵。计数只在既有状态转换处更新，避免改变模拟流程。 |
+| 实现位置（函数／成员） | [HostDriver](../include/hbf_eventlab/host/host_driver.hpp)的`unfinished_globals_`、`failed_globals_`；[register_input](../src/host/host_input.cpp)成功插入时增未完成计数；[finish_work](../src/host/host_driver.cpp)在Global最后片段取得最终结果时减未完成、必要时增失败计数；`advance/activity/workload_success`使用计数。 |
+| 不变量 | 未完成计数等于results中Pending条目数，失败计数等于Failed条目数；统计观察和完成通知前更新。未来释放输入也计入；拒绝、内部重试/replay及回收不重复增减。计数为0不等于输入关闭或Host/Device排空；待交付完成通知仍须执行。 |
+| 模型假设／参数依据 | 单模拟线程持有两个整数；无模拟资源参数、不新增事件、不改变64B粒度。 |
+| 验证测试与覆盖 | [host_completion测试](../tests/host_completion.cpp)的12个场景以独立全表扫描核对状态；诊断测试要求旧扫描字段为0，每次advance只有一次completion_check。 |
+| 实现状态／验证状态 | 已实现；V1。 |
+| 已知限制 | 只消除完成汇总的历史扫描；历史表内存、依赖查表、发送候选、回收与恢复扫描不由本条优化。 |
 
 ## 5. 参数与模型假设
 

@@ -203,6 +203,8 @@ Host从自己的命令表定位0x7失败页。先收到后继0x6/info2时等待�
 
 Runner只查询各所有者摘要。有未来timeout、窗口或完成事件就直接跳时；无有效事件而仍有工作才报告Stalled。Completed需要Host与Device瞬态都排空，逻辑成功另报。持久NAND、映射、PEC、无活动引用的Cache和已放弃恢复留下的限制无需清零。
 
+Host的Global完成汇总由登记和最终状态转换维护两个精确计数：未完成数、最终失败数。完成查询不遍历历史`results_`；历史摘要继续供依赖、去重和结果查询使用。尚未释放的已登记输入计入未完成，内部命令重试不计为新Global，详细对象回收不改计数。未完成数为0仍须检查完成通知、输入源状态及双方活动，见[实现决策](design_decisions.md#adr-host-efficiency-01)。
+
 ## 10. 集成与生命周期要求
 
 正式入口见[CLI源码](../examples/minimal_loop.cpp)。构造关系为：静态描述与配置 → EventQueue → DeviceDriver → interleaver → HostDriver → SimulationRunner。端口、地址转换器和时钟必须比Host存活更久；外部EventQueue必须比Device存活更久。

@@ -96,7 +96,9 @@ void HostDriver::register_input(std::vector<PreparedRequest> input) {
         const auto& r=item.request;
         added.push_back(r.id);
         requests_.emplace(r.id,r);
-        results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/host_unit_bytes)});
+        const auto inserted=results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/host_unit_bytes)});
+        if(!inserted.second)throw std::logic_error("validated Global registered twice");
+        ++unfinished_globals_; // after successful insertion, before any observer
         if(profile_) {profile_->add(RuntimeCounter::RegisteredGlobals);profile_->peak(RuntimeCounter::ResultsSizePeak,results_.size());}
         if(statistics_sink_)statistics_sink_->observe(StatGlobalDefined{r.id,r.op,r.bytes,r.not_before});
         if(statistics_sink_ && r.offered_at)statistics_sink_->observe(StatInputRegistered{r.id,*r.offered_at,events_.now()});

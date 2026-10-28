@@ -62,8 +62,9 @@ void admission(){
     check(p.measurement(RuntimeRegion::Prepare).unwound_calls==1&&p.counter(RuntimeCounter::RegisteredGlobals)==1,"invalid input has no registration");
     s.close_input();const auto r=s.run_to_completion();check(r.run.workload_success,"successful drain");
     check(p.counter(RuntimeCounter::ReclaimedWork)==64&&p.counter(RuntimeCounter::ReclaimedUnits)==64&&p.counter(RuntimeCounter::ReclaimedRequests)==1,"reclamation counters");
-    check(p.counter(RuntimeCounter::ResultsEntriesVisited)==p.measurement(RuntimeRegion::ResultsScan).calls,"one result visited per scan");
-    check(p.measurement(RuntimeRegion::ResultsScan).calls==p.measurement(RuntimeRegion::Advance).calls,"one scan per advance");
+    check(p.counter(RuntimeCounter::ResultsEntriesVisited)==0&&p.measurement(RuntimeRegion::ResultsScan).calls==0,"no history scan charged");
+    check(p.measurement(RuntimeRegion::CompletionCheck).calls>0&&
+          p.measurement(RuntimeRegion::CompletionCheck).calls==p.measurement(RuntimeRegion::Advance).calls,"one aggregate check per advance");
     check(p.counter(RuntimeCounter::HandoffTaken)==s.host().statistics().handed,"handoff accounting");
 }
 struct Run {std::string events;Tick at;std::uint64_t executed,responses,replays,timeouts,pending_retries;bool success;};

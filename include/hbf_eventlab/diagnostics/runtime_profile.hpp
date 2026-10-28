@@ -8,8 +8,10 @@ namespace hbf_eventlab {
 // Program wall time only. Never used to advance simulation time or make decisions.
 enum class RuntimeRegion : std::size_t {
     Split, Prepare, RegisterInput, AdmitInput, Pump, Receive, Advance,
-    ResultsScan, Reclaim, EventRun, Count
+    ResultsScan, Reclaim, EventRun, CompletionCheck, Count
 };
+// ResultsScan / ResultsEntriesVisited are retained for baseline JSON/API
+// compatibility; the counter-based Host does not execute or charge a scan.
 enum class RuntimeCounter : std::size_t {
     SplitFragments, PrepareGlobals, RegisteredGlobals, RegisteredFragments,
     InputRegistered, InputBackpressured, InputTooLarge, BackpressuredFragments,
