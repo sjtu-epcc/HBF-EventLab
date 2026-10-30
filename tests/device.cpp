@@ -442,6 +442,37 @@ void multi_channel_bandwidth() {
     auto id1=f.send(a);auto id2=f.send(b);f.run();
     check(f.replies.at(id1).at==f.replies.at(id2).at,"independent physical channels overlap at full configured rate");
 }
+void channel_preflight() {
+    ExecutionConfiguration c;c.ucie.overhead.request_fixed_latency=Tick{50000};Fixture f(c);
+    check(f.device.channel_send_blockers(0).empty(),"idle probe has no blocker");
+    check(f.device.activity().drained(),"idle probe does not reserve resources");
+    rejects<std::out_of_range>([&]{f.device.channel_send_blockers(2);});
+    auto tx=f.tx(Op::Read);bool accepted=false,responded=false,woke=false;
+    const auto result=f.device.try_submit(tx,[&](const auto&){responded=true;},[&](const auto&){accepted=true;});
+    check(result.disposition==HandoffDisposition::Taken,"probe leaves final grant to try_submit");
+    const auto blockers=f.device.channel_send_blockers(0);
+    check(blockers.size()==1&&blockers[0].key.reason==WaitReason::RequestLink,"busy request lane reported");
+    check(f.device.channel_send_blockers(1).empty(),"other channel remains available");
+    const auto retry=f.device.try_submit(f.tx(Op::Read),[](const auto&){});
+    check(retry.disposition==HandoffDisposition::NotTaken,"try_submit still enforces busy lane");
+    f.device.notifications().subscribe(blockers,[&]{
+        woke=true;
+        check(f.events.now()==c.ucie.serialization(c.ucie.overhead.request_control_bytes),"wake at serialization end");
+        check(!accepted&&!responded,"wake precedes delayed formal acceptance and response");
+        check(f.device.channel_send_blockers(0).empty(),"lane free on wake");
+    });
+    f.events.run();check(woke&&accepted&&responded&&f.device.activity().drained(),"one transfer fully settles");
+}
+void preflight_rx_fit() {
+    ExecutionConfiguration c;c.buffers.ingress={2,4096};c.ucie.overhead.request_fixed_latency=Tick{50000};Fixture f(c);
+    check(f.device.try_submit(f.tx(Op::Write,{},0,0,4096),[](const auto&){}).disposition==HandoffDisposition::Taken,"occupy RX payload");
+    while(!f.device.channel_send_blockers(0).empty())check(f.events.run_next(),"link release event exists");
+    check(f.device.ingress(0).bytes()==4096,"payload still in flight");
+    check(f.device.try_submit(f.tx(Op::Write),[](const auto&){}).disposition==HandoffDisposition::NotTaken,"write cannot fit RX");
+    check(f.device.channel_send_blockers(0).empty(),"size-specific RX rejection is not a uniform blocker");
+    check(f.device.try_submit(f.tx(Op::Read),[](const auto&){}).disposition==HandoffDisposition::Taken,"read can bypass payload-blocked write");
+    f.events.run();check(f.device.activity().drained(),"RX bypass drains");
+}
 
 
 }
@@ -451,6 +482,7 @@ int main(int argc,char**argv) {
         {"ordered_late_error",ordered_late_error},{"rewrite_saved_read",rewrite_saved_read},
         {"retirement_loop",retirement_loop},{"teardown_cache_hit",teardown_cache_hit},
         {"callback_limit",callback_limit},{"multi_channel_bandwidth",multi_channel_bandwidth},
+        {"channel_preflight",channel_preflight},{"preflight_rx_fit",preflight_rx_fit},
         {"auto_write_read",auto_write_read},{"split_write",split_write},{"bank_parallel",bank_parallel},{"bank_serial",bank_serial},
         {"mocs_ingress",mocs_ingress},{"rx_reservation",rx_reservation},{"window_batch_timer",window_batch_timer},
         {"window_threshold",window_threshold},{"window_channel_isolation",window_channel_isolation},

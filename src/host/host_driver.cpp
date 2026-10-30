@@ -81,6 +81,9 @@ bool HostDriver::eligible(const Unit& u) const {
         if(events_.now()<request.not_before||!dependencies_ready(fragment.parent))return false;
     }
     if(u.op==Op::Read) {
+        // Common release/dependency checks above still apply. Only grouped or
+        // Batch reads can be blocked by the predecessor checks below.
+        if(!u.group && u.hint==ReadHint::Regular)return true;
         for(const auto& item:units_) {
             const auto& prior=item.second;
             if(prior.id.value>=u.id.value)break;
@@ -120,9 +123,15 @@ void HostDriver::pump(ChannelId ch) {
     auto& channel=channels_[ch];
     if(channel.wait) {port_.notifications().cancel(*channel.wait);channel.wait.reset();}
     advance();
-    std::vector<WaitKey> waits;
+    std::vector<WaitObservation> waits;
     std::set<SendUnitId> tried;
     for(;;) {
+        if(channel.queue.empty())break;
+        const auto blockers=port_.channel_send_blockers(ch);
+        if(!blockers.empty()) {
+            waits.insert(waits.end(),blockers.begin(),blockers.end());
+            break;
+        }
         std::vector<HostSendCandidate> candidates;
         for(auto uid:channel.queue) {
             if(profile_)profile_->add(RuntimeCounter::PumpQueueVisits);
@@ -148,7 +157,8 @@ void HostDriver::pump(ChannelId ch) {
             if(auto live=life.lock();live&&*live)accepted(command,notice);
         });
         if(handoff.disposition==HandoffDisposition::NotTaken) {
-            tried.insert(chosen);waits.insert(waits.end(),handoff.waits.begin(),handoff.waits.end());
+            tried.insert(chosen);
+            for(auto key:handoff.waits)waits.push_back(port_.notifications().observe(key));
             if(std::any_of(handoff.waits.begin(),handoff.waits.end(),[](auto k){return k.reason==WaitReason::RequestLink;}))break;
             continue;
         }
@@ -175,9 +185,7 @@ void HostDriver::pump(ChannelId ch) {
         ++stats_.handed;if(u.replay)++stats_.replay_commands;emit("handoff",u,command);
     }
     if(!waits.empty()&&!channel.queue.empty()) {
-        std::vector<WaitObservation> observations;
-        for(auto key:waits)observations.push_back(port_.notifications().observe(key));
-        channel.wait=port_.notifications().subscribe(observations,[this,ch]{channels_[ch].wait.reset();request_pump(ch);});
+        channel.wait=port_.notifications().subscribe(waits,[this,ch]{channels_[ch].wait.reset();request_pump(ch);});
     }
 }
 void HostDriver::accepted(CommandId id,const AcceptedNotice& notice) {

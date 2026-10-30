@@ -208,7 +208,8 @@ if(BUILD_TESTING)
     add_executable(hbf_eventlab_host_send_policy_tests tests/host_send_policy.cpp)
     target_link_libraries(hbf_eventlab_host_send_policy_tests PRIVATE HBFEventLab::core)
     foreach(scenario order fcfs fill_open blocked_open release_order same_tick dependency_age not_taken retry_tail
-            same_tick_retry timeout_tail timeout_unsent replay_followers burst_mixed cross_global_burst channels)
+            same_tick_retry timeout_tail timeout_unsent replay_followers burst_mixed cross_global_burst channels
+            preflight_busy preflight_same_tick preflight_race preflight_reselect preflight_cancel preflight_regression)
         add_test(NAME host_send_${scenario} COMMAND hbf_eventlab_host_send_policy_tests ${scenario})
         set_tests_properties(host_send_${scenario} PROPERTIES TIMEOUT 30)
     endforeach()
@@ -296,7 +297,7 @@ if(BUILD_TESTING)
             remap_cache duplicate_handoff response_feedback configuration cache_pin_invalidation teardown unsupported
             policies invalid_policy link_latency pending_recheck deadline_link_boundary
             sense_order_policy sense_order_blocked ordered_late_error rewrite_saved_read retirement_loop
-            teardown_cache_hit callback_limit multi_channel_bandwidth)
+            teardown_cache_hit callback_limit multi_channel_bandwidth channel_preflight preflight_rx_fit)
         add_test(NAME device_${scenario} COMMAND hbf_eventlab_device_tests ${scenario})
         set_tests_properties(device_${scenario} PROPERTIES TIMEOUT 20)
     endforeach()

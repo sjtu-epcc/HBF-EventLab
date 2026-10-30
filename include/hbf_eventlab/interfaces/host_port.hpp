@@ -27,6 +27,13 @@ public:
     using Receiver=std::function<void(const DeliveredResponse&)>;
     using AcceptanceObserver=std::function<void(const AcceptedNotice&)>;
     virtual ~IHostPort()=default;
+    // Advisory, non-reserving query for blockers shared by EVERY candidate on
+    // this channel. Empty means "no known uniform blocker", not a grant:
+    // try_submit remains authoritative for transaction-specific conditions.
+    // Observe each wait key BEFORE inspecting its condition; returned revisions
+    // must be passed unchanged to subscribe to avoid check/register lost wakeups.
+    // Existing/multi-lane ports may leave this unimplemented and use try_submit.
+    virtual std::vector<WaitObservation> channel_send_blockers(ChannelId) const { return {}; }
     virtual HandoffResult try_submit(const LocalTransaction&,Receiver,AcceptanceObserver = {})=0;
     virtual AdmissionWaitRegistry& notifications()=0;
     virtual const StaticDeviceDescription& description() const=0;

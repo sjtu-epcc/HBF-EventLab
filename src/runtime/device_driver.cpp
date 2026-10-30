@@ -85,6 +85,14 @@ const BufferBudget& DeviceDriver::ingress(ChannelId ch) const { return channels_
 DeviceDriver::Transaction* DeviceDriver::find(ChannelId ch,CommandId id) {
     const auto it=identities_.find({ch,id}); return it==identities_.end()?nullptr:&transactions_.at(it->second);
 }
+std::vector<WaitObservation> DeviceDriver::channel_send_blockers(ChannelId ch) const {
+    const auto& channel=*channels_.at(ch);
+    const auto link=signals_.observe(WaitKey::channel_key(WaitReason::RequestLink,ch));
+    // RX payload fit depends on the chosen transaction; do not turn a blocked
+    // large write into a channel-wide barrier for reads or smaller writes.
+    if(channel.request_busy)return {link};
+    return {};
+}
 HandoffResult DeviceDriver::try_submit(const LocalTransaction& input,Receiver receiver,AcceptanceObserver acceptance) {
     const auto& cmd=input.command; const auto ch=cmd.address.channel;
     if(ch>=channels_.size() || !receiver) throw std::invalid_argument("bad channel/receiver");

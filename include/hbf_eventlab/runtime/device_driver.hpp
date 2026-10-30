@@ -42,6 +42,7 @@ public:
     ~DeviceDriver();
     DeviceDriver(const DeviceDriver&)=delete;
     DeviceDriver& operator=(const DeviceDriver&)=delete;
+    std::vector<WaitObservation> channel_send_blockers(ChannelId) const override;
     // Taken starts serialization and reserves RX; no synchronous callback.
     // NotTaken retains source ownership: subscribe returned keys before retrying.
     HandoffResult try_submit(const LocalTransaction&,Receiver,AcceptanceObserver = {}) override;

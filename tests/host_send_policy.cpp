@@ -1,10 +1,12 @@
 #include "hbf_eventlab/runtime/simulation_runner.hpp"
 #include "hbf_eventlab/policies/round_robin_interleaver.hpp"
+#include "hbf_eventlab/diagnostics/runtime_profile.hpp"
 #include <iostream>
 #include <string_view>
 using namespace hbf_eventlab;
 namespace {
 std::size_t checks=0;
+bool enable_preflight=false;
 void check(bool ok,const char* why){++checks;if(!ok)throw std::runtime_error(why);}
 StaticDeviceDescription profile(unsigned channels=1){
     Geometry g{channels,1,1,8,4,1};return {g,{256,8,false,true},{256,Tick{10000000},g.block_group_dlus()}};
@@ -35,11 +37,21 @@ public:
     std::map<ChannelId,Tick> available;
     std::function<bool(const LocalTransaction&)> blocked;
     std::function<void(CommandId,unsigned)> handler;
-    std::uint64_t next=0,spacing=5;
+    std::function<void()> probe_hook;
+    bool preflight=enable_preflight;
+    std::uint64_t next=0,spacing=5,acceptance_delay=0;
     explicit ScriptPort(unsigned channels=1):desc(profile(channels)),address_layout(desc.geometry()){}
     const StaticDeviceDescription& description()const override{return desc;}
     const IAddressLayout& layout()const override{return address_layout;}
     AdmissionWaitRegistry& notifications()override{return signals;}
+    std::vector<WaitObservation> channel_send_blockers(ChannelId ch)const override {
+        if(!preflight)return IHostPort::channel_send_blockers(ch);
+        const auto observed=signals.observe(WaitKey::channel_key(WaitReason::RequestLink,ch));
+        const auto it=available.find(ch);
+        const bool busy=it!=available.end()&&events.now()<it->second;
+        if(probe_hook)probe_hook();
+        return busy?std::vector<WaitObservation>{observed}:std::vector<WaitObservation>{};
+    }
     void at(Tick time,std::function<void()> callback){events.schedule_at(time,EventPhase::Arrival,std::move(callback));}
     void gate(ChannelId ch,Tick until){
         available[ch]=until;
@@ -53,7 +65,7 @@ public:
         check(records.emplace(id,Record{tx,std::move(reply),attempt,events.now()}).second,"fresh command ID per attempt");
         order.push_back(id);gate(ch,Tick{events.now().value+spacing});
         const auto count=++attempts[{ch,tx.command.address.local.value}];
-        at(events.now(),[this,id,attempt,accepted,count,ch]{
+        at(Tick{events.now().value+acceptance_delay},[this,id,attempt,accepted,count,ch]{
             if(accepted)accepted({attempt,ch,id,events.now()});
             if(handler)handler(id,count);else finish(id);
         });
@@ -73,10 +85,11 @@ public:
     }
 };
 struct ScriptFixture {
-    ScriptPort port;Observations observations;RoundRobinInterleaver inter;HostDriver host;
+    ScriptPort port;Observations observations;RuntimeProfile runtime;RoundRobinInterleaver inter;HostDriver host;
     explicit ScriptFixture(HostConfiguration c={},unsigned channels=1)
         :port(channels),inter(GlobalByteAddress{},channels,port.desc.geometry().channel_bytes()),host(port,port.events,inter,c){
         host.set_statistics_sink(observations);
+        host.set_runtime_profile(runtime);
     }
     void run(std::vector<GlobalRequest> input){
         host.load(input);host.start();port.events.set_limits({200000,10000,10000});port.events.run();
@@ -218,13 +231,73 @@ void channels(){
     check(f.port.records.at(v[0]).tx.command.address.channel==1&&f.port.records.at(v[1]).tx.command.address.channel==1,"busy channel does not impose global HOL blocking");
     check(f.port.addresses()==std::vector<std::uint64_t>{0,64,0,64},"per-channel FCFS order");
 }
+void preflight_busy(){
+    ScriptFixture f;f.port.preflight=true;f.port.acceptance_delay=50;f.port.gate(0,Tick{20});
+    f.port.at(Tick{10},[&]{
+        check(f.runtime.counter(RuntimeCounter::PumpQueueVisits)==0,"busy channel skips candidate scan");
+        check(f.runtime.counter(RuntimeCounter::HandoffAttempts)==0,"probe does not submit or reserve a command");
+        check(f.host.statistics().handed==0&&f.host.statistics().accepted==0,"blocked work stays Host-owned");
+    });
+    f.run({read(1,0),read(2,64,Tick{1}),read(3,128,Tick{2})});
+    check(f.runtime.counter(RuntimeCounter::HandoffAttempts)==3,"no speculative busy-link handoffs");
+    for(std::size_t i=0;i<3;++i)
+        check(f.port.records.at(f.port.order[i]).handed==Tick{20+5*i},"wake at link release before acceptance/completion");
+    check(f.port.signals.pending()==0,"one-shot waits drain");
+}
+void preflight_same_tick(){
+    ScriptFixture f;f.port.preflight=true;f.port.spacing=0;f.port.gate(0,Tick{5});
+    f.run({read(1,0),read(2,64),read(3,128)});
+    check(f.port.addresses()==std::vector<std::uint64_t>{0,64,128},"same-tick multiple grants retain order");
+    for(auto id:f.port.order)check(f.port.records.at(id).handed==Tick{5},"no artificial Tick added to wakeup");
+    check(f.runtime.counter(RuntimeCounter::HandoffAttempts)==3,"port may allow multiple same-tick handoffs");
+}
+void preflight_race(){
+    ScriptFixture f;f.port.preflight=true;f.port.available[0]=Tick{20};bool fired=false;
+    f.port.probe_hook=[&]{if(!fired){
+        fired=true;f.port.available[0]=Tick{};
+        f.port.signals.notify(WaitKey::channel_key(WaitReason::RequestLink,0));
+    }};
+    f.run({read(1,0)});
+    check(fired&&f.port.records.at(f.port.order[0]).handed==Tick{},"revision captured before probe avoids lost wakeup");
+}
+void preflight_reselect(){
+    HostConfiguration c;c.send_policy="fill_open";ScriptFixture f(c);f.port.preflight=true;
+    f.port.handler=[&](CommandId id,unsigned){f.port.finish(id,WriteStatus::Success,0,1000);};
+    f.run({write(1,0,64),write(2,32768),write(3,64,4032,Tick{1})});
+    const auto order=f.port.addresses();
+    for(std::size_t i=0;i<64;++i)check(order[i]==i*64,"newly available supplements selected after wakeup");
+    check(order[64]==32768,"preflight does not freeze a candidate while link is busy");
+}
+void preflight_cancel(){
+    auto c=burst();c.max_pending_retries=0;ScriptFixture f(c);f.port.preflight=true;f.port.spacing=50;
+    f.port.handler=[&](CommandId id,unsigned){f.port.finish(id,WriteStatus::PendingDluLimit);};
+    // Exhaust the explicitly disabled retry budget, then cancel its dependent read.
+    // Host metadata must advance while the request lane is still busy.
+    auto r=read(2,0);r.after={GlobalRequestId{1}};
+    f.port.at(Tick{2},[&]{check(f.host.activity().unfinished_global==0,"dependency cancellation advances before lane release");});
+    f.host.load({write(1,0),r});f.host.start();
+    f.port.events.set_limits({200000,10000,10000});f.port.events.run();
+    check(f.host.activity().drained()&&!f.host.workload_success(),"failed dependency still settles and drains");
+    check(f.port.signals.pending()==0,"cancelled queue does not retain passive link wait");
+    for(auto id:f.port.order)check(f.port.records.at(id).tx.command.op==Op::Write,"dependent read never escapes cancellation");
+}
+void preflight_regression(){
+    enable_preflight=true;
+    // Run the same public-port ordering/retry cases with the optional probe on.
+    // Original cases retain the default no-probe path for compatibility coverage.
+    for(auto f:{release_order,same_tick,dependency_age,not_taken,retry_tail,same_tick_retry,
+                timeout_tail,timeout_unsent,replay_followers,burst_mixed,cross_global_burst,channels})f();
+    enable_preflight=false;
+}
 } // namespace
 int main(int argc,char** argv){
     const std::map<std::string,void(*)()> cases{{"order",policy_order},{"fcfs",fcfs},{"fill_open",fill_open},
         {"blocked_open",blocked_open},{"release_order",release_order},{"same_tick",same_tick},{"dependency_age",dependency_age},
         {"not_taken",not_taken},{"retry_tail",retry_tail},{"same_tick_retry",same_tick_retry},{"timeout_tail",timeout_tail},
         {"timeout_unsent",timeout_unsent},{"replay_followers",replay_followers},{"burst_mixed",burst_mixed},
-        {"cross_global_burst",cross_global_burst},{"channels",channels}};
+        {"cross_global_burst",cross_global_burst},{"channels",channels},
+        {"preflight_busy",preflight_busy},{"preflight_same_tick",preflight_same_tick},{"preflight_race",preflight_race},
+        {"preflight_reselect",preflight_reselect},{"preflight_cancel",preflight_cancel},{"preflight_regression",preflight_regression}};
     try{if(argc!=2||!cases.count(argv[1]))throw std::invalid_argument("unknown Host send policy test");
         cases.at(argv[1])();std::cout<<"PASS "<<argv[1]<<" checks="<<checks<<"\n";return 0;
     }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<"\n";return 1;}

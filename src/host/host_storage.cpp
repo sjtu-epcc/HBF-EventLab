@@ -49,7 +49,10 @@ void HostDriver::reclaim() {
     for(auto it=units_.begin();it!=units_.end();) {
         if(profile_)profile_->add(RuntimeCounter::ReclaimUnitVisits);
         const auto& u=it->second;
-        bool safe=u.stage==UnitStage::Done||u.stage==UnitStage::Cancelled;
+        // Later checks can only reject reclamation; queued/in-flight units
+        // cannot become safe here. Keep the same callback reclamation boundary.
+        if(u.stage!=UnitStage::Done && u.stage!=UnitStage::Cancelled) {++it;continue;}
+        bool safe=true;
         if(u.content) {
             const auto& v=versions_.at(*u.content);
             const auto retry=v.retries.find(u.fragments.front().logical.page);
