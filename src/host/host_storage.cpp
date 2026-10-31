@@ -70,6 +70,7 @@ void HostDriver::reclaim() {
             const auto erased=work_.erase(f.id);
             if(profile_)profile_->add(RuntimeCounter::ReclaimedWork,erased);
         }
+        unindex_unit(u);
         retired.insert(u.id);it=units_.erase(it);
         if(profile_)profile_->add(RuntimeCounter::ReclaimedUnits);
     }
@@ -83,14 +84,14 @@ void HostDriver::reclaim() {
         ids.erase(std::remove_if(ids.begin(),ids.end(),[&](const auto& x){return retired.count(x.second);}),ids.end());
         if(ids.empty())it=initial_enqueues_.erase(it);else ++it;
     }
-    std::set<GlobalRequestId> referenced;
-    for(const auto& u:units_)if(!u.second.replay)
-        for(const auto& f:u.second.fragments)referenced.insert(f.parent);
-    for(auto it=requests_.begin();it!=requests_.end();)
-        if(results_.at(it->first).state!=LogicalResult::Pending && !referenced.count(it->first)) {
-            it=requests_.erase(it);if(profile_)profile_->add(RuntimeCounter::ReclaimedRequests);
-        }
-        else ++it;
+    // Consume only affected Globals at the same stable reclamation boundary.
+    for(auto id:reclaimable_globals_) {
+        if(global_fragment_refs_.at(id)!=0 || results_.at(id).state==LogicalResult::Pending)
+            throw std::logic_error("Global reclaimed while still referenced/pending");
+        requests_.erase(id);global_fragment_refs_.erase(id);
+        if(profile_)profile_->add(RuntimeCounter::ReclaimedRequests);
+    }
+    reclaimable_globals_.clear();
     for(auto it=release_globals_.begin();it!=release_globals_.end();) {
         auto& ids=it->second;
         ids.erase(std::remove_if(ids.begin(),ids.end(),[&](auto id){return !requests_.count(id);}),ids.end());

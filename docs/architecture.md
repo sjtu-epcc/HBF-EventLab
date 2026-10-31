@@ -34,6 +34,10 @@ Host 只依赖公开的 `IHostPort`、静态地址视图和自身记录，不查
 
 `host_storage.cpp` 负责增量输入容量和详细对象回收。`max_resident_fragments` 按尚未安全回收的 Work 计费，包含未来释放和依赖等待；burst仍按64个逻辑片段计费。容量不足整批退回，调用方保留请求，Host不建立另一份隐藏队列。Work终结且其Unit/Attempt和重试/恢复流程不再引用详细记录后，回收Work、Unit及不再使用的GlobalRequest；结果摘要、版本覆盖/成功位图和保留区独立存活。容量释放通知合并为事件，不能同步重入接收路径。该额度不等于MOCS、Pending、数据保留额度或整个进程内存上限。
 
+Host 的三个派生索引由 `host_indices.cpp` 集中维护：Pending 满重试集合仅收录尚未中止版本中处于 Done 的 PendingLimit Unit，查找唤醒时间时仍重新判断资格与容量反馈；Global 驻留引用计数按普通 Unit 中每个片段的 parent 登记，只在安全回收 Unit 时递减，重试不重复计费、replay 不新增 Global 引用；读顺序分别按 `(channel, group)` 登记 Queued 读、按 `(channel, Global)` 登记尚未接受且未终结的读。后者仅在 TailBatch 模式需要，且包含将来释放的前序读。索引保存 ID 或计数，详细状态仍由原对象维护。
+
+读前序关系保持 Unit ID 顺序：同 group 前序读在成功移交时解除发送阻塞，Batch 则等待同 Global、同 channel 前序读正式接受或终结；这些发送规则不代替 Device 的返回顺序约束。Global 最终结果与驻留引用数是独立条件，两者同时允许后才在原稳定回收边界删除详细请求记录。测试在事件结束后以全扫描核对索引与原始状态；正常模拟不运行该核对，也不为索引添加事件或 Tick。
+
 统计仍通过同一个 `IStatisticsSink` 观察真实事件。`StatisticsCollector` 用于完整历史分析；`StatisticsEventStream` 按序列化字节阈值输出JSONL后释放缓冲，不保存历史关联表。跨flush的Global、Work、Attempt、DLU generation和Bank ticket身份保持不变；离线消费者自行维护跨记录关联。详见[统计事件流](statistics_event_stream.md)。
 
 `SimulationRunner` 负责有限离线输入；在线入口为 `SimulationSession`，它拥有同一套 EventQueue、DeviceDriver、interleaver 和 HostDriver，不复制业务状态或另建 Host。`submit()` 登记外部输入，`advance_before(T)` 处理严格早于 T 的事件，`close_input()` 封闭外部来源；完成回调内的 `submit_feedback()` 仍可生成因果后续工作。会话只暴露 Host/Device 的只读视图，避免外部绕过时间和关闭边界。见[在线会话 API](usage.md#online-session)。

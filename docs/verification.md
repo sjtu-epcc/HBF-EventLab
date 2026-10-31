@@ -6,18 +6,18 @@
 
 ## 1. 验证版本与环境
 
-默认完整测试集共 **474 项**（462项核心测试＋12项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为462项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+默认完整测试集共 **482 项**（470项核心测试＋12项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为470项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-30 | 474/474通过，0失败 | 156.10s |
-| Release | 2026-10-30 | 474/474通过，0失败 | 24.67s |
+| Debug | 2026-10-30 | 482/482通过，0失败 | 110.86s |
+| Release | 2026-10-30 | 482/482通过，0失败 | 25.30s |
 
 上述两个配置各按 CTest `--parallel 2` 运行，耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-474项由35个基础行为场景、34个生命周期/事件场景、46个Device场景、1个Device示例、145个Host行为场景、1个增量Host示例、45个在线会话场景、3个会话/容量/桥接示例、23个tensor桥接场景、8个计算尾段/选区场景、45个统计场景、26个配置场景、28个CLI场景、12个程序性能诊断场景、10个读调度/窗口观察场景和12个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
+482项由35个基础行为场景、34个生命周期/事件场景、46个Device场景、1个Device示例、153个Host行为场景、1个增量Host示例、45个在线会话场景、3个会话/容量/桥接示例、23个tensor桥接场景、8个计算尾段/选区场景、45个统计场景、26个配置场景、28个CLI场景、12个程序性能诊断场景、10个读调度/窗口观察场景和12个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
@@ -38,6 +38,7 @@
 | Global与发送策略 | splitter、sixteen_channels、host_send_fcfs、host_send_fill_open、host_send_blocked_open、host_send_channels | 跨Global补DLU；真实Device下两种策略次序不同，受阻请求可被合法补片越过，各channel独立前进。 |
 | Channel发送前置检查 | host_send_preflight_busy、preflight_same_tick、preflight_race、preflight_reselect、preflight_cancel、preflight_regression；device_channel_preflight、device_preflight_rx_fit | 链路忙时不扫描候选；释放即唤醒而非等待响应；同Tick不添延迟；带版本订阅不漏唤醒；重新选候选；依赖取消与重试照常推进；RX容量条件保留候选绕过；兼容未实现查询的端口。 |
 | Host入队身份与次序 | host_send_release_order、host_send_same_tick、host_send_dependency_age、host_send_not_taken、host_send_burst_mixed、host_send_cross_global_burst | 按释放与输入次序入队，依赖／背压保留队龄；burst等最后贡献片段，不受预加载构造顺序影响。 |
+| Host派生索引 | host_send_index_group_handoff、index_batch_accept、index_group_future、index_group_channels；host_completion_index_burst_refs、index_retry_refs、index_read_reuse、index_cancel_read | 逐事件全扫描核对读前序、驻留引用与稀疏重试集合；覆盖跨Global burst、未来读、跨channel、重试复用和取消回收；12个生命周期基线快照逐字节一致。 |
 | Host重试排序 | host_send_retry_tail、host_send_same_tick_retry、host_send_timeout_tail、host_send_timeout_unsent、host_send_replay_followers | 错误重发排到队尾，未发送补片保留原次序，同Tick可复现；稳定逻辑身份和统计释放时刻不被重置。 |
 | Host恢复 | recovery_once、follower_before_root、replay_merge、burst_recovery | 真正响应驱动、根因定位、任务合并和恢复终点。 |
 | Host命令重试 | pending_root_first、pending_follower_first、pending_late_followers、pending_burst | 根因或后继错误先到均可修复；只重发被拒绝命令，保留有效片段；burst仍按一条命令记账。 |
@@ -278,7 +279,7 @@ python experiments/read_scheduling/plot.py out/read-scheduling-minimal
 
 ## 可选Qwen在线验证
 
-默认474项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](qwen_online.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已有构建记录，本次Host发送前置检查未重新构建或运行可选CUDA目标。
+默认482项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](qwen_online.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已有构建记录，本次Host索引优化未重新构建或运行可选CUDA目标。
 
 2026-10-26在Windows、MSVC 19.43、CUDA 12.9.1、RTX 4070 Laptop GPU完成：独立CPU参照、原生GPU、HBF接入GPU三方生成结果一致；logits最大绝对误差约6.53e-5、RMSE约7.25e-6，低于运行前确定的阈值；两个GPU模式的全部快照逐字节一致。默认选区为8KiB，50个Global、3200次命令尝试终结，25次输入容量背压，Host/Device排空。
 

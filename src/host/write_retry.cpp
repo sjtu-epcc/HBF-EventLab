@@ -33,6 +33,7 @@ bool HostDriver::page_succeeded(ContentKey key,PageId page,std::uint64_t pass) c
 
 void HostDriver::requeue(Unit& u) {
     if(u.stage!=UnitStage::Done)throw std::logic_error("retry before final response");
+    pending_limit_retry_units_.erase(u.id);
     u.stage=UnitStage::Queued;u.accepted=false;u.successful=false;u.command.reset();
     enqueue(u,events_.now());
     for(const auto& f:u.fragments)if(!u.replay)work_.at(f.id).accepted=false;
@@ -166,9 +167,8 @@ bool HostDriver::advance_write_retries() {
 
 void HostDriver::update_retry_wakeup() {
     std::optional<Tick> next;
-    for(const auto& item:units_) {
-        const auto& u=item.second;
-        if(!u.content || versions_.at(*u.content).aborted || u.stage!=UnitStage::Done || u.retry!=RetryKind::PendingLimit)continue;
+    for(auto id:pending_limit_retry_units_) {
+        const auto& u=units_.at(id);
         if(!retry_eligible(u))continue;
         const auto progress=capacity_progress_.find(u.fragments.front().address.channel);
         if(progress!=capacity_progress_.end() && progress->second>u.capacity_at_handoff)continue;

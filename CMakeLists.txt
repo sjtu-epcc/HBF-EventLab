@@ -16,6 +16,7 @@ add_library(hbf_eventlab
     src/host/recovery_manager.cpp
     src/host/host_driver.cpp
     src/host/host_input.cpp
+    src/host/host_indices.cpp
     src/host/host_storage.cpp
     src/host/write_retry.cpp
     src/runtime/simulation_runner.cpp
@@ -78,7 +79,8 @@ endif()
 if(BUILD_TESTING)
     add_executable(hbf_eventlab_host_completion_tests tests/host_completion.cpp)
     target_link_libraries(hbf_eventlab_host_completion_tests PRIVATE HBFEventLab::core)
-    foreach(scenario empty partial admission future feedback replay pending_retry timeout_retry dependency_cancel recovery_failure history burst_finite)
+    foreach(scenario empty partial admission future feedback replay pending_retry timeout_retry dependency_cancel recovery_failure history burst_finite
+            index_burst_refs index_retry_refs index_read_reuse index_cancel_read)
         add_test(NAME host_completion_${scenario} COMMAND hbf_eventlab_host_completion_tests ${scenario})
         set_tests_properties(host_completion_${scenario} PROPERTIES TIMEOUT 30)
     endforeach()
@@ -209,7 +211,8 @@ if(BUILD_TESTING)
     target_link_libraries(hbf_eventlab_host_send_policy_tests PRIVATE HBFEventLab::core)
     foreach(scenario order fcfs fill_open blocked_open release_order same_tick dependency_age not_taken retry_tail
             same_tick_retry timeout_tail timeout_unsent replay_followers burst_mixed cross_global_burst channels
-            preflight_busy preflight_same_tick preflight_race preflight_reselect preflight_cancel preflight_regression)
+            preflight_busy preflight_same_tick preflight_race preflight_reselect preflight_cancel preflight_regression
+            index_group_handoff index_batch_accept index_group_future index_group_channels)
         add_test(NAME host_send_${scenario} COMMAND hbf_eventlab_host_send_policy_tests ${scenario})
         set_tests_properties(host_send_${scenario} PROPERTIES TIMEOUT 30)
     endforeach()

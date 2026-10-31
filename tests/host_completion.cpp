@@ -1,6 +1,7 @@
 #include "hbf_eventlab/configuration/simulation_configuration.hpp"
 #include "hbf_eventlab/policies/round_robin_interleaver.hpp"
 #include "hbf_eventlab/statistics/event_stream.hpp"
+#include "host_index_oracle.hpp"
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -70,10 +71,10 @@ struct Fixture {
         check(host.workload_success()==(pending==0&&failed==0),"success query equals independent full scan");
         error_while_pending|=host.statistics().attempt_errors!=0&&pending!=0;
     }
-    void start() {host.start_incremental();oracle();}
-    void submit(const GlobalRequest& r) {host.submit(r);oracle();}
-    void submit(const std::vector<GlobalRequest>& r) {host.submit(r);oracle();}
-    void step() {events.run_next();oracle();}
+    void start() {host.start_incremental();oracle();HostIndexTestAccess::validate(host);}
+    void submit(const GlobalRequest& r) {host.submit(r);oracle();HostIndexTestAccess::validate(host);}
+    void submit(const std::vector<GlobalRequest>& r) {host.submit(r);oracle();HostIndexTestAccess::validate(host);}
+    void step() {events.run_next();oracle();HostIndexTestAccess::validate(host);}
     void drain() {
         oracle();while(events.next_time())step();
         check(host.activity().drained()&&device.activity().drained(),"temporary activity drains");
@@ -179,13 +180,50 @@ void burst_finite() {
     check(f.host.activity().unfinished_global==3,"three Globals despite one cross-Global write burst");
     f.host.start();f.drain();check(f.host.workload_success()&&f.host.statistics().handed==65,"finite burst completion accounting");f.save();
 }
+void index_burst_refs() {
+    auto c=configuration();c.host.writes=WriteCommandMode::Burst4096;Fixture f(c);f.start();
+    f.submit(std::vector<GlobalRequest>{write(30,0,2048),write(10,2048,2048)});
+    check(f.host.storage().units==1,"one Unit contains two Globals");
+    check(HostIndexTestAccess::references(f.host,GlobalRequestId{30})==32&&
+          HostIndexTestAccess::references(f.host,GlobalRequestId{10})==32,"reference accounting counts fragments per parent");
+    f.drain();check(f.host.storage().requests==0&&f.host.storage().units==0,"both Global records reclaimed after burst settles");
+    auto r=read(50,0,64,f.events.now());r.after={GlobalRequestId{30},GlobalRequestId{10}};
+    f.submit(r);f.drain();check(f.host.workload_success(),"historical results survive detailed-record reclamation");
+}
+void index_retry_refs() {
+    auto c=configuration();c.device.capabilities.max_pending_write_dlus=1;c.host.max_open_dlus_per_channel=3;
+    c.host.pending_retry_delay=Tick{10000000};c.execution.media_timing.program=Tick{3000000};
+    Fixture f(c);f.start();f.submit(std::vector<GlobalRequest>{write(9),write(2,32768)});
+    while(!HostIndexTestAccess::retry_count(f.host)){check(bool(f.events.next_time()),"expected Pending-limit retry");f.step();}
+    check(HostIndexTestAccess::references(f.host,GlobalRequestId{2})==64,"failed command retains its original fragment references");
+    f.drain();check(f.host.workload_success()&&f.host.statistics().pending_retry_commands>0,"capacity progress retries successfully");
+    check(f.host.storage().requests==0&&HostIndexTestAccess::retry_count(f.host)==0,"retries and references drain together");
+}
+void index_read_reuse() {
+    Fixture f;f.start();f.submit(write(1));f.drain();
+    for(std::uint64_t id=2;id<10;++id) {
+        auto r=read(id,0,192,f.events.now());r.group=7;f.submit(r);f.drain();
+        check(HostIndexTestAccess::no_read_indices(f.host)&&!f.host.storage().requests,"reused group leaves no stale predecessor/reference");
+    }
+    check(f.host.workload_success(),"incremental grouped Batch reads all succeed");
+}
+void index_cancel_read() {
+    auto c=configuration();c.host.max_timeout_retries=0;Fixture f(c);f.start();
+    auto cancelled=read(3,0,128,Tick{100000000});cancelled.group=7;cancelled.after={GlobalRequestId{1}};
+    f.submit(std::vector<GlobalRequest>{write(1,0,64),cancelled});f.drain();
+    check(HostIndexTestAccess::no_read_indices(f.host)&&!f.host.storage().requests,"cancelled future reads release both order indices and references");
+    f.submit(write(4,32768,4096,f.events.now()));f.drain();
+    auto next=read(5,32768,64,f.events.now());next.group=7;f.submit(next);f.drain();
+    check(f.host.results().at(GlobalRequestId{5}).state==LogicalResult::Success,"cancelled predecessor cannot block reused group");
+}
 }
 int main(int argc,char** argv) {
     try {
         const std::map<std::string,void(*)()> cases={{"empty",empty},{"partial",partial},{"admission",admission},
             {"future",future},{"feedback",feedback},{"replay",replay},{"pending_retry",pending_retry},
             {"timeout_retry",timeout_retry},{"dependency_cancel",dependency_cancel},{"recovery_failure",recovery_failure},
-            {"history",history},{"burst_finite",burst_finite}};
+            {"history",history},{"burst_finite",burst_finite},{"index_burst_refs",index_burst_refs},
+            {"index_retry_refs",index_retry_refs},{"index_read_reuse",index_read_reuse},{"index_cancel_read",index_cancel_read}};
         if(argc!=2&&(argc!=4||std::string(argv[2])!="--snapshot"))throw std::invalid_argument("scenario [--snapshot FILE]");
         cases.at(argv[1])();
         if(argc==4) {

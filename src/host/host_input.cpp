@@ -96,6 +96,7 @@ void HostDriver::register_input(std::vector<PreparedRequest> input) {
         const auto& r=item.request;
         added.push_back(r.id);
         requests_.emplace(r.id,r);
+        global_fragment_refs_.emplace(r.id,0);
         const auto inserted=results_.emplace(r.id,WorkResult{r.id,LogicalResult::Pending,static_cast<std::size_t>(r.bytes/host_unit_bytes)});
         if(!inserted.second)throw std::logic_error("validated Global registered twice");
         ++unfinished_globals_; // after successful insertion, before any observer

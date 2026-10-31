@@ -79,6 +79,7 @@ public:
     bool workload_success() const;
     std::string waiting_reason() const;
 private:
+    friend struct HostIndexTestAccess; // Full-scan oracle defined only in tests.
     enum class UnitStage { Queued,Handed,Done,Cancelled };
     enum class RetryKind { None, PendingLimit, Timeout, Order };
     enum class RetryPhase { Repairing, Draining, AwaitingPredecessor };
@@ -159,6 +160,12 @@ private:
     void requeue(Unit&);
     bool page_succeeded(ContentKey,PageId,std::uint64_t pass) const;
     void update_retry_wakeup();
+    void update_read_indices(const Unit&);
+    bool read_predecessor_pending(const Unit&) const;
+    void update_pending_retry_index(const Unit&);
+    void update_global_reclaimability(GlobalRequestId);
+    void index_unit(const Unit&);
+    void unindex_unit(const Unit&);
     void finish_work(LogicalWorkId,bool,const std::string& = {});
     void cancel_unit(Unit&,const std::string&);
     void emit(const char*,const Unit&,CommandId={});
@@ -179,6 +186,17 @@ private:
     std::size_t unfinished_globals_=0,failed_globals_=0;
     std::map<LogicalWorkId,Work> work_;
     std::map<SendUnitId,Unit> units_;
+    // Derived directories; Units remain the source of truth. Include future
+    // releases and preserve Unit-ID predecessor order, not FCFS enqueue order.
+    std::map<std::pair<ChannelId,ReadGroup>,std::set<SendUnitId>> queued_group_reads_;
+    std::map<std::pair<ChannelId,GlobalRequestId>,std::set<SendUnitId>> unaccepted_reads_;
+    // Exactly the resident non-replay fragments referencing each Global record.
+    // Logical completion and retry/requeue do not release these references.
+    std::map<GlobalRequestId,std::size_t> global_fragment_refs_;
+    std::set<GlobalRequestId> reclaimable_globals_;
+    // Done PendingLimit Units in non-aborted versions. Eligibility and capacity
+    // progress remain dynamic checks; no cached grant or extra retry timer.
+    std::set<SendUnitId> pending_limit_retry_units_;
     std::map<ContentKey,Version> versions_;
     std::map<LogicalBlockKey,std::vector<ContentKey>> version_order_;
     std::map<CommandId,Attempt> attempts_;

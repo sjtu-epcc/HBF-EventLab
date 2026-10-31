@@ -34,6 +34,7 @@ SendUnitId HostDriver::add_unit(Op op,std::vector<Fragment> fragments,std::optio
         arrival=std::max(arrival,std::make_pair(requests_.at(f.parent).not_before,f.id.value));
     u.queued_at=std::max(events_.now(),arrival.first);
     units_.emplace(id,std::move(u));channels_[ch].queue.insert(id);
+    index_unit(units_.at(id));
     if(replay)enqueue(units_.at(id),events_.now());
     else initial_enqueues_[arrival.first].push_back({arrival.second,id});
     if(content&&!replay)versions_[*content].normal.push_back(id);
@@ -84,15 +85,7 @@ bool HostDriver::eligible(const Unit& u) const {
         // Common release/dependency checks above still apply. Only grouped or
         // Batch reads can be blocked by the predecessor checks below.
         if(!u.group && u.hint==ReadHint::Regular)return true;
-        for(const auto& item:units_) {
-            const auto& prior=item.second;
-            if(prior.id.value>=u.id.value)break;
-            if(prior.op!=Op::Read || prior.fragments.front().address.channel!=ch)continue;
-            if(u.group && prior.group==u.group && prior.stage==UnitStage::Queued)return false;
-            if(u.hint==ReadHint::Batch && prior.fragments.front().parent==f.parent &&
-               !prior.accepted && prior.stage!=UnitStage::Done && prior.stage!=UnitStage::Cancelled)return false;
-        }
-        return true;
+        return !read_predecessor_pending(u);
     }
     const auto key=*u.content;const auto& version=versions_.at(key);
     if(version.aborted)return false;
@@ -176,6 +169,7 @@ void HostDriver::pump(ChannelId ch) {
                 u.content?std::optional<std::uint64_t>{u.content->content}:std::nullopt,std::move(work)});
         }
         u.stage=UnitStage::Handed;channel.queue.erase(chosen);
+        update_read_indices(u);
         attempts_.emplace(command,Attempt{chosen,*handoff.attempt});
         unsettled_[f.logical.block].insert(command);
         if(u.content) {
@@ -193,6 +187,7 @@ void HostDriver::accepted(CommandId id,const AcceptedNotice& notice) {
     if(attempt.transfer!=notice.attempt||id!=notice.command||u.fragments.front().address.channel!=notice.channel||attempt.accepted)
         throw std::logic_error("duplicate/mismatched acceptance notice");
     attempt.accepted=true;u.accepted=true;++stats_.accepted;
+    update_read_indices(u);
     if(u.content) {
         if(u.replay) {if(recovery_.accepted(*u.content,u.pass,u.fragments.front().logical.page))++stats_.replay_passes;}
         else for(const auto& f:u.fragments)versions_.at(*u.content).accepted[f.logical.page].set(f.logical.byte_offset/64);
@@ -219,6 +214,7 @@ void HostDriver::finish_work(LogicalWorkId id,bool success,const std::string& re
         result.state=result.failed?LogicalResult::Failed:LogicalResult::Success;
         --unfinished_globals_;
         if(result.state==LogicalResult::Failed)++failed_globals_;
+        update_global_reclaimability(result.id);
         // All logical fragments are terminal, including those completed by retry,
         // replay or cancellation. Attempts alone never change these aggregates.
         // Update before statistics and the separately scheduled completion event.
@@ -237,6 +233,7 @@ void HostDriver::finish_work(LogicalWorkId id,bool success,const std::string& re
 void HostDriver::cancel_unit(Unit& u,const std::string& reason) {
     if(u.stage!=UnitStage::Queued)return;
     channels_[u.fragments.front().address.channel].queue.erase(u.id);u.stage=UnitStage::Cancelled;
+    update_read_indices(u);
     if(!u.replay)for(const auto& f:u.fragments)finish_work(f.id,false,reason);
 }
 void HostDriver::abort_version(ContentKey key,const std::string& reason) {
@@ -246,6 +243,7 @@ void HostDriver::abort_version(ContentKey key,const std::string& reason) {
     for(auto& item:units_) {
         auto& u=item.second;
         if(!u.content || *u.content<key || key<*u.content)continue;
+        pending_limit_retry_units_.erase(u.id);
         if(u.stage==UnitStage::Queued)cancel_unit(u,reason);
         else if(!u.replay && u.stage==UnitStage::Done)for(const auto& f:u.fragments)finish_work(f.id,false,reason);
     }
@@ -308,6 +306,7 @@ void HostDriver::receive(CommandId id,const DeliveredResponse& response) {
     if(statistics_sink_)statistics_sink_->observe(StatAttemptAssessed{response.attempt,events_.now(),success});
     ++stats_.responses;if(!success)++stats_.attempt_errors;
     u.stage=UnitStage::Done;u.successful=success;
+    update_read_indices(u);update_pending_retry_index(u);
     if(u.content) {
         auto& open=channels_[block.channel].open;const PageKey page{*u.content,u.fragments.front().logical.page};
         auto entry=open.find(page);if(entry==open.end()||!entry->second)throw std::logic_error("Host DLU accounting underflow");
@@ -359,7 +358,10 @@ bool HostDriver::advance_recovery(ContentKey key,RecoveryTask& t) {
                 if(work_.at(f.id).result==LogicalResult::Pending) {finish_work(f.id,true);++stats_.recovered_fragments;}
                 version.accepted[f.logical.page].set(f.logical.byte_offset/64);
             }
-            if(u.stage==UnitStage::Queued) {channels_[key.block.channel].queue.erase(uid);u.stage=UnitStage::Done;}
+            if(u.stage==UnitStage::Queued) {
+                channels_[key.block.channel].queue.erase(uid);u.stage=UnitStage::Done;
+                update_pending_retry_index(u);
+            }
         } else if(u.stage==UnitStage::Done&&!u.successful) {
             requeue(u);
             for(const auto& f:u.fragments) {work_.at(f.id).needs_recovery=false;work_.at(f.id).accepted=false;}

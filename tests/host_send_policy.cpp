@@ -1,6 +1,7 @@
 #include "hbf_eventlab/runtime/simulation_runner.hpp"
 #include "hbf_eventlab/policies/round_robin_interleaver.hpp"
 #include "hbf_eventlab/diagnostics/runtime_profile.hpp"
+#include "host_index_oracle.hpp"
 #include <iostream>
 #include <string_view>
 using namespace hbf_eventlab;
@@ -92,7 +93,9 @@ struct ScriptFixture {
         host.set_runtime_profile(runtime);
     }
     void run(std::vector<GlobalRequest> input){
-        host.load(input);host.start();port.events.set_limits({200000,10000,10000});port.events.run();
+        host.load(input);host.start();port.events.set_limits({200000,10000,10000});
+        HostIndexTestAccess::validate(host);
+        while(port.events.run_next())HostIndexTestAccess::validate(host);
         check(host.activity().drained()&&host.workload_success(),"successful drained Host");
         check(host.statistics().handed==host.statistics().responses,"all handed attempts settled");
         for(const auto& r:port.records)check(r.second.done,"no lost old attempt");
@@ -289,6 +292,34 @@ void preflight_regression(){
                 timeout_tail,timeout_unsent,replay_followers,burst_mixed,cross_global_burst,channels})f();
     enable_preflight=false;
 }
+void index_group_handoff(){
+    HostConfiguration c;c.hints=ReadHintMode::AllRegular;ScriptFixture f(c);
+    f.port.preflight=true;f.port.acceptance_delay=50;
+    auto a=read(1,0),b=read(2,64);a.group=7;b.group=7;
+    f.run({a,b});
+    check(f.port.records.at(f.port.order[1]).handed==Tick{5},"group predecessor removed at handoff, before acceptance");
+    check(HostIndexTestAccess::no_read_indices(f.host),"read groups removed despite retained finite Units");
+}
+void index_batch_accept(){
+    ScriptFixture f;f.port.preflight=true;f.port.acceptance_delay=50;
+    f.port.handler=[&](CommandId id,unsigned){f.port.finish(id,WriteStatus::Success,0,100);};
+    auto r=read(1,0);r.bytes=192;f.run({r});
+    check(f.port.records.at(f.port.order[0]).handed==Tick{}&&f.port.records.at(f.port.order[1]).handed==Tick{5},"Regular predecessors can pipeline");
+    check(f.port.records.at(f.port.order[2]).handed==Tick{55},"Batch waits last acceptance, not handoff or response");
+    check(HostIndexTestAccess::no_read_indices(f.host),"Batch directory drains");
+}
+void index_group_future(){
+    HostConfiguration c;c.hints=ReadHintMode::AllRegular;ScriptFixture f(c);f.port.preflight=true;
+    auto a=read(90,0,Tick{20}),b=read(1,64),other=read(2,128);a.group=7;b.group=7;other.group=8;
+    f.run({a,b,other});
+    check(f.port.addresses()==std::vector<std::uint64_t>{128,0,64},"future same-group predecessor follows Unit order, unrelated group bypasses");
+}
+void index_group_channels(){
+    HostConfiguration c;c.hints=ReadHintMode::AllRegular;ScriptFixture f(c,2);f.port.preflight=true;f.port.gate(0,Tick{100});
+    auto r=read(1,0);r.bytes=256;r.group=7;f.run({r});
+    check(f.port.records.at(f.port.order[0]).tx.command.address.channel==1&&
+          f.port.records.at(f.port.order[1]).tx.command.address.channel==1,"same group on another channel has independent predecessors");
+}
 } // namespace
 int main(int argc,char** argv){
     const std::map<std::string,void(*)()> cases{{"order",policy_order},{"fcfs",fcfs},{"fill_open",fill_open},
@@ -297,7 +328,9 @@ int main(int argc,char** argv){
         {"timeout_unsent",timeout_unsent},{"replay_followers",replay_followers},{"burst_mixed",burst_mixed},
         {"cross_global_burst",cross_global_burst},{"channels",channels},
         {"preflight_busy",preflight_busy},{"preflight_same_tick",preflight_same_tick},{"preflight_race",preflight_race},
-        {"preflight_reselect",preflight_reselect},{"preflight_cancel",preflight_cancel},{"preflight_regression",preflight_regression}};
+        {"preflight_reselect",preflight_reselect},{"preflight_cancel",preflight_cancel},{"preflight_regression",preflight_regression},
+        {"index_group_handoff",index_group_handoff},{"index_batch_accept",index_batch_accept},
+        {"index_group_future",index_group_future},{"index_group_channels",index_group_channels}};
     try{if(argc!=2||!cases.count(argv[1]))throw std::invalid_argument("unknown Host send policy test");
         cases.at(argv[1])();std::cout<<"PASS "<<argv[1]<<" checks="<<checks<<"\n";return 0;
     }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<"\n";return 1;}
