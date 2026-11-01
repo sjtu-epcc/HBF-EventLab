@@ -3,12 +3,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include "hbf_eventlab/common/wait_reason.hpp"
 
 namespace hbf_eventlab {
 // Program wall time only. Never used to advance simulation time or make decisions.
 enum class RuntimeRegion : std::size_t {
     Split, Prepare, RegisterInput, AdmitInput, Pump, Receive, Advance,
-    ResultsScan, Reclaim, EventRun, CompletionCheck, Count
+    ResultsScan, Reclaim, EventRun, CompletionCheck, WaitNotify, WaitCallback, ReadWakeup, DevicePump, Count
 };
 // ResultsScan / ResultsEntriesVisited are retained for baseline JSON/API
 // compatibility; the counter-based Host does not execute or charge a scan.
@@ -17,7 +18,12 @@ enum class RuntimeCounter : std::size_t {
     InputRegistered, InputBackpressured, InputTooLarge, BackpressuredFragments,
     PumpQueueVisits, PumpCandidates, HandoffAttempts, HandoffTaken,
     ResultsEntriesVisited, ResultsSizePeak, ReclaimUnitVisits,
-    ReclaimedWork, ReclaimedUnits, ReclaimedRequests, Count
+    ReclaimedWork, ReclaimedUnits, ReclaimedRequests, ReadArms, ReadWakeups, ReadRearms,
+    ReadWakeResolved, ReadResultBlocked, WaitsPeak, Count
+};
+struct RuntimeWaitMeasurement {
+    std::uint64_t notifications=0, subscriber_hits=0, queued=0, callbacks=0, cancelled=0,
+        revision_wakes=0, callback_ns=0;
 };
 struct RuntimeMeasurement {
     std::uint64_t calls=0, unwound_calls=0, inclusive_ns=0, self_ns=0, max_ns=0;
@@ -40,6 +46,8 @@ public:
         auto& value=counters_[static_cast<std::size_t>(c)];if(n>value)value=n;
     }
     std::uint64_t covered_root_ns() const noexcept { return root_ns_; }
+    RuntimeWaitMeasurement& wait(WaitReason reason) noexcept { return waits_[static_cast<std::size_t>(reason)]; }
+    const RuntimeWaitMeasurement& wait(WaitReason reason) const noexcept { return waits_[static_cast<std::size_t>(reason)]; }
     // Export only at a quiescent API boundary; caller owns the stream/file.
     // self excludes instrumented children only. Inclusive totals must not be summed.
     void write_json(std::ostream&) const;
@@ -50,10 +58,11 @@ private:
     std::array<RuntimeMeasurement,static_cast<std::size_t>(RuntimeRegion::Count)> regions_{};
     std::array<std::uint64_t,static_cast<std::size_t>(RuntimeCounter::Count)> counters_{};
     std::uint64_t root_ns_=0;
+    std::array<RuntimeWaitMeasurement,static_cast<std::size_t>(WaitReason::Count)> waits_{};
 };
 class RuntimeScope {
 public:
-    RuntimeScope(RuntimeProfile* profile,RuntimeRegion region) noexcept;
+    RuntimeScope(RuntimeProfile* profile,RuntimeRegion region,WaitReason trigger=WaitReason::Count) noexcept;
     ~RuntimeScope() noexcept;
     RuntimeScope(const RuntimeScope&)=delete;
     RuntimeScope& operator=(const RuntimeScope&)=delete;
@@ -61,6 +70,7 @@ private:
     friend class RuntimeProfile;
     RuntimeProfile* profile_;
     RuntimeRegion region_;
+    WaitReason trigger_;
     RuntimeScope* parent_=nullptr;
     std::uint64_t start_=0, children_=0;
     int exceptions_=0;

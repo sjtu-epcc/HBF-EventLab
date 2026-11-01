@@ -2,7 +2,10 @@
 
 namespace hbf_eventlab {
 AdmissionWaitRegistry::~AdmissionWaitRegistry() {
-    for (const auto& w : waits_) if (w.second.event) events_.cancel(*w.second.event);
+    for (const auto& w : waits_) if (w.second.event) {
+        if(profile_)++profile_->wait(w.second.trigger).cancelled;
+        events_.cancel(*w.second.event);
+    }
 }
 WaitObservation AdmissionWaitRegistry::observe(WaitKey key) const {
     const auto it = revisions_.find(key);
@@ -15,12 +18,17 @@ void AdmissionWaitRegistry::disarm(WaitId id,Wait& w) {
     }
     w.keys.clear();
 }
-void AdmissionWaitRegistry::queue(WaitId id) {
+void AdmissionWaitRegistry::queue(WaitId id,WaitReason reason) {
     auto& w = waits_.at(id);
     if (w.event) return;
+    w.trigger=reason;
+    if(profile_)++profile_->wait(reason).queued;
     w.event = events_.schedule_at(events_.now(),EventPhase::Arrival,[this,id] {
         auto it = waits_.find(id);
         if (it == waits_.end()) return;
+        const auto reason=it->second.trigger;
+        RuntimeScope timing(profile_,RuntimeRegion::WaitCallback,reason);
+        if(profile_)++profile_->wait(reason).callbacks;
         auto callback = std::move(it->second.callback);
         --queued_;
         waits_.erase(it); // Remove before callback can register again.
@@ -34,24 +42,28 @@ WaitId AdmissionWaitRegistry::subscribe(const std::vector<WaitObservation>& obse
     const WaitId id{checked_add(next_id_,1)};
     auto& w = waits_.emplace(id,Wait{{},std::move(cb),{}}).first->second;
     next_id_ = id.value;
-    bool changed = false;
+    auto changed = WaitReason::Count;
     for (const auto& o : observations) {
-        changed |= observe(o.key).revision != o.revision;
+        if(changed==WaitReason::Count && observe(o.key).revision != o.revision)changed=o.key.reason;
         if (index_[o.key].insert(id).second) w.keys.push_back(o.key);
     }
-    if (changed) queue(id);
+    if(profile_)profile_->peak(RuntimeCounter::WaitsPeak,waits_.size());
+    if (changed!=WaitReason::Count) { if(profile_)++profile_->wait(changed).revision_wakes;queue(id,changed); }
     return id;
 }
 bool AdmissionWaitRegistry::cancel(WaitId id) {
     auto it = waits_.find(id); if (it == waits_.end()) return false;
-    if (it->second.event) { events_.cancel(*it->second.event); --queued_; }
+    if (it->second.event) { if(profile_)++profile_->wait(it->second.trigger).cancelled;events_.cancel(*it->second.event); --queued_; }
     disarm(id,it->second); waits_.erase(it); return true;
 }
 void AdmissionWaitRegistry::notify(WaitKey key) {
+    RuntimeScope timing(profile_,RuntimeRegion::WaitNotify);
+    if(profile_)++profile_->wait(key.reason).notifications;
     auto& revision = revisions_[key]; revision = checked_add(revision,1);
     const auto it = index_.find(key); if (it == index_.end()) return;
+    if(profile_)profile_->wait(key.reason).subscriber_hits+=it->second.size();
     const auto ids = it->second; // Only this object's subscribers; no global request scan.
-    for (const auto id : ids) queue(id);
+    for (const auto id : ids) queue(id,key.reason);
 }
 } // namespace hbf_eventlab
 

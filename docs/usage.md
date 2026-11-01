@@ -225,7 +225,7 @@ CLI的 `HOST` 行同时报告命令尝试和逻辑工作结果。计数单位如
 
 ## 统一统计
 
-模拟器程序自身的耗时使用独立、默认关闭的`--runtime-profile FILE`，支持拆分、准备、登记、发送、状态推进、历史结果扫描和回收的聚合计时。它与下面的模拟时间统计分开，详见[程序性能诊断](runtime_profiling.md)。
+模拟器程序自身的耗时使用独立、默认关闭的`--runtime-profile FILE`，支持拆分、准备、登记、发送、状态推进、完成检查、回收及Device推进的聚合计时，并按原因汇总通知命中和唤醒回调；旧历史扫描字段保留为零。它与下面的模拟时间统计分开，详见[程序性能诊断和并发读基准](runtime_profiling.md)。
 
 ```powershell
 .\build\Release\hbf_eventlab_cli.exe examples\workloads\normal.txt --stats-json build\normal-statistics.json

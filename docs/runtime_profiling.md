@@ -13,7 +13,7 @@
 
 INI对应`[output] runtime_profile_json="build/runtime.json"`；空字符串关闭。输出不得覆盖workload、输入配置或其他输出。正常、逻辑失败及运行限额停止都可导出；进程被强制终止不会保存内存中的最终汇总。输入错误发生在运行前时，不保证生成报告。
 
-C++调用方创建`RuntimeProfile`，在开始输入前调用`HostDriver::set_runtime_profile(profile)`；在线路径可通过`SimulationSession(resolved, sink, &profile)`或`TensorAccessBridge(resolved, regions, bridge_config, sink, &profile)`传入。传`nullptr`关闭。对象由调用方持有，必须比Host／Session／Bridge活得更久；同一实例仅用于同一模拟线程。Session不自动解释输出路径或创建文件。
+C++调用方创建`RuntimeProfile`，在开始输入前分别调用`HostDriver::set_runtime_profile(profile)`和`DeviceDriver::set_runtime_profile(profile)`；在线路径通过`SimulationSession(resolved, sink, &profile)`或`TensorAccessBridge(resolved, regions, bridge_config, sink, &profile)`自动连接两侧。传`nullptr`关闭。对象由调用方持有，必须比Host、Device及其通知注册表／Session／Bridge活得更久；同一实例仅用于同一模拟线程。Session不自动解释输出路径或创建文件。
 
 运行返回、没有活动计时作用域时，调用`profile.write_json(stream)`导出一次。暂停后也可读取累计快照，但不会清零；不要把多个累计快照相加。不要在事件回调内导出。
 
@@ -34,6 +34,10 @@ C++调用方创建`RuntimeProfile`，在开始输入前调用`HostDriver::set_ru
 | `results_scan` | 兼容旧诊断报告保留的区域；当前Host不执行此扫描，数值为0。 |
 | `reclaim` | 详细Work／Unit／Global对象及索引回收；仍按原有安全条件执行。 |
 | `event_run` | `SimulationRunner::run()`或`SimulationSession::drive()`，包含事件执行、状态检查及同步回调。 |
+| `wait_notify` | 发布通知、查找订阅者、安排唤醒事件的程序时间。 |
+| `wait_callback` | 通知注册表实际执行回调的时间，包含回调内部工作。 |
+| `read_wakeup` | ReadPath状态观察回调，通常嵌套在wait_callback中。 |
+| `device_pump` | Device推进Ingress、缓存、介质候选及响应路径的时间。 |
 
 每项包含`calls`、`unwound_calls`、`inclusive_ns`、`self_ns`和`max_ns`。`unwound_calls`表示异常展开经过该作用域，不等同于业务错误数。
 
@@ -57,10 +61,39 @@ C++调用方创建`RuntimeProfile`，在开始输入前调用`HostDriver::set_ru
 | `results_size_peak` | 成功登记时观察到的历史结果表最大条目数；保留历史摘要的内存仍存在。 |
 | `reclaim_unit_visits` | 回收扫描访问的Unit数，不表示这些Unit已被删除。 |
 | `reclaimed_work / reclaimed_units / reclaimed_requests` | 实际删除的详细对象数，保留的results摘要与retention不算回收。 |
+| `read_arms / read_wakeups / read_rearms` | 读状态订阅建立次数／回调执行次数／回调未形成终结结果的次数；不是读请求数。 |
+| `read_wake_resolved` | 读状态回调实际形成了数据或错误结果的次数，不包含普通介质发射或Host交付。 |
+| `read_result_blocked` | 已发现可终结的数据结果，但reserve失败的检查次数。重复检查重复计数。 |
+| `waits_peak` | 注册表建立订阅时观察到的驻留订阅数量峰值，包括已排队尚未执行的订阅。 |
+
+## 通知原因诊断
+
+JSON的`wait_reasons`按通知原因输出固定大小的汇总，schema 1采用新增字段扩展，既有区域和计数器保留。
+
+| 字段 | 口径 |
+|---|---|
+| `notifications` | 发布该原因的次数，包括没有订阅者的通知。 |
+| `subscriber_hits` | notify时仍挂在该键上的订阅者数量之和。一次订阅排队后从所有键解除，因此重复通知不会再次命中它。 |
+| `queued / callbacks / cancelled` | 实际安排的唤醒数／实际执行数／执行前取消数。暂停时queued可包含尚未执行的事件。 |
+| `revision_wakes` | 订阅时发现观察版本已变化而安排的唤醒数；属于queued的子集，不另加。 |
+| `callback_ns` | 对应回调的inclusive程序墙钟时间，包含read_wakeup等子作用域。 |
+
+回调归因于**首先使该单次订阅进入队列的原因**；版本差异同时存在时取订阅列表中第一个变化原因。它不是所有可能原因的独立因果分摊。不能把subscriber_hits、queued和callbacks相加，或把callback_ns与read_wakeup时间相加。回调中再次订阅计为新订阅；功能上有价值的Bank唤醒不包含在read_wake_resolved中。
+
+`physical_users`／`zone_users`只表达使用者退出的排空进展；`physical_state`表达物理可用性变化；`zone`表达Zone接收／映射状态。逻辑读逐次退出、物理lease逐次退出均登记通知；同一稳定发布边界前的物理释放可以合并，不在析构中执行回调。读状态观察不订阅使用者退出。`result_space`只供真实空间等待者使用，生产Egress按channel隔离预算和通知，默认共享的组件测试存储保持共享唤醒范围。对所有原因的回调计数应结合具体消费者判断，不能要求它们都为零。
 
 诊断只读现有状态并累加固定大小的计数，不额外扫描容器。Host的历史完成扫描已经替换为精确计数，见[设计决策](design_decisions.md#adr-host-efficiency-01)。`admit_input()`的剩余容量检查仍在prepare之后；重复准备、pump和reclaim的成本仍需分别测量。JSON schema仍为1，新增`completion_check`，旧扫描字段保留为0，避免把常数查询冒充历史扫描。
 
 ## 不需要GPU的复现
+
+并发读通知基准使用`hbf_eventlab_read_wakeup_bench CHANNELS PAGES_PER_CHANNEL READ_PASSES [PROFILE_JSON|-] [EVENTS_JSONL]`。通过原Host完整写入初始化，再根据Global完成反馈提交整段读，覆盖DataToken并检查最终排空。每channel为1die／1bank，8page/block，按页数补足容量；Selected/Supported MOCS为1024，读为Regular，窗口10,000,000 Tick、数量阈值关闭，Host驻留额度等于整段片段数。输入范围：channel 1..16、页数1..16、读取遍数1..128；这些是诊断输入，不是校准后的GPU工作负载。
+
+```powershell
+.\build\Release\hbf_eventlab_read_wakeup_bench.exe 4 4 3
+.\build\Release\hbf_eventlab_read_wakeup_bench.exe 4 16 2 build\wakeups.json build\business-events.jsonl
+```
+
+增大页数会同时增大并发候选数；固定参数比较优化前后，使用同一初始化及输入。比较诊断开关时，事件总数和业务记录都应一致。比较通知优化前后，内部无效事件数允许下降，业务记录、结果和可观察完成Tick应保持一致。计时比较应关闭诊断及逐事件导出；与诊断/事件流对照分开运行。CTest只检查正确性和无关唤醒计数，不设置墙钟速度阈值。
 
 `hbf_eventlab_runtime_bench PAGES READ_PASSES [PROFILE_JSON]`使用原tensor适配器、Host和Device：初始化指定页数，随后整段读取若干遍。默认配置为1channel／1die／2bank、32page/block、resident=64、Global chunk=4096、fragment64；几何按页数补足，仍用符号内容和未校准功能时序。无逐命令日志，无CUDA依赖。
 
@@ -100,3 +133,19 @@ stdout包含程序墙钟、最终Tick、事件数、Global数、响应数和介�
 单独开启诊断运行`128 24`：基线的完成扫描实际访问1,300,936,256个历史条目，812,953次扫描累计11.388秒；优化后旧扫描区域及访问次数均为0，812,953次`completion_check`累计0.034秒。后者包含插桩开销，不应解释为整数比较本身的耗时。两版结果表峰值仍为3200，历史摘要没有因优化而被丢弃。
 
 这些结果只说明当前CPU基准中的程序效率；小案例收益较小。它们不是硬件性能、全权重Qwen运行时间或跨平台加速保证。历史摘要的内存、发送／回收／恢复扫描、输入背压前的重复准备仍需后续定位。
+
+## 并发读通知优化对照（2026-11-01）
+
+基线为`18db786`加上相同的通知诊断和`hbf_eventlab_read_wakeup_bench`，对照版本采用[按实际条件订阅](design_decisions.md#adr-runtime-efficiency-01)。两版在同一Windows机器使用MSVC 19.43 x64 Release；每组各预热一次，再交替运行三次，期间没有并行构建或测试。下表是**关闭诊断和逐事件导出**时的程序墙钟中位数，仅覆盖输入提交到会话运行结束，不含进程启动、会话构造和GPU计算。
+
+| channel数 × 每channel页数 × 读取遍数 | 优化前（秒） | 优化后（秒） | 中位耗时减少 | 内部事件数（前 → 后） |
+|---|---:|---:|---:|---:|
+| 1 × 4 × 3 | 0.378 | 0.197 | 48.0% | 93,214 → 17,196 |
+| 4 × 4 × 3 | 2.413 | 1.459 | 39.5% | 372,856 → 68,784 |
+| 4 × 16 × 2 | 33.020 | 19.311 | 41.5% | 4,460,055 → 348,375 |
+
+三组的最终Tick、响应数、program/sense/cache-hit数量及成功排空结果均保持一致。另行开启逐事件导出核对，三组业务事件文件分别与基线逐字节一致，包括时间与记录次序；被删除的是无效内部通知事件，不能要求事件引擎的总执行次数也不变。
+
+最大案例单独开启诊断：ReadPath状态回调从4,111,680次降至0，其中基线3,881,518次由ResultSpace触发、230,162次由Zone触发，全部未产生终结结果。优化后正常读仍建立8,192次状态订阅；该基准没有需要ResultSpace等待的终结转发，也没有故障或映射变化，因此零回调符合输入条件。不能将其推广为“所有读回调均应删除”；空间不足、物理故障、Zone状态变化、释放回滚和通知版本竞争由`notification_*`测试单独验证。
+
+该比较只衡量合成并发读下的软件效率，不是完整GPU工作负载或真实HBF性能结果。发送/回收扫描以及SenseOrder、BlockProgress引发的其他检查仍保留；默认诊断关闭，完整回归结果见[验证记录](verification.md)。

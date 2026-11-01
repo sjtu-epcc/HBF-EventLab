@@ -32,6 +32,7 @@ public:
     const LogicalAccessTracker& logical_reads() const { return logical_reads_; }
     bool quiesced(ChannelAddress a) const { return zones_.quiesced(a); }
     WaitKey zone_wait(ChannelAddress a) const;
+    WaitKey zone_users_wait(ChannelAddress a) const;
     void attach_notifications(AdmissionWaitRegistry&);
     // Lease destructors only mark dirty objects. Driver/path publishes at a stable boundary.
     void publish_releases();

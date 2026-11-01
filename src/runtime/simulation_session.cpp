@@ -16,7 +16,7 @@ SimulationSession::SimulationSession(ResolvedSimulationConfiguration config,ISta
     events_.set_limits(limits_.events);
     device_.set_program_outcome(make_program_outcome(config_.values().faults));
     if(sink) { device_.set_statistics_sink(*sink);host_.set_statistics_sink(*sink); }
-    if(profile)host_.set_runtime_profile(*profile);
+    if(profile) {host_.set_runtime_profile(*profile);device_.set_runtime_profile(*profile);}
 }
 void SimulationSession::outside_execution() const {
     if(running_)throw std::logic_error("session operation is external-only and not reentrant");

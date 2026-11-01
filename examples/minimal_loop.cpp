@@ -116,7 +116,7 @@ int main(int argc,char**argv){
         EventQueue events;DeviceDriver device(resolved.description(),ec,events);
         RoundRobinInterleaver inter(cfg.address.global_base,geometry.host_channels,geometry.channel_bytes(),cfg.address.interleave_bytes);
         HostDriver host(device,events,inter,hc);
-        if(profile)host.set_runtime_profile(*profile);
+        if(profile) {host.set_runtime_profile(*profile);device.set_runtime_profile(*profile);}
         if(!sinks.empty()){device.set_statistics_sink(observation);host.set_statistics_sink(observation);}
         device.set_program_outcome(make_program_outcome(cfg.faults));
         if(trace){

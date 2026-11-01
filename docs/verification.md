@@ -6,23 +6,24 @@
 
 ## 1. 验证版本与环境
 
-默认完整测试集共 **482 项**（470项核心测试＋12项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为470项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
+默认完整测试集共 **501 项**（489项核心测试＋12项依赖Python的实验及公共基础设施测试入口，本次使用Python 3.14）。实验测试默认开启，缺少Python 3.10+会导致配置失败；显式关闭后为489项核心测试，不属于完整回归；下列回归在 Windows、MSVC 19.43、x64 环境完成。测试覆盖当前支持的功能子集，目标环境的复现命令见第 3、4 节；本表不代表其他工具链已完成本次回归。
 
 | 配置 | 验证日期 | 测试结果 | CTest墙钟耗时 |
 |---|---|---|---:|
-| Debug | 2026-10-30 | 482/482通过，0失败 | 110.86s |
-| Release | 2026-10-30 | 482/482通过，0失败 | 25.30s |
+| Debug | 2026-11-01 | 501/501通过，0失败 | 85.59s |
+| Release | 2026-11-01 | 501/501通过，0失败 | 21.57s |
 
 上述两个配置各按 CTest `--parallel 2` 运行，耗时只记录本次环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
 ## 2. 测试矩阵
 
-482项由35个基础行为场景、34个生命周期/事件场景、46个Device场景、1个Device示例、153个Host行为场景、1个增量Host示例、45个在线会话场景、3个会话/容量/桥接示例、23个tensor桥接场景、8个计算尾段/选区场景、45个统计场景、26个配置场景、28个CLI场景、12个程序性能诊断场景、10个读调度/窗口观察场景和12个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
+501项由35个基础行为场景、34个生命周期/事件场景、46个Device场景、1个Device示例、153个Host行为场景、1个增量Host示例、45个在线会话场景、3个会话/容量/桥接示例、23个tensor桥接场景、8个计算尾段/选区场景、45个统计场景、26个配置场景、28个CLI场景、12个程序性能诊断场景、19个通知诊断/唤醒场景、10个读调度/窗口观察场景和12个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
 
 | 验证面 | 代表场景 | 主要断言 |
 |---|---|---|
 | Host完成汇总 | host_completion_empty／partial／admission／future／feedback／replay／pending_retry／timeout_retry／dependency_cancel／recovery_failure／history／burst_finite | 在统计观察与事件边界独立扫描结果表，核对常数时间查询；拒绝不计入、未来输入计入、重试不重复计数、历史失败保留、回调排空、回收及跨Global burst；12份事件与结果快照和优化前版本逐字一致。 |
 | 程序性能诊断 | runtime_profile_nested／disabled／unwind／export／isolation／admission／normal／replay／timeout／pending／config／cli | 确定性嵌套与自身计时、异常、固定聚合、默认关闭、准备后背压计数；开关对照模拟事件流、Tick、结果和排空一致；配置和输出冲突检查。详见[诊断口径](runtime_profiling.md)。 |
+| 通知隔离与唤醒 | notification_same_block／same_block_many／same_zone／other_zone／channels／health／release_each／zone_cancel／zone_swap／shared_space／local_space／entry_budget／terminal_space／terminal_error／registry／reserved_rollback／cached_rollback／metadata_release／benchmark | 无关读不因使用者退出而重查；真实故障、映射状态变化、逐次释放、结果空间不足和预留回滚仍正确唤醒；共享池与独立channel预算分别验证；版本差异、取消及首次通知归因正确；诊断开关不改变业务事件、Tick与结果。定向终结Pending测试使用测试夹具解除内容guard，不代表生产允许冲突重写。 |
 | 计算尾段与选区 | tensor_compute_tail、zero、empty、limit、overflow、guards、ranges、identity | 最后访存后独立推进，不造虚拟命令；零时延保留反馈；限额、溢出、重入、子范围交集与既有内容身份。 |
 | Qwen审计器 | experiment_qwen_audit_unit | 8项无CUDA的Python检查：时间分解、尾段遗漏、墙钟混入、回调缺失/失败、非有限计时、生成结果不一致及范围并集。真实GPU三方实验另行执行。 |
 | 地址与接收 | address_mapping、admission、shared_credit | 地址单位、双映射、共享credit与响应生命周期。 |
@@ -158,7 +159,7 @@ Linux 的构建与全量回归命令见 [贡献指南](../CONTRIBUTING.md#testin
 正常案例的输出节选：
 
 ```text
-STOP Completed workload=Success tick=1753065 events=19846 reason=All logical work succeeded
+STOP Completed workload=Success tick=1753065 events=11790 reason=All logical work succeeded
 HOST handed=256 accepted=256 responses=256 attempt_errors=0 logical_success=256 logical_failed=0 recovery_tasks=0 replay_passes=0 replay_commands=0 pending_limit_errors=0 pending_retry_commands=0 assembly_timeout_errors=0 timeout_retry_rounds=0 timeout_retry_commands=0 order_retry_commands=0
 DEVICE programs=2 erases=2 senses=2 cache_hits=126 host_drained=1 device_drained=1 pending_global=0 source_queue=0 unsettled_host=0 outstanding_device=0 ingress=0 pending_dlu=0 bank_ops=0 egress=0
 ```
@@ -279,7 +280,7 @@ python experiments/read_scheduling/plot.py out/read-scheduling-minimal
 
 ## 可选Qwen在线验证
 
-默认482项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](qwen_online.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已有构建记录，本次Host索引优化未重新构建或运行可选CUDA目标。
+默认501项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](qwen_online.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已有构建记录，本次通知优化未重新构建或运行可选CUDA目标。
 
 2026-10-26在Windows、MSVC 19.43、CUDA 12.9.1、RTX 4070 Laptop GPU完成：独立CPU参照、原生GPU、HBF接入GPU三方生成结果一致；logits最大绝对误差约6.53e-5、RMSE约7.25e-6，低于运行前确定的阈值；两个GPU模式的全部快照逐字节一致。默认选区为8KiB，50个Global、3200次命令尝试终结，25次输入容量背压，Host/Device排空。
 

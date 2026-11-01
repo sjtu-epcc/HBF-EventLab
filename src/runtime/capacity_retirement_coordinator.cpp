@@ -31,7 +31,10 @@ PhysicalMappingLease::PhysicalMappingLease(PhysicalMappingLease&& other) noexcep
 PhysicalMappingLease::~PhysicalMappingLease() {
     if (state_) {
         auto& entry=state_->active.at(physical_);
-        if (--entry.count==0 && !entry.released) {
+        --entry.count;
+        // Conservatively publish release progress even with users remaining.
+        // Releases before the next stable boundary coalesce in this dirty list.
+        if (!entry.released) {
             entry.released=true;
             entry.next=state_->released_head;
             state_->released_head=&entry; // Stable map node; no allocation/callback.
@@ -125,7 +128,7 @@ std::uint64_t CapacityRetirementCoordinator::in_flight(PhysicalBlockKey p) const
 }
 void CapacityRetirementCoordinator::mark_unusable(PhysicalBlockKey p) {
     require_idle(); media_.mark_unusable(p);
-    if (notifications_) notifications_->notify(WaitKey::physical(p));
+    if (notifications_) notifications_->notify(WaitKey::physical_state(p));
 }
 CapacityResult CapacityRetirementCoordinator::repair_block(LogicalBlockKey k, const std::function<void()>& invalidate) {
     require_idle();
@@ -233,6 +236,9 @@ void CapacityRetirementCoordinator::attach_notifications(AdmissionWaitRegistry& 
 WaitKey CapacityRetirementCoordinator::zone_wait(ChannelAddress a) const {
     return WaitKey::zone(a.channel,a.local.value/dlu_bytes/description_.configuration().zone_size_dlus);
 }
+WaitKey CapacityRetirementCoordinator::zone_users_wait(ChannelAddress a) const {
+    return WaitKey::zone_users(a.channel,a.local.value/dlu_bytes/description_.configuration().zone_size_dlus);
+}
 void CapacityRetirementCoordinator::notify_zone(ChannelId ch,std::uint64_t z) {
     if (notifications_) notifications_->notify(WaitKey::zone(ch,z));
 }
@@ -246,7 +252,7 @@ void CapacityRetirementCoordinator::release_read(LogicalReadId id,bool notify) {
     const auto b=logical_reads_.release(id);
     if (notify && notifications_) {
         notifications_->notify(WaitKey::block_key(WaitReason::LogicalReaders,b));
-        notifications_->notify(zone_wait(address(b)));
+        notifications_->notify(zone_users_wait(address(b)));
     }
 }
 void CapacityRetirementCoordinator::publish_releases() {
@@ -256,7 +262,8 @@ void CapacityRetirementCoordinator::publish_releases() {
         leases_->released_head=entry->next;
         entry->released=false; entry->next=nullptr;
         if (notifications_) notifications_->notify(WaitKey::physical(entry->key));
-        for (const auto& zone:entry->zones) notify_zone(zone.first,zone.second);
+        if(notifications_)for (const auto& zone:entry->zones)
+            notifications_->notify(WaitKey::zone_users(zone.first,zone.second));
         if (!entry->count) entry->zones.clear();
     }
 }

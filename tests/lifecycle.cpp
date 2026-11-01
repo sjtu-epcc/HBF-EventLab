@@ -490,7 +490,7 @@ void pending_fixed_missing() {
 }
 void physical_zone_wakeup() {
     F f;auto lease=f.capacity.pin(f.address());int n=0;
-    const auto key=f.capacity.zone_wait(f.address());
+    const auto key=f.capacity.zone_users_wait(f.address());
     f.signals.subscribe({f.signals.observe(key)},[&]{++n;});
     lease.reset();f.capacity.publish_releases();f.events.run();
     check(n==1,"zone remap drain sees physical lease release");

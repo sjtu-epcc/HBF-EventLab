@@ -267,6 +267,7 @@ bool DeviceDriver::try_cache(Transaction& t) {
     return true;
 }
 void DeviceDriver::pump(ChannelId ch) {
+    RuntimeScope timing(signals_.runtime_profile(),RuntimeRegion::DevicePump);
     // Bounded active-command/Ingress directories only; never scan NAND or historical
     // mappings. Sleeping records are not retried unless their indexed condition fires.
     for(const auto identity:channels_[ch]->transactions) {
@@ -456,14 +457,16 @@ void DeviceDriver::deliver(std::uint64_t id) {
     } else {
         t.delivered=*writes_.response(ch,cmd.id); writes_.response_delivered(ch,cmd.id);
     }
-    if(!t.egress_in_path) egress_.release(*t.egress);
+    if(!t.egress_in_path) {
+        egress_.release(*t.egress);
+        signals_.notify(WaitKey::channel_key(WaitReason::ResultSpace,egress_.space_channel(ch)));
+    }
     t.egress.reset(); t.stage=Stage::Feedback;
     auto& channel=*channels_[ch]; --channel.response_flights; ++channel.feedback;
     ++stats_.delivered; emit("delivered",ch,id);
     if(statistics_sink_)std::visit([&](const auto& response) {
         statistics_sink_->observe(StatAttemptDelivered{t.id,events_.now(),cmd.op,static_cast<std::uint8_t>(response.status)});
     },*t.delivered);
-    signals_.notify(WaitKey::channel_key(WaitReason::ResultSpace,0));
     if(t.target) notify_cache(bank_of(*t.target));
     // Cleanup first; feedback is a subsequent normal event, never a recursive call.
     const auto delivery_time=events_.now();

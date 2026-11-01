@@ -6,7 +6,14 @@ namespace {
 ReadSubmission deferred_read(std::vector<WaitKey> keys) {
     return {SubmitResult::Backpressured,ReadDisposition::Deferred,{},{},std::move(keys)};
 }
-WaitKey result_space() { return WaitKey::channel_key(WaitReason::ResultSpace,0); }
+}
+WaitKey ReadPath::result_space(ChannelId ch) const {
+    return WaitKey::channel_key(WaitReason::ResultSpace,results_.space_channel(ch));
+}
+void ReadPath::release_result(std::optional<ReadResultLease>& data,ChannelId ch) {
+    const bool released=data && data->belongs_to(results_);
+    data.reset();
+    if(released)admission_.notifications().notify(result_space(ch));
 }
 ReadPath::ReadPath(const StaticDeviceDescription& d,const IAddressLayout& layout,
         CapacityRetirementCoordinator& capacity,NandMediaState& media,CommandAdmission& admission,
@@ -58,7 +65,7 @@ ReadPath::Observation ReadPath::observe(const HostCommand& cmd) const {
 ReadSubmission ReadPath::immediate(const HostCommand& cmd,Observation observation) {
     std::optional<ReadResultLease> data;
     if (observation.data) {
-        const auto slot=results_.reserve(cmd.address.channel); if (!slot) return deferred_read({result_space()});
+        const auto slot=results_.reserve(cmd.address.channel); if (!slot) return deferred_read({result_space(cmd.address.channel)});
         data.emplace(results_,*slot); data->store(*observation.data);
     }
     auto& p=accept_parent(cmd);
@@ -106,8 +113,8 @@ ReadProbe ReadPath::probe(ReadCandidate c, bool require_result_space) const {
     const auto logical=layout_.logical_view(p.command.address);
     if (writes_.read_view(logical.block).preparation==BlockPreparation::ErasePending)
         return {ProbeState::Blocked,{WaitKey::block_key(WaitReason::BlockProgress,logical.block)},{}};
-    if (require_result_space && results_.capacity_bytes()-results_.used_bytes()<host_unit_bytes)
-        return {ProbeState::Blocked,{result_space()},{}};
+    if (require_result_space && !results_.can_reserve(c.channel))
+        return {ProbeState::Blocked,{result_space(c.channel)},{}};
     return {ProbeState::Ready,{},capacity_.inspect(p.command.address)};
 }
 void ReadPath::complete(Parent& p,Result result,std::optional<ReadResultLease> data) {
@@ -119,18 +126,36 @@ void ReadPath::complete(Parent& p,Result result,std::optional<ReadResultLease> d
     admission_.notifications().notify(WaitKey::channel_key(WaitReason::ResponseReady,p.command.address.channel));
 }
 bool ReadPath::resolve_terminal(ReadCandidate c) {
-    if (!valid(c)) return false;
+    const auto state=resolve_terminal_state(c);
+    if(valid(c)) {
+        auto& p=parents_.at({c.channel,c.command});
+        const bool needs_space=state==TerminalResolution::BlockedOnResult;
+        // Also arm when called directly by the driver: a failed reserve must
+        // never rely on a later unrelated event to retry.
+        if(p.waiting_result_space!=needs_space || !p.wait) {
+            p.waiting_result_space=needs_space;arm(c);
+        }
+    }
+    return state==TerminalResolution::Completed;
+}
+ReadPath::TerminalResolution ReadPath::resolve_terminal_state(ReadCandidate c) {
+    if (!valid(c)) return TerminalResolution::Stale;
     auto& p=parents_.at({c.channel,c.command});
-    const auto o=observe(p.command); if (!o.terminal) return false;
+    const auto o=observe(p.command); if (!o.terminal) return TerminalResolution::Nonterminal;
     std::optional<ReadResultLease> data;
     if (o.data) {
-        const auto slot=results_.reserve(c.channel); if (!slot) return false;
+        const auto slot=results_.reserve(c.channel); if (!slot) {
+            if(auto* profile=admission_.notifications().runtime_profile())profile->add(RuntimeCounter::ReadResultBlocked);
+            return TerminalResolution::BlockedOnResult;
+        }
         data.emplace(results_,*slot); data->store(*o.data);
     }
     complete(p,o.result,std::move(data));
-    return true;
+    return TerminalResolution::Completed;
 }
 void ReadPath::arm(ReadCandidate c) {
+    auto* profile=admission_.notifications().runtime_profile();
+    if(profile)profile->add(RuntimeCounter::ReadArms);
     auto& p=parents_.at({c.channel,c.command});
     if (p.wait) admission_.notifications().cancel(*p.wait);
     const auto logical=layout_.logical_view(p.command.address);
@@ -138,12 +163,17 @@ void ReadPath::arm(ReadCandidate c) {
     auto& signals=admission_.notifications();
     for (const auto key:{WaitKey::block_key(WaitReason::BlockProgress,logical.block),
                          capacity_.zone_wait(p.command.address),
-                         WaitKey::physical(block_of(capacity_.inspect(p.command.address))),result_space()})
+                         WaitKey::physical_state(block_of(capacity_.inspect(p.command.address)))})
         observations.push_back(signals.observe(key));
+    if(p.waiting_result_space)observations.push_back(signals.observe(result_space(c.channel)));
     p.wait=signals.subscribe(observations,[this,c] {
+        auto* profile=admission_.notifications().runtime_profile();
+        RuntimeScope timing(profile,RuntimeRegion::ReadWakeup);
+        if(profile)profile->add(RuntimeCounter::ReadWakeups);
         if (!valid(c)) return;
         parents_.at({c.channel,c.command}).wait.reset();
-        if (!resolve_terminal(c)) arm(c);
+        if (!resolve_terminal(c)) { if(profile)profile->add(RuntimeCounter::ReadRearms); }
+        else if(profile)profile->add(RuntimeCounter::ReadWakeResolved);
     });
 }
 std::optional<ReadOperation> ReadPath::issue(ReadCandidate c) {
@@ -153,19 +183,22 @@ std::optional<ReadOperation> ReadPath::issue(ReadCandidate c) {
     return issue_impl(c,ReadResultLease(results_,*slot));
 }
 std::optional<ReadOperation> ReadPath::issue_reserved(ReadCandidate c, ReadResultLease data) {
-    if (!valid(c) || resolve_terminal(c) || probe(c,false).state!=ProbeState::Ready) return {};
-    return issue_impl(c,std::move(data));
+    std::optional<ReadResultLease> reserved(std::move(data));
+    if (!valid(c) || resolve_terminal(c) || probe(c,false).state!=ProbeState::Ready) {
+        release_result(reserved,c.channel);return {};
+    }
+    return issue_impl(c,std::move(*reserved));
 }
 std::optional<ReadOperation> ReadPath::issue_impl(ReadCandidate c, ReadResultLease reserved) {
     auto& p=parents_.at({c.channel,c.command});
     const auto id=ReadOperationId{checked_add(next_operation_,1)};
     std::optional<ReadResultLease> data(std::move(reserved));
     auto address=capacity_.pin_read(p.command.address,*p.guard);
-    if (!address) return {}; // Reservation rolls back; no operation or Programming side effect.
+    if (!address) {release_result(data,c.channel);return {};}
     const auto* page=media_.read(address->physical()); // Functional sampling at ISSUE, never submit.
     Result result{page?ReadStatus::Success:ReadStatus::UnwrittenPage};
     if (page) data->store(page->at(address->physical().byte_offset/host_unit_bytes));
-    else data.reset();
+    else release_result(data,c.channel);
     ReadOperation operation{id,c.channel,c.command,address->physical(),p.command.axi_id,p.command.read_hint};
     reads_.emplace(id,Active{operation,result,std::move(data),std::move(address)});
     if (p.wait) { admission_.notifications().cancel(*p.wait); p.wait.reset(); }
@@ -173,8 +206,11 @@ std::optional<ReadOperation> ReadPath::issue_impl(ReadCandidate c, ReadResultLea
     return operation;
 }
 bool ReadPath::serve_cached(ReadCandidate c, ReadResultLease data) {
-    if (!valid(c) || resolve_terminal(c) || probe(c,false).state!=ProbeState::Ready) return false;
-    complete(parents_.at({c.channel,c.command}),{ReadStatus::Success},std::move(data));
+    std::optional<ReadResultLease> reserved(std::move(data));
+    if (!valid(c) || resolve_terminal(c) || probe(c,false).state!=ProbeState::Ready) {
+        release_result(reserved,c.channel);return false;
+    }
+    complete(parents_.at({c.channel,c.command}),{ReadStatus::Success},std::move(reserved));
     return true;
 }
 std::optional<ReadResultId> ReadPath::result_in(ChannelId ch,CommandId id,const IReadResultStorage& storage) const {
@@ -185,7 +221,10 @@ std::optional<ReadResultId> ReadPath::result_in(ChannelId ch,CommandId id,const 
 void ReadPath::transfer_result(ChannelId ch,CommandId id,ReadResultLease destination) {
     auto& p=parents_.at({ch,id});
     if (!p.response || !p.result) throw std::logic_error("no result to transfer");
-    destination.store(p.result->load()); p.result=std::move(destination);
+    destination.store(p.result->load());
+    const bool released=p.result->belongs_to(results_);
+    p.result=std::move(destination);
+    if(released)admission_.notifications().notify(result_space(ch));
 }
 std::optional<ReadResponse> ReadPath::response(ChannelId ch,CommandId id) const {
     const auto it=parents_.find({ch,id});
@@ -202,7 +241,6 @@ void ReadPath::finish_read(ReadOperationId id) {
     complete(p,it->second.result,std::move(it->second.data));
     reads_.erase(it); // Stable result owner exists before physical lease is released.
     capacity_.publish_releases();
-    admission_.notifications().notify(result_space());
 }
 std::vector<ReadResponse> ReadPath::responses() const {
     std::vector<ReadResponse> out;
@@ -220,9 +258,10 @@ void ReadPath::response_delivered(ChannelId ch,CommandId id) {
         throw std::logic_error("read response not deliverable/already delivered");
     const auto group=admission_.read_order().delivered({ch,id});
     admission_.response_delivered(ch,id);
+    const bool released=it->second.result && it->second.result->belongs_to(results_);
     parents_.erase(it);
     auto& signals=admission_.notifications();
-    signals.notify(result_space());
+    if(released)signals.notify(result_space(ch));
     if (group) signals.notify(WaitKey::order(ch,*group));
 }
 } // namespace hbf_eventlab

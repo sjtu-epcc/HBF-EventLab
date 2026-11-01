@@ -37,6 +37,8 @@ public:
     std::size_t used_bytes() const override { std::size_t n=0;for(const auto& b:budget_)n+=b.bytes();return n; }
     std::size_t capacity_bytes() const override { std::size_t n=0;for(const auto& b:budget_)n+=b.capacity().payload_bytes;return n; }
     const BufferBudget& budget(ChannelId ch) const { return budget_.at(ch); }
+    ChannelId space_channel(ChannelId ch) const override { return ch; }
+    bool can_reserve(ChannelId ch) const override { return budget_.at(ch).fits(host_unit_bytes); }
 private:
     struct Entry { ChannelId channel; std::size_t bytes; std::optional<DataToken> data; };
     std::optional<ReadResultId> allocate(ChannelId ch,std::size_t bytes) {

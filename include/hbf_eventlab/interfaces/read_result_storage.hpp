@@ -17,6 +17,10 @@ public:
     virtual void release(ReadResultId) noexcept = 0;
     virtual std::size_t used_bytes() const = 0;
     virtual std::size_t capacity_bytes() const = 0;
+    // Default is one shared result pool across channels. Channel-local owners
+    // override both the wake scope and the actual entry+byte availability query.
+    virtual ChannelId space_channel(ChannelId) const { return 0; }
+    virtual bool can_reserve(ChannelId) const { return capacity_bytes()-used_bytes()>=host_unit_bytes; }
 };
 class ReadResultLease {
 public:

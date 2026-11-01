@@ -56,6 +56,7 @@ public:
     std::size_t active_reads() const { return reads_.size(); }
     std::size_t parent_count() const { return parents_.size(); }
 private:
+    friend struct ReadPathTestAccess;
     struct Result { ReadStatus status; ReadRestrictionReason restriction=ReadRestrictionReason::None; };
     struct Observation { bool terminal=false; Result result{ReadStatus::Success}; std::optional<DataToken> data; };
     struct Parent {
@@ -66,6 +67,7 @@ private:
         std::optional<ReadResultLease> result;
         std::optional<WaitId> wait;
         bool issued=false;
+        bool waiting_result_space=false;
     };
     struct Active {
         ReadOperation operation;
@@ -80,6 +82,10 @@ private:
     ReadSubmission immediate(const HostCommand&,Observation);
     void complete(Parent&,Result,std::optional<ReadResultLease>);
     void arm(ReadCandidate);
+    enum class TerminalResolution { Stale, Nonterminal, BlockedOnResult, Completed };
+    TerminalResolution resolve_terminal_state(ReadCandidate);
+    WaitKey result_space(ChannelId) const;
+    void release_result(std::optional<ReadResultLease>&,ChannelId);
     const StaticDeviceDescription& description_;
     const IAddressLayout& layout_;
     CapacityRetirementCoordinator& capacity_;

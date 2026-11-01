@@ -223,6 +223,8 @@ Host的Global完成汇总由登记和最终状态转换维护两个精确计数�
 
 程序性能诊断采用独立的`RuntimeProfile`，不借用模拟事件统计或Tick。Host、Runner／Session及tensor适配器可挂接同一调用方持有的实例；默认不挂接。固定大小的区域汇总区分包含子调用和自身墙钟时间，实际扫描计数只随既有遍历更新；不保存逐调用历史、不反馈给调度、不引入事件。详见[程序性能诊断](runtime_profiling.md)。
 
+Device与通知注册表也可挂接同一诊断实例，记录通知原因、订阅命中、实际回调和读状态检查。通知契约区分`PhysicalUsers`／`ZoneUsers`的排空进展与`PhysicalState`／`Zone`的可用性或接收／映射状态变化。已接受的普通读观察后者和逻辑块状态；仅可形成数据结果却缺少空间时额外订阅`ResultSpace`。返回缓冲按channel预算隔离，介质完成的结果所有权移交不冒充空间释放。释放通知继续遵循安全发布边界和单次订阅版本检查，不修改Bank调度、读窗口或模拟时延。详见[通知契约](design_decisions.md#adr-runtime-efficiency-01)。
+
 Host与Device通过`IStatisticsSink`发布已经发生的生命周期事实；`StatisticsCollector`只保存观察历史及汇总，不参与发送、组装或资源调度。请求统计与Pending统计共用一个sink；默认不挂接，开启后也不添加采样事件或模拟Tick。
 
 `WriteAssembly`仍唯一拥有Pending上下文、received bitmap和阶段。其`accept`、`queue_program`、`start_program`、`retire`在状态提交后发布只包含值的`AssemblyObservation`；`WritePath::set_statistics_sink`补上`EventQueue::now()`，`DeviceDriver`负责装配。program提交失败抛出异常时，不发布虚假的retired。析构仅释放宿主资源，不属于模拟终结事件。

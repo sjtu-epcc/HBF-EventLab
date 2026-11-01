@@ -3603,7 +3603,27 @@
 | 实现状态／验证状态 | 已实现；V1。 |
 | 已知限制 | 只消除完成汇总的历史扫描；历史表内存、依赖查表、发送候选、回收与恢复扫描不由本条优化。 |
 
+<a id="adr-runtime-efficiency-01"></a>
+
+#### ADR-RUNTIME-EFFICIENCY-01｜按实际条件订阅读通知，分离排空进展与可读状态变化。
+
+| 字段 | 内容 |
+|---|---|
+| 内容 | PhysicalUsers和ZoneUsers通知旧使用者退出；PhysicalState通知物理不可用，Zone通知接收／映射状态。读状态观察订阅逻辑块进展、物理状态和Zone状态；仅终结数据结果缺少空间时订阅ResultSpace。 |
+| 规范关系 | 无直接规定；保持现有协议和内容保护契约。 |
+| 条目性质 | 工程实现机制。 |
+| 分类边界说明 | 减少模拟器内部无效回调，不增加硬件能力、改变操作粒度或配置时延。 |
+| 关联要求／条目 | [ADR-DIAGNOSTICS-01](#adr-diagnostics-01)；既有读逻辑依赖、物理lease、有限返回存储及通知版本检查。 |
+| 选择理由 | 释放一个结果或使用者不必重新判断所有等待读；状态真正变为不可读时仍必须及时形成错误响应，解除旧内容依赖。 |
+| 模型假设／参数依据 | 无新硬件参数。生产Egress按channel预算和空间通知隔离；IReadResultStorage默认共享池，space_channel和can_reserve可由实现覆盖。 |
+| 实现位置（函数／成员） | [ReadPath::arm／resolve_terminal_state／response_delivered](../src/runtime/read_path.cpp)；[CapacityRetirementCoordinator::mark_unusable／release_read／publish_releases／zone_users_wait](../src/runtime/capacity_retirement_coordinator.cpp)；[EgressBuffer::space_channel／can_reserve](../include/hbf_eventlab/runtime/link_buffers.hpp)；DeviceDriver::deliver；AdmissionWaitRegistry及RuntimeProfile。 |
+| 不变量 | 旧逻辑读与物理lease排空边界不变；逐次使用者退出均登记进展，同一发布边界前的物理释放可合并；回调不在析构中执行。可读性变化仍通知所有受影响读；真正等待空间者不能丢唤醒。结果所有权移交不等于空间释放，元数据条目释放也能恢复真实容量。 |
+| 验证测试与覆盖 | [notifications](../tests/notifications.cpp)：同块／Zone／跨channel无关读隔离、真实故障、逐次释放、Zone取消与交换、共享／独立结果池、条目限制、终结空间等待与错误转换、预留回滚唤醒、元数据响应交付后恢复Pending转发、版本差异与取消；[并发基准对照](../tests/check_notification_bench.cmake)检查诊断开关的业务记录与时间一致。终结Pending分支的定向测试明确使用测试夹具解除guard，不代表生产允许重写越过旧读。 |
+| 实现状态／验证状态 | 已实现；验证结果见[完整测试矩阵](verification.md)。 |
+| 已知限制 | BlockProgress、SenseOrder等仍可能触发多对象检查；Host与Device候选扫描尚未全面改为增量维护。内部事件数允许减少；诊断的回调归因采用首个入队原因，不是各原因的独立性能贡献。 |
+
 ## 5. 参数与模型假设
+
 
 
 当前默认配置、单位与CLI/API入口统一记录在[参数说明](parameters.md)。具体选择理由保留在各ADR中，尤其是[功能时延](#adr-loop-m01)、[容量与几何](#adr-loop-m02)、[链路计费](#adr-loop-l04)、[replay预算](#adr-loop-h15)和[资源重试预算](#adr-loop-h25)。
