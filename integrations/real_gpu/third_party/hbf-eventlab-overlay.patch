@@ -1,0 +1,123 @@
+--- a/include/hbf_eventlab/host/host_driver.hpp
++++ b/include/hbf_eventlab/host/host_driver.hpp
+@@ -197,6 +197,7 @@
+     std::uint64_t next_work_=0,next_unit_=0,next_command_=0;
+     std::uint64_t next_enqueue_=0;
+     bool loaded_=false,started_=false,incremental_=false;
++    bool write_error_seen_=false; // no recovery, retry or abort exists before a failed Write response
+     HostStatistics stats_;
+     RuntimeProfile* profile_=nullptr;
+     IStatisticsSink* statistics_sink_=nullptr;
+--- a/include/hbf_eventlab/runtime/simulation_session.hpp
++++ b/include/hbf_eventlab/runtime/simulation_session.hpp
+@@ -51,6 +51,8 @@
+     SessionReport run_to_completion(); // requires external input closed
+     // Absolute safety ceilings, preserved across pauses; explicit changes only.
+     void set_run_limits(RunLimits);
++    // Optional executor fault model, installed before any input or advancement.
++    void set_program_outcome(std::function<ProgramOutcome(const ProgramOperation&)>);
+     const RunLimits& run_limits() const { return limits_; }
+     Tick now() const { return events_.now(); }
+     Tick input_floor() const { return events_.now(); }
+--- a/src/host/host_driver.cpp
++++ b/src/host/host_driver.cpp
+@@ -81,6 +81,7 @@
+         if(events_.now()<request.not_before||!dependencies_ready(fragment.parent))return false;
+     }
+     if(u.op==Op::Read) {
++        if(!u.group && u.hint==ReadHint::Regular)return true;
+         for(const auto& item:units_) {
+             const auto& prior=item.second;
+             if(prior.id.value>=u.id.value)break;
+@@ -253,6 +254,7 @@
+         const auto& wr=std::get<WriteResponse>(response.response);
+         if(wr.command!=id||wr.channel!=block.channel)throw std::logic_error("response identity mismatch");
+         success=wr.status==WriteStatus::Success;
++        write_error_seen_=write_error_seen_||!success;
+         stats_.pending_limit_errors+=wr.status==WriteStatus::PendingDluLimit;
+         stats_.assembly_timeout_errors+=wr.status==WriteStatus::AssemblyTimeout;
+         if(wr.status==WriteStatus::Success || wr.status==WriteStatus::AssemblyTimeout || wr.status==WriteStatus::ProgramFail) {
+@@ -366,13 +368,13 @@
+     bool changed;
+     do {
+         changed=false;
+-        for(auto& item:versions_)if(!item.second.aborted) {
++        if(write_error_seen_)for(auto& item:versions_)if(!item.second.aborted) {
+             for(const auto& older:version_order_.at(item.first.block)) {
+                 if(older.content==item.first.content)break;
+                 if(versions_.at(older).aborted) {abort_version(item.first,"PriorContentFailed");changed=true;break;}
+             }
+         }
+-        for(auto& item:versions_)if(auto* task=recovery_.active(item.first))
++        if(write_error_seen_)for(auto& item:versions_)if(auto* task=recovery_.active(item.first))
+             changed=advance_recovery(item.first,*task)||changed;
+         changed=advance_write_retries()||changed;
+         for(auto& item:units_) {
+@@ -403,7 +405,7 @@
+     a.unfinished_global=unfinished_globals_;
+     for(const auto& c:channels_) {a.queued_units+=c.queue.size();a.subscriptions+=c.wait.has_value();}
+     a.unsettled_attempts=attempts_.size();a.recoveries=recovery_.active_count();
+-    for(const auto& v:versions_)for(const auto& p:v.second.retries)a.recoveries+=p.second.active;
++    if(write_error_seen_)for(const auto& v:versions_)for(const auto& p:v.second.retries)a.recoveries+=p.second.active;
+     a.events=owned_events_.size();return a;
+ }
+ bool HostDriver::workload_success() const {
+@@ -411,7 +413,7 @@
+ }
+ std::string HostDriver::waiting_reason() const {
+     if(!started_)return "HostNotStarted";
+-    for(const auto& v:versions_)for(const auto& p:v.second.retries)if(p.second.active)
++    if(write_error_seen_)for(const auto& v:versions_)for(const auto& p:v.second.retries)if(p.second.active)
+         return p.second.phase==RetryPhase::Draining?"WaitingForTimedOutPageAttempts":
+             p.second.phase==RetryPhase::AwaitingPredecessor?"WaitingForWriteOrderCause":"WaitingForPageRepair";
+     for(const auto& item:recovery_.tasks()) {
+--- a/src/host/host_storage.cpp
++++ b/src/host/host_storage.cpp
+@@ -46,6 +46,7 @@
+     if(!incremental_)return; // preserve finite-workload baseline and diagnostics
+     const auto before=work_.size();
+     std::set<SendUnitId> retired;
++    std::set<ContentKey> touched_versions;
+     for(auto it=units_.begin();it!=units_.end();) {
+         if(profile_)profile_->add(RuntimeCounter::ReclaimUnitVisits);
+         const auto& u=it->second;
+@@ -67,12 +68,13 @@
+             const auto erased=work_.erase(f.id);
+             if(profile_)profile_->add(RuntimeCounter::ReclaimedWork,erased);
+         }
++        if(u.content)touched_versions.insert(*u.content);
+         retired.insert(u.id);it=units_.erase(it);
+         if(profile_)profile_->add(RuntimeCounter::ReclaimedUnits);
+     }
+     // Remove all indices before later events can dereference retired IDs.
+-    for(auto& v:versions_) {
+-        auto& ids=v.second.normal;
++    for(auto key:touched_versions) {
++        auto& ids=versions_.at(key).normal;
+         ids.erase(std::remove_if(ids.begin(),ids.end(),[&](auto id){return retired.count(id);}),ids.end());
+     }
+     for(auto it=initial_enqueues_.begin();it!=initial_enqueues_.end();) {
+--- a/src/host/write_retry.cpp
++++ b/src/host/write_retry.cpp
+@@ -83,6 +83,7 @@
+ }
+ 
+ bool HostDriver::advance_write_retries() {
++    if(!write_error_seen_)return false;
+     bool changed=false;
+     for(auto& entry:versions_) {
+         const auto key=entry.first;auto& version=entry.second;
+--- a/src/runtime/simulation_session.cpp
++++ b/src/runtime/simulation_session.cpp
+@@ -20,6 +20,11 @@
+ }
+ void SimulationSession::outside_execution() const {
+     if(running_)throw std::logic_error("session operation is external-only and not reentrant");
++}
++void SimulationSession::set_program_outcome(std::function<ProgramOutcome(const ProgramOperation&)> outcome) {
++    outside_execution();healthy();
++    if(started_||input_closed_||!outcome)throw std::logic_error("install fault model before session input/advance/close");
++    device_.set_program_outcome(std::move(outcome));
+ }
+ void SimulationSession::healthy() const {
+     if(failure_)throw std::logic_error("session has a terminal model/implementation error");

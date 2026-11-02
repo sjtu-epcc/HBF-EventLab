@@ -1,0 +1,38 @@
+{
+  "upstream_commit": "72e074508c462dceb7d42962c4885ecf17cc4d0d",
+  "upstream_tree": "38ddf9ad9f4a1b4f856ea2b141db6b055df33d58",
+  "archive_sha256": "43f8851cbfc279e2f1606e5a93fdab476fc05d46a195fe05ac7a56665a4e29b5",
+  "local_changes": [
+    {
+      "path": "include/hbf_eventlab/host/host_driver.hpp",
+      "upstream_sha256": "e7f788f008797fff623f197f7bf9dc8d8582d88fe086730f42c8d3ad196eaabf",
+      "patched_sha256": "b8e3ebc6db7c4b0298f8e2a7111557a6383dd8f4aa4853c57833c9ba4cb229f9"
+    },
+    {
+      "path": "include/hbf_eventlab/runtime/simulation_session.hpp",
+      "upstream_sha256": "54378929fa27a30954120922938daa05b566e504473dc1326db3f7ea314f6777",
+      "patched_sha256": "8aa0332fcf30bf6aefaa2943a0bebd7e9736ff41488c794b99489c72cb50a3e5"
+    },
+    {
+      "path": "src/host/host_driver.cpp",
+      "upstream_sha256": "9692bafb268cb3a993c7f1e03b1dfd3c4dde19ad9a5bc4a54588a1f976627303",
+      "patched_sha256": "8ead35dd5c42d8355ecbd867e59f67917bd7d0efd0ed1502bdf37e27bbfa120b"
+    },
+    {
+      "path": "src/host/host_storage.cpp",
+      "upstream_sha256": "1eb2a93c883d825ed93d836e79adb74133c059092b6fe550dd383856b02ebfed",
+      "patched_sha256": "82aa33c6a382d3219c44a289fb8293e090c95c7e6fa4a1403e649d896a4e32ed"
+    },
+    {
+      "path": "src/host/write_retry.cpp",
+      "upstream_sha256": "2a2cbb445fddfbbe9f6930b56e62f296a63e432c43569db910a00d474c3261eb",
+      "patched_sha256": "c4ab2c9c6b226fc7bc69debb895b9b3a0a5e9451abb25f91d2a79e2cab581895"
+    },
+    {
+      "path": "src/runtime/simulation_session.cpp",
+      "upstream_sha256": "b7973f8fb3274e10d832ee5144d26bd55997419420659f366816157f6944d393",
+      "patched_sha256": "98973cc09409e9b1482edefb2a67b2f5a47eb4a9c7c05386c85bcbb2c4566bf2"
+    }
+  ],
+  "reason": "Guarded pre-start Session fault-model injection (2 files); skip dormant error-history scans until the first failed Write response and reclaim only touched versions (4 files). All 466 upstream tests and 12 exact normal/fault event-trace comparisons passed before integration. Ordinary ungrouped Regular reads skip a predecessor scan whose conditions cannot apply; the added path passed 466 backend tests and 12 exact normal/fault CLI trace comparisons."
+}

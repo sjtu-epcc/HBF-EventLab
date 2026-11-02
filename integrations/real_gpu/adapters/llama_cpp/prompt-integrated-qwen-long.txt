@@ -1,0 +1,9 @@
+<|im_start|>system
+You are a helpful assistant. Answer directly in English without thinking aloud.<|im_end|>
+<|im_start|>user
+Explain computer memory for students in at least two hundred words. Describe registers, caches, main memory, and persistent storage. Use the example of opening and editing a document. Explain how the processor reads instructions, how caches keep recently used values, why main memory is larger but slower, and how writing a file preserves changes after power is removed. Compare these components using concrete examples. Include a discussion of the difference between a memory address and the data stored at that address. Write a continuous explanation with several paragraphs rather than a short list.<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+

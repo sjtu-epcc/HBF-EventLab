@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "release": "RealGPUAcess_v0",
+  "revision": "incremental-host-72e0745",
+  "backend_upstream_commit": "72e074508c462dceb7d42962c4885ecf17cc4d0d",
+  "backend_local_patch_files": 6,
+  "fresh_core_tests": {
+    "status": "pass",
+    "tests": 716,
+    "failures": 0,
+    "skipped": 0
+  },
+  "fresh_operator_tests": {
+    "status": "pass",
+    "tests": 18
+  },
+  "fresh_python_validator_tests": {
+    "status": "pass",
+    "tests": 5
+  },
+  "fresh_model_cases": [
+    "A-short-32",
+    "C-long-64"
+  ],
+  "fresh_model_processes": 6,
+  "all_fresh_complete_logits_and_tokens_match_candidate_and_previous_corresponding_modes": true,
+  "inherited_candidate_matrix": {
+    "status": "pass",
+    "cases": 9,
+    "processes": 27,
+    "rerun_in_release": false
+  },
+  "time_policy": "Existing GPU timestamp policy retained; no measured-compute TTFT/TPOT claim.",
+  "records": [
+    "core-tests.xml",
+    "operators.json",
+    "validator-tests.log",
+    "model-validation.json",
+    "candidate-matrix.json",
+    "backend-provenance.json"
+  ]
+}

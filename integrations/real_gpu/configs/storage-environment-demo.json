@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "file_backing": true,
+  "prefetch": true,
+  "gpu_watts": 100.0,
+  "environment": {
+    "enabled": true,
+    "ambient_c": 25.0,
+    "initial_c": 25.0,
+    "reference_c": 25.0,
+    "retention_seconds": 0.05,
+    "refresh_fraction": 0.8,
+    "refresh_budget": 1
+  }
+}

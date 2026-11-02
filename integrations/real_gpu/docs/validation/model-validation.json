@@ -1,0 +1,56 @@
+{
+  "status": "pass",
+  "fresh_model_processes": 6,
+  "full_nine_case_matrix_repeated": false,
+  "cases": [
+    {
+      "case": "A-short-32",
+      "status": "pass",
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact_to_candidate_and_previous": true,
+          "prompt_and_generated_tokens_exact": true,
+          "logits_sha256": "31bcaea1d7e60923597b5611d2145ebc48dfad191485f9ddf4ec667a7750e762"
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact_to_candidate_and_previous": true,
+          "prompt_and_generated_tokens_exact": true,
+          "logits_sha256": "50e390210c9590702e5d3096d3729e02505d8ed22ceef0803493736e01d70fde"
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact_to_candidate_and_previous": true,
+          "prompt_and_generated_tokens_exact": true,
+          "logits_sha256": "50e390210c9590702e5d3096d3729e02505d8ed22ceef0803493736e01d70fde"
+        }
+      ]
+    },
+    {
+      "case": "C-long-64",
+      "status": "pass",
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact_to_candidate_and_previous": true,
+          "prompt_and_generated_tokens_exact": true,
+          "logits_sha256": "4e8133a305ac9544fa41ef91dadf4b217d934822cd9fc76c55966037d16ebd73"
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact_to_candidate_and_previous": true,
+          "prompt_and_generated_tokens_exact": true,
+          "logits_sha256": "cdb335d27e5c43cfbc1d00c0e47d4070cf6b3441535244c96ef6d10c4f26bd07"
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact_to_candidate_and_previous": true,
+          "prompt_and_generated_tokens_exact": true,
+          "logits_sha256": "cdb335d27e5c43cfbc1d00c0e47d4070cf6b3441535244c96ef6d10c4f26bd07"
+        }
+      ]
+    }
+  ],
+  "comparison_scope": "Corresponding native/bypass/modeled modes; complete logits and prompt/generated tokens against both accepted candidate and prior main-backend references."
+}

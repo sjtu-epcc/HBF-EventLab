@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "status": "development-baseline-partial-gpu-validation",
+  "backend_baseline": "8ccb1f353630f893f761b017d621812b7b9d5bf2",
+  "frontend_upstream": "41b9f736164c8517c35aaafb6743a803bf656257",
+  "environment": {
+    "compiler": "MSVC 19.43.34810 x64",
+    "cuda": "12.9.86",
+    "gpu": "RTX 4070 Laptop GPU",
+    "gpu_memory_mib": 8188,
+    "driver": "596.21",
+    "backend_python": "3.14.7",
+    "frontend_python": "3.12",
+    "numpy": "2.3.5",
+    "pyyaml": "6.0.3"
+  },
+  "cpu_combined": {
+    "tests": 604,
+    "failures": 0,
+    "skipped": 0,
+    "failed_cases": [],
+    "xml_sha256": "ffefee554a8477afd9b83496db32d1b4d941ad0ac5205e8d6c2cc5f872b4f97b",
+    "log_sha256": "6729b70ae6b44c2ceec4c74b6e37e0026c83eda1992fa9a6a13c23b0d1e4eed7",
+    "local_artifact_prefix": "build-real-gpu-cpu/integration-cpu",
+    "wall_seconds": 83.63
+  },
+  "cuda_initial": {
+    "tests": 222,
+    "failures": 1,
+    "skipped": 0,
+    "failed_cases": [
+      "lab_coop_max_threads"
+    ],
+    "xml_sha256": "9ca7e5c4577ca43ed89833d30d59930c5d18d2e2bf929228c064531cea9dc519",
+    "log_sha256": "e4b363e446aaf411cb8a633aa2c586d310600d3a5c3f62e2aa5193a6570c1aa2",
+    "local_artifact_prefix": "build-real-gpu-cuda/integration-cuda",
+    "wall_seconds": 65.74
+  },
+  "cuda_after_fixture_budget": {
+    "tests": 222,
+    "failures": 2,
+    "skipped": 0,
+    "failed_cases": [
+      "lab_shared_gpu_owner",
+      "lab_shared_gpu_scaled"
+    ],
+    "xml_sha256": "25e7e096410ee1f587e79174fdccffb214cf185bbc71c29f6abfeda8bc5dd9d1",
+    "log_sha256": "5370dca343b8cf45a09de0348b2b7d930fee39b19f3cb6a22a09686d45d9fcf7",
+    "local_artifact_prefix": "build-real-gpu-cuda/integration-cuda-final",
+    "wall_seconds": 54.21
+  },
+  "focused_smoke": {
+    "tests": 6,
+    "failures": 0,
+    "skipped": 0,
+    "failed_cases": [],
+    "xml_sha256": "6dd0e246af632287fe5df941f427e958ef7d044b8f5cc6dc08573520743c6111",
+    "log_sha256": "7c09a35f760a42dfdb1df8d1af6961510aceb135cabac55c0f3dafcd4e299679",
+    "local_artifact_prefix": "build-real-gpu-cuda/integration-smoke",
+    "wall_seconds": 3.57,
+    "repetitions_per_case": 3
+  },
+  "max_threads_after_budget": {
+    "tests": 1,
+    "failures": 0,
+    "skipped": 0,
+    "failed_cases": [],
+    "xml_sha256": "30dee0a608386316520b7c1f5bd4d0815048fb01c81bb89c548e8376c054a69c",
+    "log_sha256": "8652f263ab83c1c4cdd0749c1e55ca474809aa9dd38f4aedb78b70f707c2449d",
+    "local_artifact_prefix": "build-real-gpu-cuda/integration-max-threads",
+    "wall_seconds": 5.67,
+    "repetitions": 3
+  },
+  "python_checks": {
+    "environment": 9,
+    "validator": 5,
+    "identity": 25,
+    "failures": 0
+  },
+  "wrapper_assertions": 23,
+  "open_findings": [
+    "lab_shared_gpu_owner and lab_shared_gpu_scaled failed full-suite overlap coverage. Both passed 3/3 isolated reruns; these do not replace the full-suite failure. Scheduling sensitivity is supported; production overlap defects are not ruled out. Deterministic fixture synchronization remains open."
+  ],
+  "environment_adaptations": [
+    "CUDA_VERSION guard in ptx_gpu.cpp preserves context isolation across CUDA12/13.",
+    "Only cooperative max_threads stress fixture selects the supported 1s watchdog instead of 0.5s; production defaults, intentional timeout and all correctness assertions unchanged. Original isolated runs were 1 pass / 2 timeouts."
+  ],
+  "model_entry": {
+    "built": false,
+    "operators_run": false,
+    "inference_run": false,
+    "real_build_sealed": false,
+    "reason": "Local CUDA lacks cuBLAS development headers/libraries. Complete F16 GGUF and conversion inputs were not supplied.",
+    "cupti_local_only": {
+      "version": "12.9.79",
+      "sha256": "c96018456dc4db6af6d69d6db0170a2ccc656ddde8c8ce6ee05682c2c5569daa"
+    }
+  },
+  "not_tested": [
+    "process injection",
+    "Linux",
+    "full-model numerical validation against new backend",
+    "independent modeled TTFT/TPOT"
+  ],
+  "evidence_policy": "Local logs retained outside Git and bound by hashes. Imported upstream validation is historical, not substitute evidence.",
+  "integration_source_sha256": {
+    "CMakeLists.txt": "66c9730cfb935b2e966ae36cac162cc5e3ecde3f29be5d969c73eb4f04c331b4",
+    "build.ps1": "aa0b901137c7ebf9c4bdd91f5583802dddfbe884951657181ff607c4baa4b2fe",
+    "adapters/llama_cpp/integrated/CMakeLists.txt": "b769d56c9857cfc3c37954a5ad4145f874880477a574fa711bfc22e32d6aea11",
+    "tools/integrated_build_identity.py": "9e281eedd71d0305c5b450d82e35751394b600756704ccbd08cac36204fb494b",
+    "tools/platform_environment.py": "5ed6df65f9a50bd02b31717171c2413bce79e79ab2a947e6b64c567675f44b43",
+    "tools/package_source.py": "1ab53a33fc7e3fbd132b00c6467e04215e5d15b94594490906da9b092d024592",
+    "tests/ptx_gpu.cpp": "5124fc0bd45bfb71daf5d8b03c16494a083d01713230ec370a90fecf97488f47",
+    "tests/cooperative_reads.cu": "dd4e376cc6f28e3f3a57495c7400e66561dfeef9e74faca13ecd4c5a8b69315c",
+    "tests/integrated_build_identity_test.py": "070aff2b4e9fdea011ff9d926cfeae5f2ee06504b12b34a41d68f422f8a1687d",
+    "tests/platform_environment_test.py": "c2af454554408778e9a7ce62864ffe918af4779faeb77b237bc9e9d33a7473c6",
+    "third_party/llama.cpp-integrated/hbflab-overlay.json": "9e306c807d6c6e6a2f7489598e94116fd2528646c67b448ddf46c61c43de9f0e"
+  },
+  "python_logs": [
+    {
+      "test": "platform_environment_test",
+      "exit_code": 0,
+      "log": "platform_environment_test-final.log",
+      "sha256": "718d4d8c28eb868d332e92f343a99755b6b416b161de19d50bf676ddd732e09b"
+    },
+    {
+      "test": "integrated_validation_contract",
+      "exit_code": 0,
+      "log": "integrated_validation_contract-final.log",
+      "sha256": "6ce19fe5c6e39322ca0b13f5b467573e2eeec70d41fbf64d3e414ddbe59845d6"
+    },
+    {
+      "test": "integrated_build_identity_test",
+      "exit_code": 0,
+      "log": "integrated_build_identity_test-final.log",
+      "sha256": "89fafee3d015af062c8c0a96e911ce7c077bad3034aff60cd9ac4ba4e6460125"
+    }
+  ]
+}

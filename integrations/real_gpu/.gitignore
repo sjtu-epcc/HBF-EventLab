@@ -1,0 +1,14 @@
+build-*/
+output/
+.venv/
+__pycache__/
+*.pyc
+configs/integrated/*.json
+configs/machine.local.json
+/models/
+/dist/
+/build/
+/.env
+/.env.local
+/.vs/
+/.idea/

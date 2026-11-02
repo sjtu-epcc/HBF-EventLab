@@ -11,7 +11,7 @@ The project supports research into **Host–HBF coordination, access organizatio
 
 ## Backend Baseline and GPU Integration Status
 
-This revision is the incremental-backend baseline: bounded online input, guarded program-outcome injection, and the recent Host/runtime software-efficiency optimizations. The new CUDA / paged-KV frontend is maintained separately in [RealGPUAcess_v0](https://github.com/ZeePgm/RealGPUAcess_v0); its complete implementation is not included in this backend baseline. Integration work will be published on a separate branch before it is considered for `main`.
+This branch integrates the new CUDA / paged-KV frontend from [RealGPUAcess_v0](https://github.com/ZeePgm/RealGPUAcess_v0) under [integrations/real_gpu](integrations/real_gpu/README.md), using this repository's backend directly (no second vendored HBF tree). The backend-only baseline is commit `8ccb1f353630f893f761b017d621812b7b9d5bf2` on `main`; this integration is developed separately on `feat/real-gpu-integration`. See the [integration and validation guide](docs/gpu_integration.md) before building or interpreting GPU results.
 
 The existing [Qwen tensor-callback experiment](experiments/qwen_online/CMakeLists.txt) is a legacy, optional reference and is disabled by default. It is not the new frontend. Neither CPU backend regressions nor simulator wall-time improvements establish predictive modeled TTFT/TPOT: an independent compute/request timeline and token-completion model are still required for that experiment.
 

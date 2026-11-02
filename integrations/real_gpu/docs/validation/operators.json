@@ -1,0 +1,188 @@
+{
+  "status": "pass",
+  "cases": [
+    {
+      "case": "qwen3-0.6b",
+      "result": {
+        "head_dim": 128,
+        "kv_heads": 8,
+        "limit": 1e-05,
+        "max_abs_error": 1.309813198180354e-06,
+        "profile_sha256": "0b47e2af9d68dba9ecd52974c74459af2518e0f2be88a8828079a326c89e1fe6",
+        "q_heads": 16,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "qwen3-1.7b",
+      "result": {
+        "head_dim": 128,
+        "kv_heads": 8,
+        "limit": 1e-05,
+        "max_abs_error": 1.309813198180354e-06,
+        "profile_sha256": "133bbe45399a83c23382996df3438b4e1bb4d1dd2bea611def3f92531ea8297e",
+        "q_heads": 16,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "smollm2-135m",
+      "result": {
+        "head_dim": 64,
+        "kv_heads": 3,
+        "limit": 1e-05,
+        "max_abs_error": 7.62322648784064e-07,
+        "profile_sha256": "9e32b0a17d749612badc21e97b296185de07e73895f3104ebd0ed9c49fc44b7f",
+        "q_heads": 9,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "mha32",
+      "result": {
+        "head_dim": 32,
+        "kv_heads": 5,
+        "limit": 1e-05,
+        "max_abs_error": 5.400992487622491e-07,
+        "profile_sha256": "dae1a2ccd30ffdef57cfdbace1fdbf8af2685e4a99f7b465e08cf428d7e68411",
+        "q_heads": 5,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "gqa256",
+      "result": {
+        "head_dim": 256,
+        "kv_heads": 3,
+        "limit": 1e-05,
+        "max_abs_error": 1.4391284720097208e-06,
+        "profile_sha256": "34299afabb7319bb280ad4dd120b5da26a1c78a37fdc0d103820e3ef07b8797c",
+        "q_heads": 6,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "wide-row",
+      "result": {
+        "head_dim": 128,
+        "kv_heads": 24,
+        "limit": 1e-05,
+        "max_abs_error": 8.078545599126546e-07,
+        "profile_sha256": "892903a6692aa9994203d1751541b505288b15f465b9e3d94d98108becf9ba8c",
+        "q_heads": 24,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "three-page-row",
+      "result": {
+        "head_dim": 128,
+        "kv_heads": 25,
+        "limit": 1e-05,
+        "max_abs_error": 1.074965195024813e-06,
+        "profile_sha256": "484af5b81b6da4eeec6087df85af38ea39c3eebae3b5514b69b34257697c8cb3",
+        "q_heads": 25,
+        "status": "pass",
+        "tokens": 18
+      }
+    },
+    {
+      "case": "ptx-576",
+      "result": {
+        "all_outputs_exact": true,
+        "drained": true,
+        "minimum_wait_margin_ns": 388299,
+        "original_ptx_sha256": "a58c41063f12894e1f310189307661d69315fc2f7a4a587ac460b50c6f5bba30",
+        "requests": 576,
+        "status": "pass",
+        "time_scale": 100,
+        "timed_ptx_sha256": "bbde41bd83ccf246e84181b4d47a8abfcbacd45b5a5fa0780336c66ffcfc6ae8",
+        "width": 576
+      }
+    },
+    {
+      "case": "ptx-1024",
+      "result": {
+        "all_outputs_exact": true,
+        "drained": true,
+        "minimum_wait_margin_ns": 381515,
+        "original_ptx_sha256": "a58c41063f12894e1f310189307661d69315fc2f7a4a587ac460b50c6f5bba30",
+        "requests": 1024,
+        "status": "pass",
+        "time_scale": 100,
+        "timed_ptx_sha256": "bbde41bd83ccf246e84181b4d47a8abfcbacd45b5a5fa0780336c66ffcfc6ae8",
+        "width": 1024
+      }
+    },
+    {
+      "case": "ptx-2048",
+      "result": {
+        "all_outputs_exact": true,
+        "drained": true,
+        "minimum_wait_margin_ns": 453995,
+        "original_ptx_sha256": "a58c41063f12894e1f310189307661d69315fc2f7a4a587ac460b50c6f5bba30",
+        "requests": 2048,
+        "status": "pass",
+        "time_scale": 100,
+        "timed_ptx_sha256": "bbde41bd83ccf246e84181b4d47a8abfcbacd45b5a5fa0780336c66ffcfc6ae8",
+        "width": 2048
+      }
+    },
+    {
+      "case": "input-position",
+      "result": {
+        "case": "position",
+        "rejected": true,
+        "status": "pass",
+        "success_not_published": true
+      }
+    },
+    {
+      "case": "input-shape",
+      "result": {
+        "case": "shape",
+        "rejected": true,
+        "status": "pass",
+        "success_not_published": true
+      }
+    },
+    {
+      "case": "frames",
+      "rejected": true,
+      "diagnostic": "M6 insufficient page/frame budget"
+    },
+    {
+      "case": "layers",
+      "rejected": true,
+      "diagnostic": "M6 unsupported model dimensions"
+    },
+    {
+      "case": "gqa",
+      "rejected": true,
+      "diagnostic": "M6 unsupported head dimensions"
+    },
+    {
+      "case": "audit",
+      "rejected": true,
+      "diagnostic": "M6 insufficient audit/event budget"
+    },
+    {
+      "case": "dtype",
+      "rejected": true,
+      "diagnostic": "M6 unsupported rope/dtype"
+    },
+    {
+      "case": "architecture",
+      "rejected": true,
+      "diagnostic": "M6 unsupported architecture"
+    }
+  ],
+  "backend_commit": "72e074508c462dceb7d42962c4885ecf17cc4d0d",
+  "build_identity_sha256": "1b7a983c0398667c2b454a83717e57ffde69776fbf0c58156d207ce36d688f8a"
+}

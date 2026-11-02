@@ -1,0 +1,4261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="716"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="Hustler"
+	time="66"
+	timestamp="2026-10-31T14:24:37"
+	>
+	<testcase name="lab_incremental_immutable" classname="lab_incremental_immutable" time="0.0764941" status="run">
+		<properties/>
+		<system-out>PASS incremental immutable
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_same_tick" classname="lab_incremental_same_tick" time="0.0095702" status="run">
+		<properties/>
+		<system-out>PASS incremental same_tick
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_backpressure" classname="lab_incremental_backpressure" time="0.0369263" status="run">
+		<properties/>
+		<system-out>PASS incremental backpressure
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_block_version" classname="lab_incremental_block_version" time="0.0240126" status="run">
+		<properties/>
+		<system-out>PASS incremental block_version
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_fault_guard" classname="lab_incremental_fault_guard" time="0.0117473" status="run">
+		<properties/>
+		<system-out>PASS incremental fault_guard
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_empty_tail" classname="lab_incremental_empty_tail" time="0.0100356" status="run">
+		<properties/>
+		<system-out>PASS incremental empty_tail
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_empty_same_tick" classname="lab_incremental_empty_same_tick" time="0.0110161" status="run">
+		<properties/>
+		<system-out>PASS incremental empty_same_tick
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_failure_drain" classname="lab_incremental_failure_drain" time="0.0148458" status="run">
+		<properties/>
+		<system-out>PASS incremental failure_drain
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_partial_initialization" classname="lab_incremental_partial_initialization" time="0.0091454" status="run">
+		<properties/>
+		<system-out>PASS incremental partial_initialization
+</system-out>
+	</testcase>
+	<testcase name="lab_incremental_close" classname="lab_incremental_close" time="0.0100934" status="run">
+		<properties/>
+		<system-out>PASS incremental close
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_file_reopen" classname="lab_storage_file_reopen" time="0.248558" status="run">
+		<properties/>
+		<system-out>file_reopen passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_file_exclusive" classname="lab_storage_file_exclusive" time="0.0201601" status="run">
+		<properties/>
+		<system-out>file_exclusive passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_file_unclean" classname="lab_storage_file_unclean" time="0.037469" status="run">
+		<properties/>
+		<system-out>file_unclean passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_file_reuse" classname="lab_storage_file_reuse" time="0.0812902" status="run">
+		<properties/>
+		<system-out>file_reuse passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_file_failure" classname="lab_storage_file_failure" time="0.0263349" status="run">
+		<properties/>
+		<system-out>file_failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_file_corrupt" classname="lab_storage_file_corrupt" time="0.0250172" status="run">
+		<properties/>
+		<system-out>file_corrupt passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_prefetch" classname="lab_storage_prefetch" time="0.0215085" status="run">
+		<properties/>
+		<system-out>prefetch passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_prefetch_bounds" classname="lab_storage_prefetch_bounds" time="0.019751" status="run">
+		<properties/>
+		<system-out>prefetch_bounds passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_thermal" classname="lab_storage_thermal" time="0.0081491" status="run">
+		<properties/>
+		<system-out>thermal passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_retention" classname="lab_storage_retention" time="0.0082183" status="run">
+		<properties/>
+		<system-out>retention passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_refresh" classname="lab_storage_refresh" time="0.0139474" status="run">
+		<properties/>
+		<system-out>refresh passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_refresh_pinned" classname="lab_storage_refresh_pinned" time="0.0181671" status="run">
+		<properties/>
+		<system-out>refresh_pinned passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_refresh_failure" classname="lab_storage_refresh_failure" time="0.0142913" status="run">
+		<properties/>
+		<system-out>refresh_failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_kv_file" classname="lab_storage_kv_file" time="0.0544209" status="run">
+		<properties/>
+		<system-out>kv_file passed
+</system-out>
+	</testcase>
+	<testcase name="lab_kv_transaction_publish" classname="lab_kv_transaction_publish" time="0.122013" status="run">
+		<properties/>
+		<system-out>publish passed
+</system-out>
+	</testcase>
+	<testcase name="lab_kv_transaction_identity" classname="lab_kv_transaction_identity" time="0.0653314" status="run">
+		<properties/>
+		<system-out>identity passed
+</system-out>
+	</testcase>
+	<testcase name="lab_kv_transaction_truncate" classname="lab_kv_transaction_truncate" time="0.0802914" status="run">
+		<properties/>
+		<system-out>truncate passed
+</system-out>
+	</testcase>
+	<testcase name="lab_kv_transaction_failure" classname="lab_kv_transaction_failure" time="0.0106402" status="run">
+		<properties/>
+		<system-out>failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_kv_transaction_abort" classname="lab_kv_transaction_abort" time="0.0077236" status="run">
+		<properties/>
+		<system-out>abort passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_validation" classname="lab_shared_backend_validation" time="0.0537173" status="run">
+		<properties/>
+		<system-out>shared backend validation passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_watermark" classname="lab_shared_backend_watermark" time="0.0612977" status="run">
+		<properties/>
+		<system-out>shared backend watermark passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_overlap" classname="lab_shared_backend_overlap" time="0.0412239" status="run">
+		<properties/>
+		<system-out>shared backend overlap passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_read_write_read" classname="lab_shared_backend_read_write_read" time="0.0218266" status="run">
+		<properties/>
+		<system-out>shared backend read_write_read passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_replay" classname="lab_shared_backend_replay" time="0.0484952" status="run">
+		<properties/>
+		<system-out>shared backend replay passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_pressure" classname="lab_shared_backend_pressure" time="0.0754086" status="run">
+		<properties/>
+		<system-out>shared backend pressure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_backend_failure" classname="lab_shared_backend_failure" time="0.0153065" status="run">
+		<properties/>
+		<system-out>shared backend failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_ordering" classname="lab_async_ordering" time="0.123214" status="run">
+		<properties/>
+		<system-out>PASS ordering
+</system-out>
+	</testcase>
+	<testcase name="lab_async_identity" classname="lab_async_identity" time="0.0081535" status="run">
+		<properties/>
+		<system-out>PASS identity
+</system-out>
+	</testcase>
+	<testcase name="lab_async_scaling" classname="lab_async_scaling" time="0.0118849" status="run">
+		<properties/>
+		<system-out>PASS scaling
+</system-out>
+	</testcase>
+	<testcase name="lab_async_random" classname="lab_async_random" time="0.0485801" status="run">
+		<properties/>
+		<system-out>PASS random
+</system-out>
+	</testcase>
+	<testcase name="lab_async_watermark" classname="lab_async_watermark" time="0.0089999" status="run">
+		<properties/>
+		<system-out>PASS watermark
+</system-out>
+	</testcase>
+	<testcase name="lab_async_individual" classname="lab_async_individual" time="0.0083894" status="run">
+		<properties/>
+		<system-out>PASS individual
+</system-out>
+	</testcase>
+	<testcase name="lab_async_validation" classname="lab_async_validation" time="0.0085072" status="run">
+		<properties/>
+		<system-out>PASS validation
+</system-out>
+	</testcase>
+	<testcase name="lab_async_pressure" classname="lab_async_pressure" time="0.0495205" status="run">
+		<properties/>
+		<system-out>PASS pressure
+</system-out>
+	</testcase>
+	<testcase name="lab_async_budget" classname="lab_async_budget" time="0.0107373" status="run">
+		<properties/>
+		<system-out>PASS budget
+</system-out>
+	</testcase>
+	<testcase name="lab_async_equivalence" classname="lab_async_equivalence" time="0.0100384" status="run">
+		<properties/>
+		<system-out>PASS equivalence
+</system-out>
+	</testcase>
+	<testcase name="lab_async_parent_bound" classname="lab_async_parent_bound" time="0.0112654" status="run">
+		<properties/>
+		<system-out>PASS parent_bound
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_paging" classname="lab_capacity_paging" time="0.0925721" status="run">
+		<properties/>
+		<system-out>paging passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_pins" classname="lab_capacity_pins" time="0.015886" status="run">
+		<properties/>
+		<system-out>pins passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_leases" classname="lab_capacity_leases" time="0.0104936" status="run">
+		<properties/>
+		<system-out>leases passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_lru" classname="lab_capacity_lru" time="0.0147484" status="run">
+		<properties/>
+		<system-out>lru passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_random" classname="lab_capacity_random" time="0.363661" status="run">
+		<properties/>
+		<system-out>random passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_reuse" classname="lab_capacity_reuse" time="0.0159708" status="run">
+		<properties/>
+		<system-out>reuse passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_flush" classname="lab_capacity_flush" time="0.0454493" status="run">
+		<properties/>
+		<system-out>flush passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_writeback" classname="lab_capacity_writeback" time="0.0615064" status="run">
+		<properties/>
+		<system-out>writeback passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_striped_replay" classname="lab_capacity_striped_replay" time="0.133477" status="run">
+		<properties/>
+		<system-out>striped_replay passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_failure" classname="lab_capacity_failure" time="0.0636959" status="run">
+		<properties/>
+		<system-out>failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_ownership" classname="lab_capacity_ownership" time="0.0298162" status="run">
+		<properties/>
+		<system-out>ownership passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_limits" classname="lab_capacity_limits" time="0.0471199" status="run">
+		<properties/>
+		<system-out>limits passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_kv_append" classname="lab_capacity_kv_append" time="0.197469" status="run">
+		<properties/>
+		<system-out>kv_append passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_kv_truncate" classname="lab_capacity_kv_truncate" time="0.101759" status="run">
+		<properties/>
+		<system-out>kv_truncate passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_kv_capacity" classname="lab_capacity_kv_capacity" time="0.0776247" status="run">
+		<properties/>
+		<system-out>kv_capacity passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_kv_failure" classname="lab_capacity_kv_failure" time="0.0115781" status="run">
+		<properties/>
+		<system-out>kv_failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_kv_cross_page" classname="lab_capacity_kv_cross_page" time="0.031094" status="run">
+		<properties/>
+		<system-out>kv_cross_page passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_ptx_control" classname="lab_async_ptx_control" time="0.0549548" status="run">
+		<properties/>
+		<system-out>async PTX control passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_ptx_labels" classname="lab_async_ptx_labels" time="0.0078183" status="run">
+		<properties/>
+		<system-out>async PTX labels passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_ptx_predicate" classname="lab_async_ptx_predicate" time="0.0076008" status="run">
+		<properties/>
+		<system-out>async PTX predicate passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_ptx_reject" classname="lab_async_ptx_reject" time="0.0072386" status="run">
+		<properties/>
+		<system-out>async PTX reject passed
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_hash" classname="lab_ptx_hash" time="0.0604669" status="run">
+		<properties/>
+		<system-out>PASS ptx hash
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_coverage" classname="lab_ptx_coverage" time="0.0090081" status="run">
+		<properties/>
+		<system-out>PASS ptx coverage
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_predicate" classname="lab_ptx_predicate" time="0.0067604" status="run">
+		<properties/>
+		<system-out>PASS ptx predicate
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_reject_control" classname="lab_ptx_reject_control" time="0.0075242" status="run">
+		<properties/>
+		<system-out>PASS ptx reject_control
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_reject_memory" classname="lab_ptx_reject_memory" time="0.0102511" status="run">
+		<properties/>
+		<system-out>PASS ptx reject_memory
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_reject_module" classname="lab_ptx_reject_module" time="0.0085632" status="run">
+		<properties/>
+		<system-out>PASS ptx reject_module
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_syntax" classname="lab_ptx_syntax" time="0.0088995" status="run">
+		<properties/>
+		<system-out>PASS ptx syntax
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_multiple" classname="lab_ptx_multiple" time="0.0094877" status="run">
+		<properties/>
+		<system-out>PASS ptx multiple
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_limits" classname="lab_ptx_limits" time="0.0092639" status="run">
+		<properties/>
+		<system-out>PASS ptx limits
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_arity" classname="lab_ptx_arity" time="0.0078323" status="run">
+		<properties/>
+		<system-out>PASS ptx arity
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_binary_comments" classname="lab_ptx_binary_comments" time="0.0069434" status="run">
+		<properties/>
+		<system-out>PASS ptx binary_comments
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_access_manifest" classname="lab_ptx_access_manifest" time="0.0071001" status="run">
+		<properties/>
+		<system-out>PASS ptx access_manifest
+</system-out>
+	</testcase>
+	<testcase name="lab_ptx_large" classname="lab_ptx_large" time="0.0212972" status="run">
+		<properties/>
+		<system-out>4008 instructions rewrite_ms=6.7702
+PASS ptx large
+</system-out>
+	</testcase>
+	<testcase name="lab_cold_hot" classname="lab_cold_hot" time="0.0518288" status="run">
+		<properties/>
+		<system-out>PASS cold_hot
+</system-out>
+	</testcase>
+	<testcase name="lab_split" classname="lab_split" time="0.0099141" status="run">
+		<properties/>
+		<system-out>PASS split
+</system-out>
+	</testcase>
+	<testcase name="lab_backpressure" classname="lab_backpressure" time="0.015108" status="run">
+		<properties/>
+		<system-out>PASS backpressure
+</system-out>
+	</testcase>
+	<testcase name="lab_invalid" classname="lab_invalid" time="0.0092762" status="run">
+		<properties/>
+		<system-out>PASS invalid
+</system-out>
+	</testcase>
+	<testcase name="lab_fault" classname="lab_fault" time="0.0086863" status="run">
+		<properties/>
+		<system-out>PASS fault
+</system-out>
+	</testcase>
+	<testcase name="lab_limit" classname="lab_limit" time="0.0088888" status="run">
+		<properties/>
+		<system-out>PASS limit
+</system-out>
+	</testcase>
+	<testcase name="lab_frontier" classname="lab_frontier" time="0.0089679" status="run">
+		<properties/>
+		<system-out>PASS frontier
+</system-out>
+	</testcase>
+	<testcase name="lab_batch_parallel" classname="lab_batch_parallel" time="0.0098066" status="run">
+		<properties/>
+		<system-out>parallel_ps=1003868 serial_ps=2002201
+PASS batch_parallel
+</system-out>
+	</testcase>
+	<testcase name="lab_batch_arrivals" classname="lab_batch_arrivals" time="0.0088488" status="run">
+		<properties/>
+		<system-out>PASS batch_arrivals
+</system-out>
+	</testcase>
+	<testcase name="lab_batch_union" classname="lab_batch_union" time="0.0096394" status="run">
+		<properties/>
+		<system-out>PASS batch_union
+</system-out>
+	</testcase>
+	<testcase name="lab_storage_environment_gpu" classname="lab_storage_environment_gpu" time="0.340703" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>gpu_requests=1024 media_requests=8 refreshes=1 prefetch_useful=1 temperature_c=25.0052
+storage environment GPU passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_mixed" classname="lab_shared_gpu_mixed" time="0.25274" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>gpu_requests=512 media_requests=5 overlap=1 dependencies=0 sectors=4288 replayed_pages=5
+shared GPU mixed passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_pressure" classname="lab_shared_gpu_pressure" time="0.165884" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>gpu_requests=128 media_requests=5 overlap=1 dependencies=0 sectors=1216 replayed_pages=5
+shared GPU pressure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_owner" classname="lab_shared_gpu_owner" time="0.355555" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>gpu_requests=512 media_requests=5 overlap=1 dependencies=0 sectors=4288 replayed_pages=5
+shared GPU owner passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_failure" classname="lab_shared_gpu_failure" time="0.39843" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>shared GPU failure passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_abort" classname="lab_shared_gpu_abort" time="0.784768" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>shared GPU abort passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_frame_guard" classname="lab_shared_gpu_frame_guard" time="0.134316" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>shared GPU frame_guard passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_scaled" classname="lab_shared_gpu_scaled" time="0.298706" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>gpu_requests=512 media_requests=5 overlap=1 dependencies=0 sectors=4288 replayed_pages=5
+shared GPU scaled passed
+</system-out>
+	</testcase>
+	<testcase name="lab_shared_gpu_kv" classname="lab_shared_gpu_kv" time="0.232394" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>shared GPU kv passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_u8" classname="lab_async_warp_u8" time="0.165774" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp u8 passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_u16" classname="lab_async_warp_u16" time="0.109265" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp u16 passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_u32" classname="lab_async_warp_u32" time="0.10096" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp u32 passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_u64" classname="lab_async_warp_u64" time="0.0989894" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp u64 passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_u128" classname="lab_async_warp_u128" time="0.0973446" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp u128 passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_partial" classname="lab_async_warp_partial" time="0.0997919" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp partial passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_sparse" classname="lab_async_warp_sparse" time="0.101851" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp sparse passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_layout" classname="lab_async_warp_layout" time="0.0955498" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp layout passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_range" classname="lab_async_warp_range" time="0.116927" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp range passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_warp_drain" classname="lab_async_warp_drain" time="0.257169" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>warp drain passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_reuse" classname="lab_live_gpu_reuse" time="0.288151" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live reuse passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_gap" classname="lab_live_gpu_gap" time="0.157264" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live gap passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_empty" classname="lab_live_gpu_empty" time="0.108739" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live empty passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_borrow" classname="lab_live_gpu_borrow" time="0.110124" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live borrow passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_owner" classname="lab_live_gpu_owner" time="0.115301" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live owner passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_capture" classname="lab_live_gpu_capture" time="0.103054" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live capture passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_invalid" classname="lab_live_gpu_invalid" time="0.228275" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live invalid passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_abandon" classname="lab_live_gpu_abandon" time="0.374465" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live abandon passed
+</system-out>
+	</testcase>
+	<testcase name="lab_live_gpu_budget" classname="lab_live_gpu_budget" time="0.11981" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>live budget passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_example" classname="lab_async_example" time="0.177442" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>completed=250 peak_inflight=84 active_launches=2 drained=1
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_ctas" classname="lab_async_gpu_ctas" time="0.168389" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=64 peak_parents=32 peak_registered_globals=7 peak_active_launches=1
+PASS ctas
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_divergent" classname="lab_async_gpu_divergent" time="0.100631" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=62 peak_parents=21 peak_registered_globals=3 peak_active_launches=1
+PASS divergent
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_kernels" classname="lab_async_gpu_kernels" time="0.124914" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=128 peak_parents=64 peak_registered_globals=5 peak_active_launches=2
+PASS kernels
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_serial" classname="lab_async_gpu_serial" time="0.122043" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=128 peak_parents=32 peak_registered_globals=6 peak_active_launches=1
+PASS serial
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_oversubscribed" classname="lab_async_gpu_oversubscribed" time="0.210874" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>ctas=1169 resident_upper_bound=1152
+requests=1169 peak_parents=1152 peak_registered_globals=14 peak_active_launches=1
+PASS oversubscribed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_span" classname="lab_async_gpu_span" time="0.133524" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=64 peak_parents=32 peak_registered_globals=12 peak_active_launches=1
+PASS span
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_typed" classname="lab_async_gpu_typed" time="0.103484" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=64 peak_parents=31 peak_registered_globals=8 peak_active_launches=1
+PASS typed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_empty" classname="lab_async_gpu_empty" time="0.10095" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=0 peak_parents=0 peak_registered_globals=1 peak_active_launches=0
+PASS empty
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_scaled" classname="lab_async_gpu_scaled" time="0.108693" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=64 peak_parents=32 peak_registered_globals=7 peak_active_launches=1
+PASS scaled
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_pressure" classname="lab_async_gpu_pressure" time="0.148701" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=256 peak_parents=128 peak_registered_globals=64 peak_active_launches=1
+PASS pressure
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_audit" classname="lab_async_gpu_audit" time="0.124748" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=64 peak_parents=32 peak_registered_globals=8 peak_active_launches=1
+PASS audit
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_validation" classname="lab_async_gpu_validation" time="0.101368" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>requests=64 peak_parents=32 peak_registered_globals=5 peak_active_launches=1
+PASS validation
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_invalid" classname="lab_async_gpu_invalid" time="0.0969961" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS invalid
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_ticket" classname="lab_async_gpu_ticket" time="0.101414" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS ticket
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_abandon" classname="lab_async_gpu_abandon" time="0.111292" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS abandon
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_identity" classname="lab_async_gpu_identity" time="0.0982953" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS identity
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_backdate" classname="lab_async_gpu_backdate" time="0.0968658" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS backdate
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_no_service" classname="lab_async_gpu_no_service" time="0.110112" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS no_service
+</system-out>
+	</testcase>
+	<testcase name="lab_async_gpu_backend_error" classname="lab_async_gpu_backend_error" time="0.118439" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS backend_error
+</system-out>
+	</testcase>
+	<testcase name="lab_framework_ptx_compare" classname="lab_framework_ptx_compare" time="0.357482" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>framework PTX compare requests=1024 source=faed231a5c3df3b6843bf581cefebdea7d580b19fc688908617566792dfa4928
+</system-out>
+	</testcase>
+	<testcase name="lab_framework_ptx_precedence" classname="lab_framework_ptx_precedence" time="0.24431" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>framework PTX precedence requests=2048 source=faed231a5c3df3b6843bf581cefebdea7d580b19fc688908617566792dfa4928
+</system-out>
+	</testcase>
+	<testcase name="lab_framework_ptx_missing" classname="lab_framework_ptx_missing" time="0.176006" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="lab_async_module_control" classname="lab_async_module_control" time="0.25643" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>launches=1 requests=159 peak_launches=1
+async module control passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_concurrent" classname="lab_async_module_concurrent" time="0.165232" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>launches=2 requests=318 peak_launches=2
+async module concurrent passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_reuse" classname="lab_async_module_reuse" time="0.208763" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>launches=10 requests=1590 peak_launches=2
+async module reuse passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_identity" classname="lab_async_module_identity" time="0.166001" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>launches=1 requests=159 peak_launches=1
+async module identity passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_invalid" classname="lab_async_module_invalid" time="0.142728" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>async module invalid passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_store" classname="lab_async_module_store" time="0.137181" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>async module store passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_timeout" classname="lab_async_module_timeout" time="0.337947" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>async module timeout passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_capacity" classname="lab_async_module_capacity" time="0.147818" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>launches=1 requests=159 peak_launches=1
+async module capacity passed
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_widths" classname="lab_async_module_widths" time="1.69331" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>typed_cases=38 requests=608
+</system-out>
+	</testcase>
+	<testcase name="lab_async_module_wait" classname="lab_async_module_wait" time="0.142801" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>launches=1 requests=159 peak_launches=1
+async module wait passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_framework" classname="lab_inject_framework" time="0.413779" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+framework injected requests=2048 peak=2
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_concurrent" classname="lab_inject_async_concurrent" time="0.299204" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] cannot free a borrowed input before unloading modules (800)
+[HBFLab inject] foreign/stale function handle (400)
+async injection concurrent requests=4096 peak=2
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_reuse" classname="lab_inject_async_reuse" time="0.542745" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] cannot free a borrowed input before unloading modules (800)
+[HBFLab inject] foreign/stale function handle (400)
+async injection reuse requests=16384 peak=2
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_proc" classname="lab_inject_async_proc" time="0.242699" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] cannot free a borrowed input before unloading modules (800)
+[HBFLab inject] foreign/stale function handle (400)
+async injection proc requests=4096 peak=2
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_fault" classname="lab_inject_async_fault" time="0.148984" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] live timing terminal status 1
+failure surfaced at synchronize
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_events" classname="lab_inject_async_events" time="0.263376" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] cannot free a borrowed input before unloading modules (800)
+[HBFLab inject] foreign/stale function handle (400)
+async injection events requests=4096 peak=2
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_fault_event" classname="lab_inject_async_fault_event" time="0.158393" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] live timing terminal status 1
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_async_fault_query" classname="lab_inject_async_fault_query" time="0.156659" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] live timing terminal status 1
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_cli" classname="lab_inject_cli" time="0.106157" status="run">
+		<properties>
+			<property name="cmake_labels" value="injection"/>
+		</properties>
+		<system-out>input/output argument indices must differ
+injection option exceeds limit
+Injected child exited with status 37
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_baseline" classname="lab_inject_baseline" time="0.0990482" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>baseline passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_direct" classname="lab_inject_direct" time="0.213112" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+direct passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_exports" classname="lab_inject_exports" time="0.217341" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+exports passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_proc" classname="lab_inject_proc" time="0.220555" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+proc passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_proc_old" classname="lab_inject_proc_old" time="0.217529" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+proc_old passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_per_thread" classname="lab_inject_per_thread" time="0.208337" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+per_thread passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_per_thread_memory" classname="lab_inject_per_thread_memory" time="0.208656" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+per_thread_memory passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_stream" classname="lab_inject_stream" time="0.213655" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+stream passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_file" classname="lab_inject_file" time="0.228794" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+file passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_load_ex" classname="lab_inject_load_ex" time="0.222506" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+load_ex passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_reject" classname="lab_inject_reject" time="0.215147" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] injection requires configured single CTA, no shared bytes or packed arguments (801)
+[HBFLab inject] PTX line 16: unsupported instruction/control flow: bra
+[HBFLab inject] fatbin injection is unsupported (801)
+[HBFLab inject] application JIT options are unsupported (801)
+[HBFLab inject] API outside injected Driver subset (801)
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+reject passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_thread_owner" classname="lab_inject_thread_owner" time="0.221018" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] one host thread owns the injected session (801)
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+thread_owner passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_lease" classname="lab_inject_lease" time="0.218548" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] cannot free a borrowed input before unloading modules (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] write to borrowed readonly input (800)
+[HBFLab inject] unload injected modules before releasing context (800)
+[HBFLab inject] unload injected modules before resetting context (800)
+[HBFLab inject] readonly input changed while modules are live (1)
+[HBFLab inject] served module=0000000000100001 requests=8 status=0
+[HB...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_multiple" classname="lab_inject_multiple" time="0.223325" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] accepted PTX module 0000000000100021
+[HBFLab inject] foreign/stale function handle (400)
+[HBFLab inject] served module=0000000000100021 requests=8 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=2 requests=8
+multiple passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_warp" classname="lab_inject_warp" time="0.216474" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=1 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=1
+warp passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_exit_live" classname="lab_inject_exit_live" time="0.216512" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+injected launches=1 requests=4
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_bounds" classname="lab_inject_bounds" time="0.211237" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] borrowed range must belong to a device allocation in this context
+[HBFLab inject] unreadable application argument (1)
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+bounds passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_graph" classname="lab_inject_graph" time="0.211625" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] API outside injected Driver subset (801)
+[HBFLab inject] graph capture is unsupported (801)
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+graph passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_reload" classname="lab_inject_reload" time="0.337304" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] accepted PTX module 0000000000100021
+[HBFLab inject] served module=0000000000100021 requests=8 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=2 requests=8
+reload passed
+</system-out>
+	</testcase>
+	<testcase name="lab_inject_quoted" classname="lab_inject_quoted" time="0.225078" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;injection"/>
+		</properties>
+		<system-out>[HBFLab inject] accepted PTX module 0000000000100001
+[HBFLab inject] served module=0000000000100001 requests=4 status=0
+[HBFLab inject] foreign/stale module handle (400)
+injected launches=1 requests=4
+quoted passed
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_gpu_writeback" classname="lab_capacity_gpu_writeback" time="0.158205" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>writeback passed, device bytes=4096
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_gpu_pins" classname="lab_capacity_gpu_pins" time="0.0998176" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>pins passed, device bytes=8192
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_gpu_capture" classname="lab_capacity_gpu_capture" time="0.0900268" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>capture passed, device bytes=4096
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_gpu_kv" classname="lab_capacity_gpu_kv" time="0.155325" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>kv passed, device bytes=4096
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_gpu_kv_cross_page" classname="lab_capacity_gpu_kv_cross_page" time="0.118378" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>kv_cross_page passed, device bytes=4096
+</system-out>
+	</testcase>
+	<testcase name="lab_capacity_gpu_tail" classname="lab_capacity_gpu_tail" time="0.0936443" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>tail passed, device bytes=4096
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_hit" classname="lab_module_cache_hit" time="0.261584" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache hit jit=1 hits=1 evictions=0 bytes=76648
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_bindings" classname="lab_module_cache_bindings" time="0.201713" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache bindings jit=1 hits=1 evictions=0 bytes=76648
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_clear" classname="lab_module_cache_clear" time="0.296839" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache clear jit=2 hits=1 evictions=0 bytes=76648
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_disabled" classname="lab_module_cache_disabled" time="0.305652" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache disabled jit=2 hits=0 evictions=0 bytes=0
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_bytes" classname="lab_module_cache_bytes" time="0.300197" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache bytes jit=2 hits=0 evictions=0 bytes=0
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_lru" classname="lab_module_cache_lru" time="0.495262" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache lru jit=4 hits=2 evictions=2 bytes=153296
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_byte_lru" classname="lab_module_cache_byte_lru" time="0.397593" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache byte_lru jit=1 hits=0 evictions=0 bytes=76648
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_failure" classname="lab_module_cache_failure" time="0.402287" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache failure jit=3 hits=0 evictions=0 bytes=76648
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_isolation" classname="lab_module_cache_isolation" time="0.298203" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache isolation jit=1 hits=0 evictions=0 bytes=0
+</system-out>
+	</testcase>
+	<testcase name="lab_module_cache_stream_order" classname="lab_module_cache_stream_order" time="0.209193" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS cache stream_order jit=1 hits=0 evictions=0 bytes=76648
+</system-out>
+	</testcase>
+	<testcase name="lab_module_file" classname="lab_module_file" time="0.249775" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PTX file -&gt; rewrite -&gt; JIT -&gt; EventLab -&gt; GPU result: PASS
+threads=45 requests=2 sectors=3
+artifact=83fc4ec5652fd6acdc1c81672f179ab3f59b5d1e0928831035c78eba209f4604
+cubin=3c787e9ca8a20442de2d205665626b3f7e9b2911e5864b82d960bba9f7a01085
+</system-out>
+	</testcase>
+	<testcase name="lab_module_thread" classname="lab_module_thread" time="0.257351" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module thread status=0 requests=8 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_warp" classname="lab_module_warp" time="0.201595" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module warp status=0 requests=4 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_predicate" classname="lab_module_predicate" time="0.202304" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module predicate status=0 requests=4 instance=1 artifact=ae6aee1215a181fef9de055d034e740cb210cc9d902696079fa43a0c42ae50be
+</system-out>
+	</testcase>
+	<testcase name="lab_module_inverted" classname="lab_module_inverted" time="0.196713" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module inverted status=0 requests=4 instance=1 artifact=bb8104ba87fb3a3976a9ad8929553e648ac34d040fccde055fb5e9975d197040
+</system-out>
+	</testcase>
+	<testcase name="lab_module_empty" classname="lab_module_empty" time="0.196867" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module empty status=0 requests=0 instance=1 artifact=129dc8aee2243eaf0185f3f8f99ee1dbb7422ddbd669c5fc729de29413240b8e
+</system-out>
+	</testcase>
+	<testcase name="lab_module_vector" classname="lab_module_vector" time="0.199105" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module vector status=0 requests=4 instance=1 artifact=e527fcd11afaa1e4cfcd1eb861f1aeb891bb06f12a09f9726dc5d871dc21dc7a
+</system-out>
+	</testcase>
+	<testcase name="lab_module_typed" classname="lab_module_typed" time="0.200734" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module typed status=0 requests=16 instance=1 artifact=f45c3140a782b4232727b766349efad92b3ad0fc4f3e275ad4b638e9db781165
+</system-out>
+	</testcase>
+	<testcase name="lab_module_dependent" classname="lab_module_dependent" time="0.197504" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module dependent status=0 requests=16 instance=1 artifact=f06a4b5c420fb22308084c4a9e8a4418fc3b114e8610bd4782410d2ea7dbcf0c
+</system-out>
+	</testcase>
+	<testcase name="lab_module_signed" classname="lab_module_signed" time="0.196925" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module signed status=0 requests=8 instance=1 artifact=61e6b517c2d0ae37c35e092b58605bcaf9b4a4b3d7437692f21c5409cf56f864
+</system-out>
+	</testcase>
+	<testcase name="lab_module_store_predicate" classname="lab_module_store_predicate" time="0.203245" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module store_predicate status=0 requests=8 instance=1 artifact=cf266dd58351a8a1f8803fe9d9d059d17604fa615ba226be794ad28b0f569b48
+</system-out>
+	</testcase>
+	<testcase name="lab_module_scaled" classname="lab_module_scaled" time="0.20867" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module scaled status=0 requests=8 instance=1 artifact=a03d3e5fcaacaf2675e4c7b4ba9f11177b0dbd4955d2b51c2ee5f1b70ebbd62d
+</system-out>
+	</testcase>
+	<testcase name="lab_module_identity" classname="lab_module_identity" time="0.310485" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module identity status=0 requests=8 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_validation" classname="lab_module_validation" time="0.247167" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module validation status=0 requests=8 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_multiple" classname="lab_module_multiple" time="0.196615" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module multiple status=0 requests=8 instance=1 artifact=f57c3c05154287c74d50ca06cc6967daa963765d70d1267df76014f9b11931db
+</system-out>
+	</testcase>
+	<testcase name="lab_module_stream" classname="lab_module_stream" time="0.195152" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module stream status=0 requests=8 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_alignment" classname="lab_module_alignment" time="0.203751" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module alignment status=1 requests=0 instance=1 artifact=ab3a61fd37ece11cbcd80371d2bc233b3da3e10ffbf4f82fc8052c6e950d9aec
+</system-out>
+	</testcase>
+	<testcase name="lab_module_invalid" classname="lab_module_invalid" time="0.196181" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module invalid status=1 requests=0 instance=1 artifact=5b944120f84473c16dcba45e87fa1cae4245793e728982ecfbd5d31ea80a009e
+</system-out>
+	</testcase>
+	<testcase name="lab_module_output_bounds" classname="lab_module_output_bounds" time="0.205762" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module output_bounds status=1 requests=4 instance=1 artifact=a576575a0c63a9fdeba784283e52b9036bf1962b76766ed43bc26ff534db9b57
+</system-out>
+	</testcase>
+	<testcase name="lab_module_readonly_write" classname="lab_module_readonly_write" time="0.210104" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module readonly_write status=1 requests=4 instance=1 artifact=3a12bf138d30f598801478f2ac99deef1b5739f76bc62f352b74eaf38c8356be
+</system-out>
+	</testcase>
+	<testcase name="lab_module_timeout" classname="lab_module_timeout" time="0.20056" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module timeout status=4 requests=4 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_backend_error" classname="lab_module_backend_error" time="0.199944" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module backend_error status=3 requests=4 instance=1 artifact=8e9af307887a52fe91a1c0459b6e2191d5069e71f95758be237c6f167962dc10
+</system-out>
+	</testcase>
+	<testcase name="lab_module_coverage" classname="lab_module_coverage" time="4.10137" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS module coverage combinations=38 requests=152
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_normal" classname="lab_gpu_normal" time="0.144136" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>step,modeled_ps,delay_ns,host_roundtrip_ns,total_access_ns,overshoot_ns
+0,112201,113,48672,50848,50735
+1,112201,113,20416,22560,22447
+2,2301,3,12960,15040,15037
+3,2301,3,12768,14976,14973
+4,2301,3,11456,13632,13629
+5,2301,3,10208,12288,12285
+6,2301,3,10336,12416,12413
+7,2301,3,10080,12160,12157
+8,2301,3,10368,12448,12445
+9,2301,3,10272,12352,12349
+10,2301,3,10336,12416,12413
+11,2301,3,10304,12416,12413
+12,2301,3,10304,12448,12445
+13,2301,3,10304,12352,12349
+14,2301,3,10304,12416,12413
+15,2301,3,10336,12448,12445
+requests=16 senses=2 cache_hits=14 checksum=14088
+PASS normal
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_scaled" classname="lab_gpu_scaled" time="0.129924" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>step,modeled_ps,delay_ns,host_roundtrip_ns,total_access_ns,overshoot_ns
+0,112201,11220100,39744,11220832,732
+1,112201,11220100,53696,11221088,988
+2,2301,230100,43488,230880,780
+3,2301,230100,35712,231072,972
+4,2301,230100,44672,230816,716
+5,2301,230100,38464,230816,716
+6,2301,230100,42272,230656,556
+7,2301,230100,40832,230720,620
+8,2301,230100,29280,230944,844
+9,2301,230100,20416,231040,940
+10,2301,230100,17856,230752,652
+11,2301,230100,20448,230944,844
+12,2301,230100,19264,230720,620
+13,2301,230100,22912,230848,748
+14,2301,230100,19264,230848,748
+15,2301,230100,16672,230720,620
+requests=16 senses=2 cache_hits=14 checksum=14088
+PASS scaled
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_invalid" classname="lab_gpu_invalid" time="0.0917224" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS invalid
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_timeout" classname="lab_gpu_timeout" time="0.0984717" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS timeout
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_no_service" classname="lab_gpu_no_service" time="0.0918452" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS no_service
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_backend_error" classname="lab_gpu_backend_error" time="0.0862898" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS backend_error
+</system-out>
+	</testcase>
+	<testcase name="lab_gpu_unsupported" classname="lab_gpu_unsupported" time="0.097519" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS unsupported
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_typed" classname="lab_coop_typed" time="0.152064" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=8 slots=8 requests=40 sectors=40 peak_registered_globals=8
+PASS typed
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_span" classname="lab_coop_span" time="0.229984" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=4 slots=4 requests=12 sectors=780 peak_registered_globals=7
+PASS span
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_threads" classname="lab_coop_threads" time="0.134001" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=64 requests=192 sectors=576 peak_registered_globals=63
+PASS threads
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_skip" classname="lab_coop_skip" time="0.102376" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=64 requests=126 sectors=378 peak_registered_globals=30
+PASS skip
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_dense" classname="lab_coop_dense" time="0.102346" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=6 sectors=12 peak_registered_globals=2
+PASS dense
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_sparse" classname="lab_coop_sparse" time="0.127661" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=6 sectors=192 peak_registered_globals=64
+PASS sparse
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_overlap" classname="lab_coop_overlap" time="0.0901121" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=6 sectors=6 peak_registered_globals=2
+PASS overlap
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_partial" classname="lab_coop_partial" time="0.0973352" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=45 slots=2 requests=6 sectors=9 peak_registered_globals=1
+PASS partial
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_masked" classname="lab_coop_masked" time="0.0907582" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=6 sectors=12 peak_registered_globals=2
+PASS masked
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_empty" classname="lab_coop_empty" time="0.0990239" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=0 sectors=0 peak_registered_globals=1
+PASS empty
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_ranges" classname="lab_coop_ranges" time="0.0996408" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=6 sectors=24 peak_registered_globals=4
+PASS ranges
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_invalid" classname="lab_coop_invalid" time="0.0995239" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS invalid
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_alignment" classname="lab_coop_alignment" time="0.0916993" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS alignment
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_oversize" classname="lab_coop_oversize" time="0.106715" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS oversize
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_badmask" classname="lab_coop_badmask" time="0.0913855" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS badmask
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_timeout" classname="lab_coop_timeout" time="0.107696" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS timeout
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_pressure" classname="lab_coop_pressure" time="0.169131" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=8 slots=8 requests=24 sectors=1560 peak_registered_globals=2
+PASS pressure
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_max_threads" classname="lab_coop_max_threads" time="0.613649" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=256 slots=256 requests=768 sectors=1536 peak_registered_globals=128
+PASS max_threads
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_warp_overflow" classname="lab_coop_warp_overflow" time="0.086453" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS warp_overflow
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_backend_error" classname="lab_coop_backend_error" time="0.0889687" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>PASS backend_error
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_scaled" classname="lab_coop_scaled" time="0.166542" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=64 requests=192 sectors=384 peak_registered_globals=64
+PASS scaled
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_warp_typed" classname="lab_coop_warp_typed" time="0.0941027" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=64 slots=2 requests=10 sectors=320 peak_registered_globals=64
+PASS warp_typed
+</system-out>
+	</testcase>
+	<testcase name="lab_coop_max_warps" classname="lab_coop_max_warps" time="0.0883786" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>threads=256 slots=8 requests=24 sectors=48 peak_registered_globals=5
+PASS max_warps
+</system-out>
+	</testcase>
+	<testcase name="host_completion_empty" classname="host_completion_empty" time="0.0487435" status="run">
+		<properties/>
+		<system-out>PASS host_completion empty
+</system-out>
+	</testcase>
+	<testcase name="host_completion_partial" classname="host_completion_partial" time="0.0104139" status="run">
+		<properties/>
+		<system-out>PASS host_completion partial
+</system-out>
+	</testcase>
+	<testcase name="host_completion_admission" classname="host_completion_admission" time="0.0104326" status="run">
+		<properties/>
+		<system-out>PASS host_completion admission
+</system-out>
+	</testcase>
+	<testcase name="host_completion_future" classname="host_completion_future" time="0.0104462" status="run">
+		<properties/>
+		<system-out>PASS host_completion future
+</system-out>
+	</testcase>
+	<testcase name="host_completion_feedback" classname="host_completion_feedback" time="0.0288127" status="run">
+		<properties/>
+		<system-out>PASS host_completion feedback
+</system-out>
+	</testcase>
+	<testcase name="host_completion_replay" classname="host_completion_replay" time="0.021313" status="run">
+		<properties/>
+		<system-out>PASS host_completion replay
+</system-out>
+	</testcase>
+	<testcase name="host_completion_pending_retry" classname="host_completion_pending_retry" time="0.0216485" status="run">
+		<properties/>
+		<system-out>PASS host_completion pending_retry
+</system-out>
+	</testcase>
+	<testcase name="host_completion_timeout_retry" classname="host_completion_timeout_retry" time="0.010007" status="run">
+		<properties/>
+		<system-out>PASS host_completion timeout_retry
+</system-out>
+	</testcase>
+	<testcase name="host_completion_dependency_cancel" classname="host_completion_dependency_cancel" time="0.0109182" status="run">
+		<properties/>
+		<system-out>PASS host_completion dependency_cancel
+</system-out>
+	</testcase>
+	<testcase name="host_completion_recovery_failure" classname="host_completion_recovery_failure" time="0.0246729" status="run">
+		<properties/>
+		<system-out>PASS host_completion recovery_failure
+</system-out>
+	</testcase>
+	<testcase name="host_completion_history" classname="host_completion_history" time="0.0186561" status="run">
+		<properties/>
+		<system-out>PASS host_completion history
+</system-out>
+	</testcase>
+	<testcase name="host_completion_burst_finite" classname="host_completion_burst_finite" time="0.0119136" status="run">
+		<properties/>
+		<system-out>PASS host_completion burst_finite
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_nested" classname="runtime_profile_nested" time="0.0473619" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile nested
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_disabled" classname="runtime_profile_disabled" time="0.0060495" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile disabled
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_unwind" classname="runtime_profile_unwind" time="0.0058943" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile unwind
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_export" classname="runtime_profile_export" time="0.0058043" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile export
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_isolation" classname="runtime_profile_isolation" time="0.0056327" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile isolation
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_admission" classname="runtime_profile_admission" time="0.0078102" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile admission
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_normal" classname="runtime_profile_normal" time="0.0144114" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile normal
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_replay" classname="runtime_profile_replay" time="0.0232291" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile replay
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_timeout" classname="runtime_profile_timeout" time="0.0127288" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile timeout
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_pending" classname="runtime_profile_pending" time="0.0373212" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile pending
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_config" classname="runtime_profile_config" time="0.0063978" status="run">
+		<properties/>
+		<system-out>PASS runtime_profile config
+</system-out>
+	</testcase>
+	<testcase name="runtime_profile_cli" classname="runtime_profile_cli" time="0.233933" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="tensor_compute_tail" classname="tensor_compute_tail" time="0.0528829" status="run">
+		<properties/>
+		<system-out>PASS compute tail
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_zero" classname="tensor_compute_zero" time="0.0088648" status="run">
+		<properties/>
+		<system-out>PASS compute zero
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_empty" classname="tensor_compute_empty" time="0.0092264" status="run">
+		<properties/>
+		<system-out>PASS compute empty
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_limit" classname="tensor_compute_limit" time="0.0061099" status="run">
+		<properties/>
+		<system-out>PASS compute limit
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_overflow" classname="tensor_compute_overflow" time="0.0057174" status="run">
+		<properties/>
+		<system-out>PASS compute overflow
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_guards" classname="tensor_compute_guards" time="0.0089579" status="run">
+		<properties/>
+		<system-out>PASS compute guards
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_ranges" classname="tensor_compute_ranges" time="0.0059491" status="run">
+		<properties/>
+		<system-out>PASS compute ranges
+</system-out>
+	</testcase>
+	<testcase name="tensor_compute_identity" classname="tensor_compute_identity" time="0.0129657" status="run">
+		<properties/>
+		<system-out>PASS compute identity
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_demo" classname="tensor_bridge_demo" time="0.0708917" status="run">
+		<properties/>
+		<system-out>BRIDGE access-offered access=1 global=0 tick=0
+BRIDGE global-registered access=1 global=1 tick=0
+BRIDGE input-backpressured access=1 global=2 tick=0
+BRIDGE global-finished access=1 global=1 tick=1523243
+BRIDGE global-registered access=1 global=2 tick=1523243
+BRIDGE global-finished access=1 global=2 tick=2151507
+BRIDGE access-finished access=1 global=0 tick=2151507
+BRIDGE compute-start access=2 global=0 tick=2151507
+BRIDGE access-offered access=2 global=0 tick=2401507
+BRIDGE global-registered access=2 global=3 tick=2401507
+BRIDGE input-backpressured access=2 global=4 tick=2401507
+BRIDGE global-finished access=2 global=3 tick=2618729
+BRIDGE global-registered access=2 global=4 tick=2618729
+BRIDGE global-finished access=2 global=4 tick=2835951
+BRIDGE access-finished access=2 global=0 tick=2835951
+ACCESS offered=2401507 completed=2835951 globals=2 input_backpressure=1
+BRIDGE access-offered access=3 global=0 tick=2835951
+BRIDGE global-registered access=3 global=5 tick=2835951
+BRIDGE global-finished access=3 global=...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_handoff" classname="session_handoff_handoff" time="0.045269" status="run">
+		<properties/>
+		<system-out>PASS session_handoff handoff
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_zero_compute" classname="session_handoff_zero_compute" time="0.0089151" status="run">
+		<properties/>
+		<system-out>PASS session_handoff zero_compute
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_future_no_skip" classname="session_handoff_future_no_skip" time="0.0073407" status="run">
+		<properties/>
+		<system-out>PASS session_handoff future_no_skip
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_guards" classname="session_handoff_guards" time="0.0075848" status="run">
+		<properties/>
+		<system-out>PASS session_handoff guards
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_one_shot" classname="session_handoff_one_shot" time="0.0077177" status="run">
+		<properties/>
+		<system-out>PASS session_handoff one_shot
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_expired" classname="session_handoff_expired" time="0.0079583" status="run">
+		<properties/>
+		<system-out>PASS session_handoff expired
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_closed" classname="session_handoff_closed" time="0.0086832" status="run">
+		<properties/>
+		<system-out>PASS session_handoff closed
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_capacity" classname="session_handoff_capacity" time="0.0068991" status="run">
+		<properties/>
+		<system-out>PASS session_handoff capacity
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_error" classname="session_handoff_error" time="0.0073543" status="run">
+		<properties/>
+		<system-out>PASS session_handoff error
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_total_limit" classname="session_handoff_total_limit" time="0.0074394" status="run">
+		<properties/>
+		<system-out>PASS session_handoff total_limit
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_deadline" classname="session_handoff_deadline" time="0.0060225" status="run">
+		<properties/>
+		<system-out>PASS session_handoff deadline
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_reentrant" classname="session_handoff_reentrant" time="0.0071496" status="run">
+		<properties/>
+		<system-out>PASS session_handoff reentrant
+</system-out>
+	</testcase>
+	<testcase name="session_handoff_empty" classname="session_handoff_empty" time="0.0057952" status="run">
+		<properties/>
+		<system-out>PASS session_handoff empty
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_round_trip" classname="tensor_bridge_round_trip" time="0.0536372" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge round_trip
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_backpressure" classname="tensor_bridge_backpressure" time="0.008914" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge backpressure
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_timing" classname="tensor_bridge_timing" time="0.012802" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge timing
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_zero_compute" classname="tensor_bridge_zero_compute" time="0.0076086" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge zero_compute
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_aggregated" classname="tensor_bridge_aggregated" time="0.0198242" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge aggregated
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_multi_channel" classname="tensor_bridge_multi_channel" time="0.0144448" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge multi_channel
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_identity" classname="tensor_bridge_identity" time="0.0124233" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge identity
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_range" classname="tensor_bridge_range" time="0.0057572" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge range
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_registry" classname="tensor_bridge_registry" time="0.0059261" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge registry
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_too_large" classname="tensor_bridge_too_large" time="0.0057713" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge too_large
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_timeout" classname="tensor_bridge_timeout" time="0.0063267" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge timeout
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_stalled" classname="tensor_bridge_stalled" time="0.0061905" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge stalled
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_limit" classname="tensor_bridge_limit" time="0.0058546" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge limit
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_replay" classname="tensor_bridge_replay" time="0.0129254" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge replay
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_failure" classname="tensor_bridge_failure" time="0.0126304" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge failure
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_no_retention" classname="tensor_bridge_no_retention" time="0.0071074" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge no_retention
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_observer" classname="tensor_bridge_observer" time="0.0190197" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge observer
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_burst" classname="tensor_bridge_burst" time="0.0058155" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge burst
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_reentrant" classname="tensor_bridge_reentrant" time="0.0072903" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge reentrant
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_closed" classname="tensor_bridge_closed" time="0.005588" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge closed
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_failure_drain" classname="tensor_bridge_failure_drain" time="0.0166831" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge failure_drain
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_input_contract" classname="tensor_bridge_input_contract" time="0.0071987" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge input_contract
+</system-out>
+	</testcase>
+	<testcase name="tensor_bridge_trace_error" classname="tensor_bridge_trace_error" time="0.0074201" status="run">
+		<properties/>
+		<system-out>PASS tensor_bridge trace_error
+</system-out>
+	</testcase>
+	<testcase name="bounded_input_demo" classname="bounded_input_demo" time="0.0505801" status="run">
+		<properties/>
+		<system-out>GLOBAL 1 success=1 tick=1523243 resident=0
+GLOBAL 2 success=1 tick=2217222 resident=0
+STOP Completed input_retries=4 work=0 units=0 retained=64 result_summaries=2
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_threshold" classname="statistics_stream_threshold" time="0.0455464" status="run">
+		<properties/>
+		<system-out>PASS event stream threshold
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_large_record" classname="statistics_stream_large_record" time="0.0062194" status="run">
+		<properties/>
+		<system-out>PASS event stream large_record
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_finish" classname="statistics_stream_finish" time="0.0062986" status="run">
+		<properties/>
+		<system-out>PASS event stream finish
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_escaping" classname="statistics_stream_escaping" time="0.0057904" status="run">
+		<properties/>
+		<system-out>PASS event stream escaping
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_write_failure" classname="statistics_stream_write_failure" time="0.0065219" status="run">
+		<properties/>
+		<system-out>PASS event stream write_failure
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_flush_failure" classname="statistics_stream_flush_failure" time="0.0060093" status="run">
+		<properties/>
+		<system-out>PASS event stream flush_failure
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_invalid" classname="statistics_stream_invalid" time="0.0063838" status="run">
+		<properties/>
+		<system-out>PASS event stream invalid
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_observational" classname="statistics_stream_observational" time="0.0319091" status="run">
+		<properties/>
+		<system-out>PASS event stream observational
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_replay" classname="statistics_stream_replay" time="0.0389534" status="run">
+		<properties/>
+		<system-out>PASS event stream replay
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_partial" classname="statistics_stream_partial" time="0.0102361" status="run">
+		<properties/>
+		<system-out>PASS event stream partial
+</system-out>
+	</testcase>
+	<testcase name="host_resident_capacity" classname="host_resident_capacity" time="0.0504918" status="run">
+		<properties/>
+		<system-out>PASS resident capacity
+</system-out>
+	</testcase>
+	<testcase name="host_resident_oversized" classname="host_resident_oversized" time="0.0080586" status="run">
+		<properties/>
+		<system-out>PASS resident oversized
+</system-out>
+	</testcase>
+	<testcase name="host_resident_atomic_seal" classname="host_resident_atomic_seal" time="0.0079242" status="run">
+		<properties/>
+		<system-out>PASS resident atomic_seal
+</system-out>
+	</testcase>
+	<testcase name="host_resident_invalid_full" classname="host_resident_invalid_full" time="0.0083465" status="run">
+		<properties/>
+		<system-out>PASS resident invalid_full
+</system-out>
+	</testcase>
+	<testcase name="host_resident_future_budget" classname="host_resident_future_budget" time="0.0079601" status="run">
+		<properties/>
+		<system-out>PASS resident future_budget
+</system-out>
+	</testcase>
+	<testcase name="host_resident_burst_budget" classname="host_resident_burst_budget" time="0.0060001" status="run">
+		<properties/>
+		<system-out>PASS resident burst_budget
+</system-out>
+	</testcase>
+	<testcase name="host_resident_strict_timeout" classname="host_resident_strict_timeout" time="0.0066703" status="run">
+		<properties/>
+		<system-out>PASS resident strict_timeout
+</system-out>
+	</testcase>
+	<testcase name="host_resident_strict_stall" classname="host_resident_strict_stall" time="0.005851" status="run">
+		<properties/>
+		<system-out>PASS resident strict_stall
+</system-out>
+	</testcase>
+	<testcase name="host_resident_summaries" classname="host_resident_summaries" time="0.0091792" status="run">
+		<properties/>
+		<system-out>PASS resident summaries
+</system-out>
+	</testcase>
+	<testcase name="host_resident_sealed_summary" classname="host_resident_sealed_summary" time="0.0091514" status="run">
+		<properties/>
+		<system-out>PASS resident sealed_summary
+</system-out>
+	</testcase>
+	<testcase name="host_resident_failed_summary" classname="host_resident_failed_summary" time="0.0062639" status="run">
+		<properties/>
+		<system-out>PASS resident failed_summary
+</system-out>
+	</testcase>
+	<testcase name="host_resident_replay_collected" classname="host_resident_replay_collected" time="0.0130489" status="run">
+		<properties/>
+		<system-out>PASS resident replay_collected
+</system-out>
+	</testcase>
+	<testcase name="host_resident_replay_merged" classname="host_resident_replay_merged" time="0.0193607" status="run">
+		<properties/>
+		<system-out>PASS resident replay_merged
+</system-out>
+	</testcase>
+	<testcase name="host_resident_missing_retention" classname="host_resident_missing_retention" time="0.0089989" status="run">
+		<properties/>
+		<system-out>PASS resident missing_retention
+</system-out>
+	</testcase>
+	<testcase name="host_resident_pending_retry" classname="host_resident_pending_retry" time="0.0154529" status="run">
+		<properties/>
+		<system-out>PASS resident pending_retry
+</system-out>
+	</testcase>
+	<testcase name="host_resident_callback_retry" classname="host_resident_callback_retry" time="0.0101645" status="run">
+		<properties/>
+		<system-out>PASS resident callback_retry
+</system-out>
+	</testcase>
+	<testcase name="host_resident_offered_time" classname="host_resident_offered_time" time="0.0093828" status="run">
+		<properties/>
+		<system-out>PASS resident offered_time
+</system-out>
+	</testcase>
+	<testcase name="host_resident_origin_invalid" classname="host_resident_origin_invalid" time="0.0058711" status="run">
+		<properties/>
+		<system-out>PASS resident origin_invalid
+</system-out>
+	</testcase>
+	<testcase name="host_resident_retained_failure" classname="host_resident_retained_failure" time="0.005767" status="run">
+		<properties/>
+		<system-out>PASS resident retained_failure
+</system-out>
+	</testcase>
+	<testcase name="host_resident_long_input" classname="host_resident_long_input" time="0.008158" status="run">
+		<properties/>
+		<system-out>PASS resident long_input
+</system-out>
+	</testcase>
+	<testcase name="host_resident_lifetime_limit" classname="host_resident_lifetime_limit" time="0.0074771" status="run">
+		<properties/>
+		<system-out>PASS resident lifetime_limit
+</system-out>
+	</testcase>
+	<testcase name="host_resident_configuration" classname="host_resident_configuration" time="0.0060164" status="run">
+		<properties/>
+		<system-out>PASS resident configuration
+</system-out>
+	</testcase>
+	<testcase name="host_resident_timeout_retry" classname="host_resident_timeout_retry" time="0.008327" status="run">
+		<properties/>
+		<system-out>PASS resident timeout_retry
+</system-out>
+	</testcase>
+	<testcase name="host_resident_callback_backpressure" classname="host_resident_callback_backpressure" time="0.0147427" status="run">
+		<properties/>
+		<system-out>PASS resident callback_backpressure
+</system-out>
+	</testcase>
+	<testcase name="session_demo" classname="session_demo" time="0.101075" status="run">
+		<properties/>
+		<system-out>STOP Paused tick=100000
+GLOBAL 1 tick=1512555 success=1
+GLOBAL 2 tick=1523243 success=1
+GLOBAL 3 tick=1740465 success=1
+STOP Completed tick=1740465 events=1895 input_closed=1 host_drained=1 device_drained=1
+</system-out>
+	</testcase>
+	<testcase name="session_exclusive" classname="session_exclusive" time="0.0471208" status="run">
+		<properties/>
+		<system-out>PASS session exclusive
+</system-out>
+	</testcase>
+	<testcase name="session_empty_frontier" classname="session_empty_frontier" time="0.0079119" status="run">
+		<properties/>
+		<system-out>PASS session empty_frontier
+</system-out>
+	</testcase>
+	<testcase name="session_endpoint_input" classname="session_endpoint_input" time="0.0103643" status="run">
+		<properties/>
+		<system-out>PASS session endpoint_input
+</system-out>
+	</testcase>
+	<testcase name="session_first_atomic" classname="session_first_atomic" time="0.0081695" status="run">
+		<properties/>
+		<system-out>PASS session first_atomic
+</system-out>
+	</testcase>
+	<testcase name="session_late_atomic" classname="session_late_atomic" time="0.0058383" status="run">
+		<properties/>
+		<system-out>PASS session late_atomic
+</system-out>
+	</testcase>
+	<testcase name="session_horizon_guard" classname="session_horizon_guard" time="0.0059168" status="run">
+		<properties/>
+		<system-out>PASS session horizon_guard
+</system-out>
+	</testcase>
+	<testcase name="session_open_drained" classname="session_open_drained" time="0.0076361" status="run">
+		<properties/>
+		<system-out>PASS session open_drained
+</system-out>
+	</testcase>
+	<testcase name="session_close_work" classname="session_close_work" time="0.007812" status="run">
+		<properties/>
+		<system-out>PASS session close_work
+</system-out>
+	</testcase>
+	<testcase name="session_close_empty" classname="session_close_empty" time="0.0060293" status="run">
+		<properties/>
+		<system-out>PASS session close_empty
+</system-out>
+	</testcase>
+	<testcase name="session_open_timeout" classname="session_open_timeout" time="0.0060124" status="run">
+		<properties/>
+		<system-out>PASS session open_timeout
+</system-out>
+	</testcase>
+	<testcase name="session_closed_stalled" classname="session_closed_stalled" time="0.0058508" status="run">
+		<properties/>
+		<system-out>PASS session closed_stalled
+</system-out>
+	</testcase>
+	<testcase name="session_missing_predecessor" classname="session_missing_predecessor" time="0.0106763" status="run">
+		<properties/>
+		<system-out>PASS session missing_predecessor
+</system-out>
+	</testcase>
+	<testcase name="session_feedback_closed" classname="session_feedback_closed" time="0.0090057" status="run">
+		<properties/>
+		<system-out>PASS session feedback_closed
+</system-out>
+	</testcase>
+	<testcase name="session_feedback_guard" classname="session_feedback_guard" time="0.0078313" status="run">
+		<properties/>
+		<system-out>PASS session feedback_guard
+</system-out>
+	</testcase>
+	<testcase name="session_feedback_future" classname="session_feedback_future" time="0.0081069" status="run">
+		<properties/>
+		<system-out>PASS session feedback_future
+</system-out>
+	</testcase>
+	<testcase name="session_feedback_validation" classname="session_feedback_validation" time="0.0075316" status="run">
+		<properties/>
+		<system-out>PASS session feedback_validation
+</system-out>
+	</testcase>
+	<testcase name="session_callback_error" classname="session_callback_error" time="0.0074002" status="run">
+		<properties/>
+		<system-out>PASS session callback_error
+</system-out>
+	</testcase>
+	<testcase name="session_callback_model_error" classname="session_callback_model_error" time="0.0073303" status="run">
+		<properties/>
+		<system-out>PASS session callback_model_error
+</system-out>
+	</testcase>
+	<testcase name="session_limit_total" classname="session_limit_total" time="0.0072855" status="run">
+		<properties/>
+		<system-out>PASS session limit_total
+</system-out>
+	</testcase>
+	<testcase name="session_limit_tick" classname="session_limit_tick" time="0.0073146" status="run">
+		<properties/>
+		<system-out>PASS session limit_tick
+</system-out>
+	</testcase>
+	<testcase name="session_limit_round" classname="session_limit_round" time="0.0076703" status="run">
+		<properties/>
+		<system-out>PASS session limit_round
+</system-out>
+	</testcase>
+	<testcase name="session_time_empty" classname="session_time_empty" time="0.0058569" status="run">
+		<properties/>
+		<system-out>PASS session time_empty
+</system-out>
+	</testcase>
+	<testcase name="session_time_future" classname="session_time_future" time="0.007855" status="run">
+		<properties/>
+		<system-out>PASS session time_future
+</system-out>
+	</testcase>
+	<testcase name="session_entered_tick" classname="session_entered_tick" time="0.0106263" status="run">
+		<properties/>
+		<system-out>PASS session entered_tick
+</system-out>
+	</testcase>
+	<testcase name="session_equivalent" classname="session_equivalent" time="0.0208544" status="run">
+		<properties/>
+		<system-out>PASS session equivalent
+</system-out>
+	</testcase>
+	<testcase name="session_causal_time" classname="session_causal_time" time="0.0075279" status="run">
+		<properties/>
+		<system-out>PASS session causal_time
+</system-out>
+	</testcase>
+	<testcase name="session_recovery" classname="session_recovery" time="0.0097566" status="run">
+		<properties/>
+		<system-out>PASS session recovery
+</system-out>
+	</testcase>
+	<testcase name="session_clock_idle" classname="session_clock_idle" time="0.005962" status="run">
+		<properties/>
+		<system-out>PASS session clock_idle
+</system-out>
+	</testcase>
+	<testcase name="session_frozen_deadline" classname="session_frozen_deadline" time="0.0057768" status="run">
+		<properties/>
+		<system-out>PASS session frozen_deadline
+</system-out>
+	</testcase>
+	<testcase name="session_deadline_endpoint" classname="session_deadline_endpoint" time="0.0064921" status="run">
+		<properties/>
+		<system-out>PASS session deadline_endpoint
+</system-out>
+	</testcase>
+	<testcase name="session_deadline_feedback" classname="session_deadline_feedback" time="0.00771" status="run">
+		<properties/>
+		<system-out>PASS session deadline_feedback
+</system-out>
+	</testcase>
+	<testcase name="session_maximum_boundary" classname="session_maximum_boundary" time="0.0057785" status="run">
+		<properties/>
+		<system-out>PASS session maximum_boundary
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_demo" classname="host_incremental_demo" time="0.0996485" status="run">
+		<properties/>
+		<system-out>GLOBAL 1 state=Success tick=1512555
+GLOBAL 2 state=Success tick=1523243
+GLOBAL 3 state=Success tick=1740465
+PASS incremental split write and completion-driven read; transient state drained
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_split" classname="host_incremental_split" time="0.0507181" status="run">
+		<properties/>
+		<system-out>PASS incremental Host split
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_feedback" classname="host_incremental_feedback" time="0.0188901" status="run">
+		<properties/>
+		<system-out>PASS incremental Host feedback
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_idle" classname="host_incremental_idle" time="0.0076312" status="run">
+		<properties/>
+		<system-out>PASS incremental Host idle
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_atomic" classname="host_incremental_atomic" time="0.0108131" status="run">
+		<properties/>
+		<system-out>PASS incremental Host atomic
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_duplicate" classname="host_incremental_duplicate" time="0.0108498" status="run">
+		<properties/>
+		<system-out>PASS incremental Host duplicate
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_address_atomic" classname="host_incremental_address_atomic" time="0.0105395" status="run">
+		<properties/>
+		<system-out>PASS incremental Host address_atomic
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_sealed" classname="host_incremental_sealed" time="0.0104836" status="run">
+		<properties/>
+		<system-out>PASS incremental Host sealed
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_block_scope" classname="host_incremental_block_scope" time="0.0211903" status="run">
+		<properties/>
+		<system-out>PASS incremental Host block_scope
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_dependencies" classname="host_incremental_dependencies" time="0.0082342" status="run">
+		<properties/>
+		<system-out>PASS incremental Host dependencies
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_invalid_dependencies" classname="host_incremental_invalid_dependencies" time="0.0064061" status="run">
+		<properties/>
+		<system-out>PASS incremental Host invalid_dependencies
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_burst" classname="host_incremental_burst" time="0.0068637" status="run">
+		<properties/>
+		<system-out>PASS incremental Host burst
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_future" classname="host_incremental_future" time="0.007989" status="run">
+		<properties/>
+		<system-out>PASS incremental Host future
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_future_cancel_reuse" classname="host_incremental_future_cancel_reuse" time="0.0064628" status="run">
+		<properties/>
+		<system-out>PASS incremental Host future_cancel_reuse
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_recovered_sealed" classname="host_incremental_recovered_sealed" time="0.0143575" status="run">
+		<properties/>
+		<system-out>PASS incremental Host recovered_sealed
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_recovery_append" classname="host_incremental_recovery_append" time="0.01216" status="run">
+		<properties/>
+		<system-out>PASS incremental Host recovery_append
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_abort_append" classname="host_incremental_abort_append" time="0.0060734" status="run">
+		<properties/>
+		<system-out>PASS incremental Host abort_append
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_hints" classname="host_incremental_hints" time="0.0144395" status="run">
+		<properties/>
+		<system-out>PASS incremental Host hints
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_limit_atomic" classname="host_incremental_limit_atomic" time="0.0106259" status="run">
+		<properties/>
+		<system-out>PASS incremental Host limit_atomic
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_equivalent" classname="host_incremental_equivalent" time="0.0402683" status="run">
+		<properties/>
+		<system-out>PASS incremental Host equivalent
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_observer" classname="host_incremental_observer" time="0.0101127" status="run">
+		<properties/>
+		<system-out>PASS incremental Host observer
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_parser" classname="host_incremental_parser" time="0.0057209" status="run">
+		<properties/>
+		<system-out>PASS incremental Host parser
+</system-out>
+	</testcase>
+	<testcase name="host_incremental_guards" classname="host_incremental_guards" time="0.0061445" status="run">
+		<properties/>
+		<system-out>PASS incremental Host guards
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_policy_order" classname="read_scheduling_policy_order" time="0.0448421" status="run">
+		<properties/>
+		<system-out>PASS policy_order
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_window_reasons" classname="read_scheduling_window_reasons" time="0.0057551" status="run">
+		<properties/>
+		<system-out>PASS window_reasons
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_window_stale" classname="read_scheduling_window_stale" time="0.0057311" status="run">
+		<properties/>
+		<system-out>PASS window_stale
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_cache_bypass" classname="read_scheduling_cache_bypass" time="0.0075209" status="run">
+		<properties/>
+		<system-out>PASS cache_bypass
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_cache_removal" classname="read_scheduling_cache_removal" time="0.0075386" status="run">
+		<properties/>
+		<system-out>PASS cache_removal
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_terminal_read" classname="read_scheduling_terminal_read" time="0.0059732" status="run">
+		<properties/>
+		<system-out>PASS terminal_read
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_snapshot" classname="read_scheduling_snapshot" time="0.0077608" status="run">
+		<properties/>
+		<system-out>PASS snapshot
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_observational" classname="read_scheduling_observational" time="0.0087503" status="run">
+		<properties/>
+		<system-out>PASS observational
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_guards" classname="read_scheduling_guards" time="0.0058997" status="run">
+		<properties/>
+		<system-out>PASS guards
+</system-out>
+	</testcase>
+	<testcase name="read_scheduling_custom_reason" classname="read_scheduling_custom_reason" time="0.0057054" status="run">
+		<properties/>
+		<system-out>PASS custom_reason
+</system-out>
+	</testcase>
+	<testcase name="experiment_qwen_audit_unit" classname="experiment_qwen_audit_unit" time="0.141081" status="run">
+		<properties/>
+		<system-out>........
+----------------------------------------------------------------------
+Ran 8 tests in 0.000s
+
+OK
+</system-out>
+	</testcase>
+	<testcase name="statistics_stream_cli" classname="statistics_stream_cli" time="0.402219" status="run">
+		<properties/>
+		<system-out>PASS event stream JSON, replay linkage, Pending integrals, Bank intervals, pause and path protection
+</system-out>
+	</testcase>
+	<testcase name="experiment_common_unit" classname="experiment_common_unit" time="0.231096" status="run">
+		<properties/>
+		<system-out>........
+----------------------------------------------------------------------
+Ran 8 tests in 0.088s
+
+OK
+</system-out>
+	</testcase>
+	<testcase name="experiment_python_configuration" classname="experiment_python_configuration" time="1.37604" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="experiment_read_scheduling_unit" classname="experiment_read_scheduling_unit" time="0.145815" status="run">
+		<properties/>
+		<system-out>.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+OK
+</system-out>
+	</testcase>
+	<testcase name="experiment_read_scheduling_integration" classname="experiment_read_scheduling_integration" time="2.92911" status="run">
+		<properties/>
+		<system-out>PASS read scheduling: 14 cases, deterministic repeat, fair inputs, trigger/Cache/nonpreemptive controls and corruption guards
+</system-out>
+	</testcase>
+	<testcase name="experiment_capacity_unit" classname="experiment_capacity_unit" time="0.15654" status="run">
+		<properties/>
+		<system-out>.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.011s
+
+OK
+</system-out>
+	</testcase>
+	<testcase name="experiment_capacity_integration" classname="experiment_capacity_integration" time="2.03193" status="run">
+		<properties/>
+		<system-out>PASS capacity integration: credit boundary, Pending rejection, limits, determinism, integrity, CLI
+</system-out>
+	</testcase>
+	<testcase name="experiment_interleave_arrival_unit" classname="experiment_interleave_arrival_unit" time="0.203723" status="run">
+		<properties/>
+		<system-out>...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.052s
+
+OK
+</system-out>
+	</testcase>
+	<testcase name="experiment_interleave_arrival_integration" classname="experiment_interleave_arrival_integration" time="2.38135" status="run">
+		<properties/>
+		<system-out>PASS interleave/arrival integration: mapping, release, deadlines, cancellation, limits, parallelism, controls, integrity
+</system-out>
+	</testcase>
+	<testcase name="experiment_arrival_policy_unit" classname="experiment_arrival_policy_unit" time="0.164467" status="run">
+		<properties/>
+		<system-out>......
+----------------------------------------------------------------------
+Ran 6 tests in 0.010s
+
+OK
+</system-out>
+	</testcase>
+	<testcase name="experiment_arrival_policy_integration" classname="experiment_arrival_policy_integration" time="2.00095" status="run">
+		<properties/>
+		<system-out>PASS arrival-policy integration: fair pairs, policy choice, sparse control, media lifetimes, determinism and guards
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_lifecycle" classname="pending_statistics_lifecycle" time="0.046785" status="run">
+		<properties/>
+		<system-out>PASS lifecycle (204 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_occupancy" classname="pending_statistics_occupancy" time="0.006219" status="run">
+		<properties/>
+		<system-out>PASS occupancy (205 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_rejected" classname="pending_statistics_rejected" time="0.0058091" status="run">
+		<properties/>
+		<system-out>PASS rejected (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_timeout_reuse" classname="pending_statistics_timeout_reuse" time="0.0061787" status="run">
+		<properties/>
+		<system-out>PASS timeout_reuse (205 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_failure" classname="pending_statistics_failure" time="0.0062552" status="run">
+		<properties/>
+		<system-out>PASS failure (400 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_same_tick_burst" classname="pending_statistics_same_tick_burst" time="0.0057861" status="run">
+		<properties/>
+		<system-out>PASS same_tick_burst (268 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_commit_failure" classname="pending_statistics_commit_failure" time="0.0064778" status="run">
+		<properties/>
+		<system-out>PASS commit_failure (201 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_snapshot" classname="pending_statistics_snapshot" time="0.0059577" status="run">
+		<properties/>
+		<system-out>PASS snapshot (201 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_teardown" classname="pending_statistics_teardown" time="0.0098541" status="run">
+		<properties/>
+		<system-out>PASS teardown (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_identity" classname="pending_statistics_identity" time="0.0065719" status="run">
+		<properties/>
+		<system-out>PASS identity (391 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_guarded_attach" classname="pending_statistics_guarded_attach" time="0.0059543" status="run">
+		<properties/>
+		<system-out>PASS guarded_attach (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_device_delivery" classname="pending_statistics_device_delivery" time="0.0063178" status="run">
+		<properties/>
+		<system-out>PASS device_delivery (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_device_limit" classname="pending_statistics_device_limit" time="0.0078212" status="run">
+		<properties/>
+		<system-out>PASS device_limit (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_read_only" classname="pending_statistics_read_only" time="0.0057865" status="run">
+		<properties/>
+		<system-out>PASS read_only (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_statistics_curve_reconstruction" classname="pending_statistics_curve_reconstruction" time="0.0066358" status="run">
+		<properties/>
+		<system-out>PASS curve_reconstruction (417 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_send_order" classname="host_send_order" time="0.0474285" status="run">
+		<properties/>
+		<system-out>PASS order checks=5
+</system-out>
+	</testcase>
+	<testcase name="host_send_fcfs" classname="host_send_fcfs" time="0.0096994" status="run">
+		<properties/>
+		<system-out>PASS fcfs checks=3
+</system-out>
+	</testcase>
+	<testcase name="host_send_fill_open" classname="host_send_fill_open" time="0.0102662" status="run">
+		<properties/>
+		<system-out>PASS fill_open checks=3
+</system-out>
+	</testcase>
+	<testcase name="host_send_blocked_open" classname="host_send_blocked_open" time="0.0091211" status="run">
+		<properties/>
+		<system-out>PASS blocked_open checks=3
+</system-out>
+	</testcase>
+	<testcase name="host_send_release_order" classname="host_send_release_order" time="0.0062396" status="run">
+		<properties/>
+		<system-out>PASS release_order checks=9
+</system-out>
+	</testcase>
+	<testcase name="host_send_same_tick" classname="host_send_same_tick" time="0.0061679" status="run">
+		<properties/>
+		<system-out>PASS same_tick checks=25
+</system-out>
+	</testcase>
+	<testcase name="host_send_dependency_age" classname="host_send_dependency_age" time="0.0058606" status="run">
+		<properties/>
+		<system-out>PASS dependency_age checks=12
+</system-out>
+	</testcase>
+	<testcase name="host_send_not_taken" classname="host_send_not_taken" time="0.006156" status="run">
+		<properties/>
+		<system-out>PASS not_taken checks=13
+</system-out>
+	</testcase>
+	<testcase name="host_send_retry_tail" classname="host_send_retry_tail" time="0.0059669" status="run">
+		<properties/>
+		<system-out>PASS retry_tail checks=14
+</system-out>
+	</testcase>
+	<testcase name="host_send_same_tick_retry" classname="host_send_same_tick_retry" time="0.0060361" status="run">
+		<properties/>
+		<system-out>PASS same_tick_retry checks=15
+</system-out>
+	</testcase>
+	<testcase name="host_send_timeout_tail" classname="host_send_timeout_tail" time="0.0099259" status="run">
+		<properties/>
+		<system-out>PASS timeout_tail checks=773
+</system-out>
+	</testcase>
+	<testcase name="host_send_timeout_unsent" classname="host_send_timeout_unsent" time="0.007298" status="run">
+		<properties/>
+		<system-out>PASS timeout_unsent checks=273
+</system-out>
+	</testcase>
+	<testcase name="host_send_replay_followers" classname="host_send_replay_followers" time="0.0061762" status="run">
+		<properties/>
+		<system-out>PASS replay_followers checks=19
+</system-out>
+	</testcase>
+	<testcase name="host_send_burst_mixed" classname="host_send_burst_mixed" time="0.0059794" status="run">
+		<properties/>
+		<system-out>PASS burst_mixed checks=9
+</system-out>
+	</testcase>
+	<testcase name="host_send_cross_global_burst" classname="host_send_cross_global_burst" time="0.0062074" status="run">
+		<properties/>
+		<system-out>PASS cross_global_burst checks=20
+</system-out>
+	</testcase>
+	<testcase name="host_send_channels" classname="host_send_channels" time="0.0060016" status="run">
+		<properties/>
+		<system-out>PASS channels checks=16
+</system-out>
+	</testcase>
+	<testcase name="configuration_defaults" classname="configuration_defaults" time="0.044373" status="run">
+		<properties/>
+		<system-out>PASS configuration defaults checks=4
+</system-out>
+	</testcase>
+	<testcase name="configuration_parse_override" classname="configuration_parse_override" time="0.0058453" status="run">
+		<properties/>
+		<system-out>PASS configuration parse_override checks=1
+</system-out>
+	</testcase>
+	<testcase name="configuration_parser_errors" classname="configuration_parser_errors" time="0.0060054" status="run">
+		<properties/>
+		<system-out>PASS configuration parser_errors checks=7
+</system-out>
+	</testcase>
+	<testcase name="configuration_unknown_fields" classname="configuration_unknown_fields" time="0.0057808" status="run">
+		<properties/>
+		<system-out>PASS configuration unknown_fields checks=4
+</system-out>
+	</testcase>
+	<testcase name="configuration_numeric" classname="configuration_numeric" time="0.0060752" status="run">
+		<properties/>
+		<system-out>PASS configuration numeric checks=10
+</system-out>
+	</testcase>
+	<testcase name="configuration_grades" classname="configuration_grades" time="0.0056943" status="run">
+		<properties/>
+		<system-out>PASS configuration grades checks=6
+</system-out>
+	</testcase>
+	<testcase name="configuration_grade_limits" classname="configuration_grade_limits" time="0.0056553" status="run">
+		<properties/>
+		<system-out>PASS configuration grade_limits checks=4
+</system-out>
+	</testcase>
+	<testcase name="configuration_mocs_ranges" classname="configuration_mocs_ranges" time="0.0061682" status="run">
+		<properties/>
+		<system-out>PASS configuration mocs_ranges checks=8
+</system-out>
+	</testcase>
+	<testcase name="configuration_small_read" classname="configuration_small_read" time="0.0058007" status="run">
+		<properties/>
+		<system-out>PASS configuration small_read checks=3
+</system-out>
+	</testcase>
+	<testcase name="configuration_small_write" classname="configuration_small_write" time="0.0073947" status="run">
+		<properties/>
+		<system-out>PASS configuration small_write checks=6
+</system-out>
+	</testcase>
+	<testcase name="configuration_small_burst" classname="configuration_small_burst" time="0.0059289" status="run">
+		<properties/>
+		<system-out>PASS configuration small_burst checks=2
+</system-out>
+	</testcase>
+	<testcase name="configuration_capabilities" classname="configuration_capabilities" time="0.0058282" status="run">
+		<properties/>
+		<system-out>PASS configuration capabilities checks=2
+</system-out>
+	</testcase>
+	<testcase name="configuration_geometry" classname="configuration_geometry" time="0.0058327" status="run">
+		<properties/>
+		<system-out>PASS configuration geometry checks=5
+</system-out>
+	</testcase>
+	<testcase name="configuration_topology" classname="configuration_topology" time="0.0058501" status="run">
+		<properties/>
+		<system-out>PASS configuration topology checks=4
+</system-out>
+	</testcase>
+	<testcase name="configuration_capacity" classname="configuration_capacity" time="0.0060168" status="run">
+		<properties/>
+		<system-out>PASS configuration capacity checks=2
+</system-out>
+	</testcase>
+	<testcase name="configuration_buffers" classname="configuration_buffers" time="0.0060652" status="run">
+		<properties/>
+		<system-out>PASS configuration buffers checks=3
+</system-out>
+	</testcase>
+	<testcase name="configuration_timing" classname="configuration_timing" time="0.0065173" status="run">
+		<properties/>
+		<system-out>PASS configuration timing checks=5
+</system-out>
+	</testcase>
+	<testcase name="configuration_zeros" classname="configuration_zeros" time="0.0062945" status="run">
+		<properties/>
+		<system-out>PASS configuration zeros checks=3
+</system-out>
+	</testcase>
+	<testcase name="configuration_policies" classname="configuration_policies" time="0.0063857" status="run">
+		<properties/>
+		<system-out>PASS configuration policies checks=9
+</system-out>
+	</testcase>
+	<testcase name="configuration_custom_policy" classname="configuration_custom_policy" time="0.0060424" status="run">
+		<properties/>
+		<system-out>PASS configuration custom_policy checks=1
+</system-out>
+	</testcase>
+	<testcase name="configuration_address" classname="configuration_address" time="0.0076568" status="run">
+		<properties/>
+		<system-out>PASS configuration address checks=4
+</system-out>
+	</testcase>
+	<testcase name="configuration_faults" classname="configuration_faults" time="0.0055748" status="run">
+		<properties/>
+		<system-out>PASS configuration faults checks=5
+</system-out>
+	</testcase>
+	<testcase name="configuration_roundtrip" classname="configuration_roundtrip" time="0.0063907" status="run">
+		<properties/>
+		<system-out>PASS configuration roundtrip checks=2
+</system-out>
+	</testcase>
+	<testcase name="configuration_frozen" classname="configuration_frozen" time="0.0062731" status="run">
+		<properties/>
+		<system-out>PASS configuration frozen checks=2
+</system-out>
+	</testcase>
+	<testcase name="configuration_all_keys" classname="configuration_all_keys" time="0.0058949" status="run">
+		<properties/>
+		<system-out>PASS configuration all_keys checks=1
+</system-out>
+	</testcase>
+	<testcase name="configuration_default_equivalence" classname="configuration_default_equivalence" time="0.0089036" status="run">
+		<properties/>
+		<system-out>PASS configuration default_equivalence checks=1
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_precedence" classname="configuration_cli_precedence" time="0.0667898" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI precedence passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_roundtrip" classname="configuration_cli_roundtrip" time="0.114213" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI roundtrip passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_invalid_grade" classname="configuration_cli_invalid_grade" time="0.030904" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI invalid_grade passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_invalid_mocs" classname="configuration_cli_invalid_mocs" time="0.0282463" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI invalid_mocs passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_unknown" classname="configuration_cli_unknown" time="0.029503" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI unknown passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_duplicate" classname="configuration_cli_duplicate" time="0.0325614" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI duplicate passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_policy" classname="configuration_cli_policy" time="0.029695" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI policy passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_buffer" classname="configuration_cli_buffer" time="0.030462" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI buffer passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_collision" classname="configuration_cli_collision" time="0.0310641" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI collision passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_workload_guard" classname="configuration_cli_workload_guard" time="0.0331616" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI workload_guard passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_config_guard" classname="configuration_cli_config_guard" time="0.0332334" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI config_guard passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_read_small" classname="configuration_cli_read_small" time="0.0291157" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI read_small passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_write_small" classname="configuration_cli_write_small" time="0.0353023" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI write_small passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_burst_small" classname="configuration_cli_burst_small" time="0.029805" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI burst_small passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_host_default" classname="configuration_cli_host_default" time="0.0729362" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI host_default passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_host_fill_open" classname="configuration_cli_host_fill_open" time="0.064155" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI host_fill_open passed
+</system-out>
+	</testcase>
+	<testcase name="configuration_cli_host_override" classname="configuration_cli_host_override" time="0.059998" status="run">
+		<properties/>
+		<system-out>-- Configuration CLI host_override passed
+</system-out>
+	</testcase>
+	<testcase name="statistics_boundaries" classname="statistics_boundaries" time="0.0451234" status="run">
+		<properties/>
+		<system-out>PASS boundaries (11 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_cross_global_burst" classname="statistics_cross_global_burst" time="0.006385" status="run">
+		<properties/>
+		<system-out>PASS cross_global_burst (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_multi_channel" classname="statistics_multi_channel" time="0.0092457" status="run">
+		<properties/>
+		<system-out>PASS multi_channel (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_pending_retry" classname="statistics_pending_retry" time="0.0131813" status="run">
+		<properties/>
+		<system-out>PASS pending_retry (455 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_timeout_retry" classname="statistics_timeout_retry" time="0.0083924" status="run">
+		<properties/>
+		<system-out>PASS timeout_retry (22 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_replay" classname="statistics_replay" time="0.0160521" status="run">
+		<properties/>
+		<system-out>PASS replay (396 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_unfinished_resume" classname="statistics_unfinished_resume" time="0.0078233" status="run">
+		<properties/>
+		<system-out>PASS unfinished_resume (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_ingress_wait" classname="statistics_ingress_wait" time="0.0063814" status="run">
+		<properties/>
+		<system-out>PASS ingress_wait (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_cancelled_future" classname="statistics_cancelled_future" time="0.005841" status="run">
+		<properties/>
+		<system-out>PASS cancelled_future (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_partial_future_cancel" classname="statistics_partial_future_cancel" time="0.0095998" status="run">
+		<properties/>
+		<system-out>PASS partial_future_cancel (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_mismatch" classname="statistics_mismatch" time="0.0083521" status="run">
+		<properties/>
+		<system-out>PASS mismatch (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_backpressure" classname="statistics_backpressure" time="0.006471" status="run">
+		<properties/>
+		<system-out>PASS backpressure (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_observational" classname="statistics_observational" time="0.0216178" status="run">
+		<properties/>
+		<system-out>PASS observational (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_event_time" classname="statistics_event_time" time="0.0063337" status="run">
+		<properties/>
+		<system-out>PASS event_time (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_zero_and_status" classname="statistics_zero_and_status" time="0.0056547" status="run">
+		<properties/>
+		<system-out>PASS zero_and_status (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_guards_empty" classname="statistics_guards_empty" time="0.0056885" status="run">
+		<properties/>
+		<system-out>PASS guards_empty (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_stalled" classname="statistics_stalled" time="0.0060744" status="run">
+		<properties/>
+		<system-out>PASS stalled (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_bank_lifetime" classname="statistics_bank_lifetime" time="0.0068547" status="run">
+		<properties/>
+		<system-out>PASS bank_lifetime (11 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_bank_limit" classname="statistics_bank_limit" time="0.0064881" status="run">
+		<properties/>
+		<system-out>PASS bank_limit (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_bank_guards" classname="statistics_bank_guards" time="0.0056926" status="run">
+		<properties/>
+		<system-out>PASS bank_guards (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="statistics_cli_normal" classname="statistics_cli_normal" time="5.01834" status="run">
+		<properties/>
+		<system-out>-- Statistics JSON parsed and verified: Completed
+</system-out>
+	</testcase>
+	<testcase name="statistics_cli_limit" classname="statistics_cli_limit" time="0.0518446" status="run">
+		<properties/>
+		<system-out>-- Statistics JSON parsed and verified: LimitReached
+</system-out>
+	</testcase>
+	<testcase name="statistics_cli_assembly_limit" classname="statistics_cli_assembly_limit" time="0.0521119" status="run">
+		<properties/>
+		<system-out>-- Statistics JSON parsed and verified: LimitReached
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_root_first" classname="host_retry_pending_root_first" time="0.0492223" status="run">
+		<properties/>
+		<system-out>PASS pending_root_first (904 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_follower_first" classname="host_retry_pending_follower_first" time="0.0080038" status="run">
+		<properties/>
+		<system-out>PASS pending_follower_first (905 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_late_followers" classname="host_retry_pending_late_followers" time="0.0082737" status="run">
+		<properties/>
+		<system-out>PASS pending_late_followers (841 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_exhausted" classname="host_retry_pending_exhausted" time="0.0065054" status="run">
+		<properties/>
+		<system-out>PASS pending_exhausted (329 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_disabled" classname="host_retry_pending_disabled" time="0.006506" status="run">
+		<properties/>
+		<system-out>PASS pending_disabled (323 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_progress" classname="host_retry_pending_progress" time="0.0077728" status="run">
+		<properties/>
+		<system-out>PASS pending_progress (648 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_burst" classname="host_retry_pending_burst" time="0.0059178" status="run">
+		<properties/>
+		<system-out>PASS pending_burst (138 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_timeout_late_fragments" classname="host_retry_timeout_late_fragments" time="0.0070577" status="run">
+		<properties/>
+		<system-out>PASS timeout_late_fragments (710 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_timeout_release" classname="host_retry_timeout_release" time="0.0063309" status="run">
+		<properties/>
+		<system-out>PASS timeout_release (548 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_timeout_missing_retention" classname="host_retry_timeout_missing_retention" time="0.0060598" status="run">
+		<properties/>
+		<system-out>PASS timeout_missing_retention (164 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_timeout_missing_coverage" classname="host_retry_timeout_missing_coverage" time="0.0056363" status="run">
+		<properties/>
+		<system-out>PASS timeout_missing_coverage (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_unexplained_order" classname="host_retry_unexplained_order" time="0.0071699" status="run">
+		<properties/>
+		<system-out>PASS unexplained_order (519 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_real_pending" classname="host_retry_real_pending" time="0.01229" status="run">
+		<properties/>
+		<system-out>PASS real_pending (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_real_timeout_success" classname="host_retry_real_timeout_success" time="0.0074958" status="run">
+		<properties/>
+		<system-out>PASS real_timeout_success (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_real_timeout_budget" classname="host_retry_real_timeout_budget" time="0.0078345" status="run">
+		<properties/>
+		<system-out>PASS real_timeout_budget (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_pending_during_replay" classname="host_retry_pending_during_replay" time="0.0064831" status="run">
+		<properties/>
+		<system-out>PASS pending_during_replay (521 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retry_timeout_during_replay" classname="host_retry_timeout_during_replay" time="0.0074691" status="run">
+		<properties/>
+		<system-out>PASS timeout_during_replay (838 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_cli_normal" classname="host_cli_normal" time="0.0713066" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=2 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=Success tick=1753065 events=19846 reason=All logical work succeeded
+GLOBAL 1 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 2 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 3 Success remaining=0 failed_fragments=0 reason=
+HOST handed=256 accepted=256 responses=256 attempt_errors=0 logical_success=256 logical_failed=0 recovery_tasks=0 replay_passes=0 replay_...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_burst" classname="host_cli_burst" time="0.0574525" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=4096 open_dlus=2 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=Success tick=1816023 events=18208 reason=All logical work succeeded
+GLOBAL 1 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 2 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 3 Success remaining=0 failed_fragments=0 reason=
+HOST handed=130 accepted=130 responses=130 attempt_errors=0 logical_success=256 logical_failed=0 recovery_tasks=0 replay_passes=0 repla...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_recovery" classname="host_cli_recovery" time="1.07735" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=4 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=Success tick=8396021 events=316356 reason=All logical work succeeded
+GLOBAL 1 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 2 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 3 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 4 Success remaining=0 failed_fragments=0 reason=
+HOST handed=1536 accepted=1536 responses=1536 attempt_errors=128 logical_success...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_merged_recovery" classname="host_cli_merged_recovery" time="1.11814" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=4 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=Success tick=10547528 events=318152 reason=All logical work succeeded
+GLOBAL 1 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 2 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 3 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 4 Success remaining=0 failed_fragments=0 reason=
+HOST handed=1664 accepted=1664 responses=1664 attempt_errors=192 logical_succes...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_persistent" classname="host_cli_persistent" time="0.180464" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=2 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=FailedOrUnfinished tick=7646486 events=35562 reason=Logical failures recorded; transient work drained
+GLOBAL 1 Failed remaining=0 failed_fragments=256 reason=RecoveryBudgetExhausted
+GLOBAL 2 Failed remaining=0 failed_fragments=512 reason=DependencyFailed
+GLOBAL 3 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 4 Success remaining=0 failed_fragments=0 reason=
+HOST h...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_missing" classname="host_cli_missing" time="0.123999" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=2 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=0 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=FailedOrUnfinished tick=4623243 events=20296 reason=Logical failures recorded; transient work drained
+GLOBAL 1 Failed remaining=0 failed_fragments=256 reason=MissingRecoveryData
+GLOBAL 2 Failed remaining=0 failed_fragments=512 reason=DependencyFailed
+GLOBAL 3 Success remaining=0 failed_fragments=0 reason=
+GLOBAL 4 Success remaining=0 failed_fragments=0 reason=
+HOST handed=57...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_timeout" classname="host_cli_timeout" time="0.0289555" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=2 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=1000000000000 event_limits=10000000/100000/100000
+STOP Completed workload=FailedOrUnfinished tick=10002201 events=19 reason=Logical failures recorded; transient work drained
+GLOBAL 1 Failed remaining=0 failed_fragments=1 reason=WriteStatus:5 MissingRetryData
+HOST handed=1 accepted=1 responses=1 attempt_errors=1 logical_success=0 logical_failed=1 recovery_tasks=0 replay_passes=0 replay_commands=0 pending_limit_errors=0 pending_retry_commands=0 ...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cli_limit" classname="host_cli_limit" time="0.0280009" status="run">
+		<properties/>
+		<system-out>-- HBF EventLab | functional timing, NOT calibrated performance
+CONFIG channels=2 dies/channel=1 banks/die=1 pages/block=8 blocks/bank=4 spare/bank=1 base=0 interleave_bytes=64 command_write_bytes=64 open_dlus=2 mocs=256 mocs_supported=256 pending_limit=8
+CONFIG tick=1ps speed_grade=1 bandwidth_GBps=48 sense=100000 program=500000 erase=1000000 assembly_timeout=10000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=100 event_limits=10000000/100000/100000
+STOP LimitReached workload=FailedOrUnfinished tick=0 events=2 reason=Next event exceeds simulated-time limit; state retained
+GLOBAL 1 Pending remaining=64 failed_fragments=0 reason=
+GLOBAL 2 Pending remaining=64 failed_fragments=0 reason=
+GLOBAL 3 Pending remaining=128 failed_fragments=0 reason=
+HOST handed=2 accepted=0 responses=0 attempt_errors=0 logical_success=0 logical_failed=0 recovery_tasks=0 repl...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="host_cancelled_future_release" classname="host_cancelled_future_release" time="0.0459176" status="run">
+		<properties/>
+		<system-out>PASS cancelled_future_release (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_late_read_second_pass" classname="host_late_read_second_pass" time="0.0205243" status="run">
+		<properties/>
+		<system-out>PASS late_read_second_pass (79 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_delayed_old_attempts" classname="host_delayed_old_attempts" time="0.0287279" status="run">
+		<properties/>
+		<system-out>PASS delayed_old_attempts (137 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_ingress_old_attempts" classname="host_ingress_old_attempts" time="0.0510334" status="run">
+		<properties/>
+		<system-out>PASS ingress_old_attempts (72 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_burst_recovery" classname="host_burst_recovery" time="0.0514765" status="run">
+		<properties/>
+		<system-out>PASS burst_recovery (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_multi_channel_recovery" classname="host_multi_channel_recovery" time="0.120395" status="run">
+		<properties/>
+		<system-out>PASS multi_channel_recovery (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_prior_success_retained" classname="host_prior_success_retained" time="0.0251807" status="run">
+		<properties/>
+		<system-out>PASS prior_success_retained (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_abort_new_content" classname="host_abort_new_content" time="0.0083545" status="run">
+		<properties/>
+		<system-out>PASS abort_new_content (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_teardown_host" classname="host_teardown_host" time="0.006387" status="run">
+		<properties/>
+		<system-out>PASS teardown_host (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_runner_device_activity" classname="host_runner_device_activity" time="0.0064104" status="run">
+		<properties/>
+		<system-out>PASS runner_device_activity (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_round_limit" classname="host_round_limit" time="0.0056427" status="run">
+		<properties/>
+		<system-out>PASS round_limit (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_normal" classname="host_normal" time="0.0105089" status="run">
+		<properties/>
+		<system-out>PASS normal (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_sixteen_channels" classname="host_sixteen_channels" time="0.55829" status="run">
+		<properties/>
+		<system-out>PASS sixteen_channels (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_burst_compare" classname="host_burst_compare" time="0.0131161" status="run">
+		<properties/>
+		<system-out>PASS burst_compare (13 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_burst_cross_global" classname="host_burst_cross_global" time="0.0080364" status="run">
+		<properties/>
+		<system-out>PASS burst_cross_global (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_input_validation" classname="host_input_validation" time="0.0058932" status="run">
+		<properties/>
+		<system-out>PASS input_validation (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_content_validation" classname="host_content_validation" time="0.0058052" status="run">
+		<properties/>
+		<system-out>PASS content_validation (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_burst_validation" classname="host_burst_validation" time="0.0061267" status="run">
+		<properties/>
+		<system-out>PASS burst_validation (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_splitter" classname="host_splitter" time="0.0057982" status="run">
+		<properties/>
+		<system-out>PASS splitter (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_parser" classname="host_parser" time="0.006171" status="run">
+		<properties/>
+		<system-out>PASS parser (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_hints" classname="host_hints" time="0.0085667" status="run">
+		<properties/>
+		<system-out>PASS hints (13 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_ordered_reads" classname="host_ordered_reads" time="0.0554565" status="run">
+		<properties/>
+		<system-out>PASS ordered_reads (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_open_limit" classname="host_open_limit" time="0.0152831" status="run">
+		<properties/>
+		<system-out>PASS open_limit (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_fill_open" classname="host_fill_open" time="0.009426" status="run">
+		<properties/>
+		<system-out>PASS fill_open (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_recovery_once" classname="host_recovery_once" time="0.0864416" status="run">
+		<properties/>
+		<system-out>PASS recovery_once (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_follower_before_root" classname="host_follower_before_root" time="0.0910785" status="run">
+		<properties/>
+		<system-out>PASS follower_before_root (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_replay_merge" classname="host_replay_merge" time="0.0921799" status="run">
+		<properties/>
+		<system-out>PASS replay_merge (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_persistent_failure" classname="host_persistent_failure" time="0.0169588" status="run">
+		<properties/>
+		<system-out>PASS persistent_failure (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_missing_retention" classname="host_missing_retention" time="0.0105215" status="run">
+		<properties/>
+		<system-out>PASS missing_retention (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_replacement_recovery" classname="host_replacement_recovery" time="0.0113155" status="run">
+		<properties/>
+		<system-out>PASS replacement_recovery (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_zero_budget" classname="host_zero_budget" time="0.0069603" status="run">
+		<properties/>
+		<system-out>PASS zero_budget (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_partial_timeout" classname="host_partial_timeout" time="0.0059258" status="run">
+		<properties/>
+		<system-out>PASS partial_timeout (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_mocs_one" classname="host_mocs_one" time="0.0219774" status="run">
+		<properties/>
+		<system-out>PASS mocs_one (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_mocs_partial" classname="host_mocs_partial" time="0.008352" status="run">
+		<properties/>
+		<system-out>PASS mocs_partial (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_empty" classname="host_empty" time="0.0058196" status="run">
+		<properties/>
+		<system-out>PASS empty (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_not_started" classname="host_not_started" time="0.0060038" status="run">
+		<properties/>
+		<system-out>PASS not_started (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_stalled_dependency" classname="host_stalled_dependency" time="0.0063055" status="run">
+		<properties/>
+		<system-out>PASS stalled_dependency (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_time_limit" classname="host_time_limit" time="0.0069733" status="run">
+		<properties/>
+		<system-out>PASS time_limit (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_event_limit" classname="host_event_limit" time="0.0072147" status="run">
+		<properties/>
+		<system-out>PASS event_limit (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_same_tick_limit" classname="host_same_tick_limit" time="0.0069208" status="run">
+		<properties/>
+		<system-out>PASS same_tick_limit (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_ordered_pending" classname="host_ordered_pending" time="0.0062381" status="run">
+		<properties/>
+		<system-out>PASS ordered_pending (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_read_during_recovery" classname="host_read_during_recovery" time="0.0086795" status="run">
+		<properties/>
+		<system-out>PASS read_during_recovery (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_versions" classname="host_versions" time="0.0137291" status="run">
+		<properties/>
+		<system-out>PASS versions (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_data_mismatch" classname="host_data_mismatch" time="0.0079188" status="run">
+		<properties/>
+		<system-out>PASS data_mismatch (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_delayed_release" classname="host_delayed_release" time="0.0069234" status="run">
+		<properties/>
+		<system-out>PASS delayed_release (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_retention_pins" classname="host_retention_pins" time="0.0057188" status="run">
+		<properties/>
+		<system-out>PASS retention_pins (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_recovery_snapshot" classname="host_recovery_snapshot" time="0.0059717" status="run">
+		<properties/>
+		<system-out>PASS recovery_snapshot (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="host_policy_guard" classname="host_policy_guard" time="0.0060651" status="run">
+		<properties/>
+		<system-out>PASS policy_guard (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_demo" classname="device_demo" time="0.0514773" status="run">
+		<properties/>
+		<system-out>HBF EventLab autonomous Device demo
+Tick=1 ps; UCIe=48 GB/s per physical channel per direction; ideal Core Channel
+RX=16 entries/16384 B; TX=8 entries/512 B; Cache=2 x 4KiB per Bank
+sense=100000 ps; program=500000 ps; erase=1000000 ps (illustrative)
+[0 ps] handoff ch=0 id=1
+[85667 ps] handoff ch=0 id=2
+[85767 ps] rx-arrival ch=0 id=1
+[85767 ps] accepted ch=0 id=1
+[85767 ps] erase-issue ch=0 id=1 die=0 bank=0 page=0
+[171434 ps] rx-arrival ch=0 id=2
+[171434 ps] accepted ch=0 id=2
+[171434 ps] erase-issue ch=0 id=2 die=0 bank=1 page=0
+[1085767 ps] erase-finish ch=0 id=1 die=0 bank=0 page=0
+[1085767 ps] program-issue ch=0 id=3 die=0 bank=0 page=0
+[1171434 ps] erase-finish ch=0 id=2 die=0 bank=1 page=0
+[1171434 ps] program-issue ch=0 id=4 die=0 bank=1 page=0
+[1585767 ps] program-finish ch=0 id=3 die=0 bank=0 page=0
+[1585767 ps] egress-ready ch=0 id=1
+[1585767 ps] response-issue ch=0 id=1
+[1586201 ps] delivered ch=0 id=1
+[1586201 ps] handoff ch=0 id=3
+[1586535 ps] handoff ch=0 id=4
+[1586635 ps] rx-arrival ch=0 id=3
+...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="device_auto_write_read" classname="device_auto_write_read" time="0.0429337" status="run">
+		<properties/>
+		<system-out>PASS auto_write_read (12 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_split_write" classname="device_split_write" time="0.0077192" status="run">
+		<properties/>
+		<system-out>PASS split_write (2152 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_bank_parallel" classname="device_bank_parallel" time="0.0066504" status="run">
+		<properties/>
+		<system-out>PASS bank_parallel (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_bank_serial" classname="device_bank_serial" time="0.0063655" status="run">
+		<properties/>
+		<system-out>PASS bank_serial (32 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_mocs_ingress" classname="device_mocs_ingress" time="0.0062782" status="run">
+		<properties/>
+		<system-out>PASS mocs_ingress (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_rx_reservation" classname="device_rx_reservation" time="0.0061051" status="run">
+		<properties/>
+		<system-out>PASS rx_reservation (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_window_batch_timer" classname="device_window_batch_timer" time="0.006099" status="run">
+		<properties/>
+		<system-out>PASS window_batch_timer (24 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_window_threshold" classname="device_window_threshold" time="0.0060267" status="run">
+		<properties/>
+		<system-out>PASS window_threshold (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_window_channel_isolation" classname="device_window_channel_isolation" time="0.0061657" status="run">
+		<properties/>
+		<system-out>PASS window_channel_isolation (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_batch_pending" classname="device_batch_pending" time="0.0070807" status="run">
+		<properties/>
+		<system-out>PASS batch_pending (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_batch_missing" classname="device_batch_missing" time="0.0059903" status="run">
+		<properties/>
+		<system-out>PASS batch_missing (13 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_cache_hit" classname="device_cache_hit" time="0.0060334" status="run">
+		<properties/>
+		<system-out>PASS cache_hit (15 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_miss_becomes_hit" classname="device_miss_becomes_hit" time="0.0059308" status="run">
+		<properties/>
+		<system-out>PASS miss_becomes_hit (53 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_ordered_pages" classname="device_ordered_pages" time="0.0061375" status="run">
+		<properties/>
+		<system-out>PASS ordered_pages (28 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_ordered_error" classname="device_ordered_error" time="0.005707" status="run">
+		<properties/>
+		<system-out>PASS ordered_error (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_pending_order_diagnostic" classname="device_pending_order_diagnostic" time="0.0062597" status="run">
+		<properties/>
+		<system-out>PASS pending_order_diagnostic (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_tx_cache_pressure" classname="device_tx_cache_pressure" time="0.0062418" status="run">
+		<properties/>
+		<system-out>PASS tx_cache_pressure (133 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_cache_rewrite" classname="device_cache_rewrite" time="0.0059031" status="run">
+		<properties/>
+		<system-out>PASS cache_rewrite (19 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_pending_frozen" classname="device_pending_frozen" time="0.0057313" status="run">
+		<properties/>
+		<system-out>PASS pending_frozen (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_pending_tx_full" classname="device_pending_tx_full" time="0.0062757" status="run">
+		<properties/>
+		<system-out>PASS pending_tx_full (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_rejected_batch_no_effect" classname="device_rejected_batch_no_effect" time="0.0056045" status="run">
+		<properties/>
+		<system-out>PASS rejected_batch_no_effect (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_ingress_bypass" classname="device_ingress_bypass" time="0.0088144" status="run">
+		<properties/>
+		<system-out>PASS ingress_bypass (2219 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_fault_fanout" classname="device_fault_fanout" time="0.0059789" status="run">
+		<properties/>
+		<system-out>PASS fault_fanout (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_replacement_replay" classname="device_replacement_replay" time="0.0064382" status="run">
+		<properties/>
+		<system-out>PASS replacement_replay (15 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_remap_cache" classname="device_remap_cache" time="0.0060705" status="run">
+		<properties/>
+		<system-out>PASS remap_cache (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_duplicate_handoff" classname="device_duplicate_handoff" time="0.0058657" status="run">
+		<properties/>
+		<system-out>PASS duplicate_handoff (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_response_feedback" classname="device_response_feedback" time="0.0059376" status="run">
+		<properties/>
+		<system-out>PASS response_feedback (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_configuration" classname="device_configuration" time="0.0055462" status="run">
+		<properties/>
+		<system-out>PASS configuration (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_cache_pin_invalidation" classname="device_cache_pin_invalidation" time="0.0063644" status="run">
+		<properties/>
+		<system-out>PASS cache_pin_invalidation (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_teardown" classname="device_teardown" time="0.0062206" status="run">
+		<properties/>
+		<system-out>PASS teardown (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_unsupported" classname="device_unsupported" time="0.0057896" status="run">
+		<properties/>
+		<system-out>PASS unsupported (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_policies" classname="device_policies" time="0.0057606" status="run">
+		<properties/>
+		<system-out>PASS policies (13 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_invalid_policy" classname="device_invalid_policy" time="0.0067576" status="run">
+		<properties/>
+		<system-out>PASS invalid_policy (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_link_latency" classname="device_link_latency" time="0.0058861" status="run">
+		<properties/>
+		<system-out>PASS link_latency (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_pending_recheck" classname="device_pending_recheck" time="0.0064518" status="run">
+		<properties/>
+		<system-out>PASS pending_recheck (13 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_deadline_link_boundary" classname="device_deadline_link_boundary" time="0.0105303" status="run">
+		<properties/>
+		<system-out>PASS deadline_link_boundary (4168 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_sense_order_policy" classname="device_sense_order_policy" time="0.0064332" status="run">
+		<properties/>
+		<system-out>PASS sense_order_policy (27 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_sense_order_blocked" classname="device_sense_order_blocked" time="0.0056875" status="run">
+		<properties/>
+		<system-out>PASS sense_order_blocked (27 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_ordered_late_error" classname="device_ordered_late_error" time="0.0061429" status="run">
+		<properties/>
+		<system-out>PASS ordered_late_error (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_rewrite_saved_read" classname="device_rewrite_saved_read" time="0.0060395" status="run">
+		<properties/>
+		<system-out>PASS rewrite_saved_read (15 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_retirement_loop" classname="device_retirement_loop" time="0.0063011" status="run">
+		<properties/>
+		<system-out>PASS retirement_loop (19 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_teardown_cache_hit" classname="device_teardown_cache_hit" time="0.0066405" status="run">
+		<properties/>
+		<system-out>PASS teardown_cache_hit (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_callback_limit" classname="device_callback_limit" time="0.006271" status="run">
+		<properties/>
+		<system-out>PASS callback_limit (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="device_multi_channel_bandwidth" classname="device_multi_channel_bandwidth" time="0.0057062" status="run">
+		<properties/>
+		<system-out>PASS multi_channel_bandwidth (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_issue_rollback" classname="lifecycle_issue_rollback" time="0.050594" status="run">
+		<properties/>
+		<system-out>PASS issue_rollback (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_issue_sampling" classname="lifecycle_issue_sampling" time="0.0059129" status="run">
+		<properties/>
+		<system-out>PASS issue_sampling (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_guard_multiple_readers" classname="lifecycle_guard_multiple_readers" time="0.0058111" status="run">
+		<properties/>
+		<system-out>PASS guard_multiple_readers (10 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_pending_fixed_missing" classname="lifecycle_pending_fixed_missing" time="0.0057932" status="run">
+		<properties/>
+		<system-out>PASS pending_fixed_missing (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_physical_zone_wakeup" classname="lifecycle_physical_zone_wakeup" time="0.0065296" status="run">
+		<properties/>
+		<system-out>PASS physical_zone_wakeup (1 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_fixture_capabilities" classname="lifecycle_fixture_capabilities" time="0.0068662" status="run">
+		<properties/>
+		<system-out>PASS fixture_capabilities (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_event_rounds" classname="lifecycle_event_rounds" time="0.0061717" status="run">
+		<properties/>
+		<system-out>PASS event_rounds (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_deadline_batch" classname="lifecycle_deadline_batch" time="0.0056121" status="run">
+		<properties/>
+		<system-out>PASS deadline_batch (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_deadline_limits" classname="lifecycle_deadline_limits" time="0.0056011" status="run">
+		<properties/>
+		<system-out>PASS deadline_limits (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_deadline_exception" classname="lifecycle_deadline_exception" time="0.0061227" status="run">
+		<properties/>
+		<system-out>PASS deadline_exception (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_event_cancel_limits" classname="lifecycle_event_cancel_limits" time="0.005566" status="run">
+		<properties/>
+		<system-out>PASS event_cancel_limits (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_wait_targeting" classname="lifecycle_wait_targeting" time="0.0057377" status="run">
+		<properties/>
+		<system-out>PASS wait_targeting (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_wait_race_cancel" classname="lifecycle_wait_race_cancel" time="0.0059871" status="run">
+		<properties/>
+		<system-out>PASS wait_race_cancel (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_wait_reregister" classname="lifecycle_wait_reregister" time="0.0056572" status="run">
+		<properties/>
+		<system-out>PASS wait_reregister (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_accept_issue" classname="lifecycle_read_accept_issue" time="0.0062317" status="run">
+		<properties/>
+		<system-out>PASS read_accept_issue (33 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_bounded_results" classname="lifecycle_read_bounded_results" time="0.0060722" status="run">
+		<properties/>
+		<system-out>PASS read_bounded_results (12 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_order" classname="lifecycle_read_order" time="0.0056563" status="run">
+		<properties/>
+		<system-out>PASS read_order (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_order_errors" classname="lifecycle_read_order_errors" time="0.0056995" status="run">
+		<properties/>
+		<system-out>PASS read_order_errors (10 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_pending_order_diagnostic" classname="lifecycle_pending_order_diagnostic" time="0.0064721" status="run">
+		<properties/>
+		<system-out>PASS pending_order_diagnostic (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_pending_capacity" classname="lifecycle_pending_capacity" time="0.0060294" status="run">
+		<properties/>
+		<system-out>PASS pending_capacity (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_failure_revalidation" classname="lifecycle_read_failure_revalidation" time="0.0060838" status="run">
+		<properties/>
+		<system-out>PASS read_failure_revalidation (11 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_repair_revalidation" classname="lifecycle_read_repair_revalidation" time="0.0060416" status="run">
+		<properties/>
+		<system-out>PASS read_repair_revalidation (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_quiesce_drain" classname="lifecycle_read_quiesce_drain" time="0.0059979" status="run">
+		<properties/>
+		<system-out>PASS read_quiesce_drain (10 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_read_stale_candidate" classname="lifecycle_read_stale_candidate" time="0.0059697" status="run">
+		<properties/>
+		<system-out>PASS read_stale_candidate (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_write_probes" classname="lifecycle_write_probes" time="0.0058052" status="run">
+		<properties/>
+		<system-out>PASS write_probes (38 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_program_stale_candidate" classname="lifecycle_program_stale_candidate" time="0.0059552" status="run">
+		<properties/>
+		<system-out>PASS program_stale_candidate (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_write_ready_notifications" classname="lifecycle_write_ready_notifications" time="0.0061669" status="run">
+		<properties/>
+		<system-out>PASS write_ready_notifications (9 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_physical_release_notification" classname="lifecycle_physical_release_notification" time="0.0062207" status="run">
+		<properties/>
+		<system-out>PASS physical_release_notification (3 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_deadline_credit_chain" classname="lifecycle_deadline_credit_chain" time="0.0058167" status="run">
+		<properties/>
+		<system-out>PASS deadline_credit_chain (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_deadline_resident_only" classname="lifecycle_deadline_resident_only" time="0.0058841" status="run">
+		<properties/>
+		<system-out>PASS deadline_resident_only (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_deadline_two_dlus" classname="lifecycle_deadline_two_dlus" time="0.0062849" status="run">
+		<properties/>
+		<system-out>PASS deadline_two_dlus (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_window_membership" classname="lifecycle_window_membership" time="0.0059783" status="run">
+		<properties/>
+		<system-out>PASS window_membership (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_group_channel_isolation" classname="lifecycle_group_channel_isolation" time="0.0060777" status="run">
+		<properties/>
+		<system-out>PASS group_channel_isolation (5 checks)
+</system-out>
+	</testcase>
+	<testcase name="lifecycle_teardown_queued_read" classname="lifecycle_teardown_queued_read" time="0.0057549" status="run">
+		<properties/>
+		<system-out>PASS teardown_queued_read (2 checks)
+</system-out>
+	</testcase>
+	<testcase name="address_mapping" classname="address_mapping" time="0.0456828" status="run">
+		<properties/>
+		<system-out>PASS address_mapping (8218 checks)
+</system-out>
+	</testcase>
+	<testcase name="admission" classname="admission" time="0.0059504" status="run">
+		<properties/>
+		<system-out>PASS admission (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="write_lifecycle" classname="write_lifecycle" time="0.0058873" status="run">
+		<properties/>
+		<system-out>PASS write_lifecycle (24 checks)
+</system-out>
+	</testcase>
+	<testcase name="events_dispatch" classname="events_dispatch" time="0.0060158" status="run">
+		<properties/>
+		<system-out>PASS events_dispatch (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="basic_errors" classname="basic_errors" time="0.0397476" status="run">
+		<properties/>
+		<system-out>PASS basic_errors (12 checks)
+</system-out>
+	</testcase>
+	<testcase name="shared_credit" classname="shared_credit" time="0.0067871" status="run">
+		<properties/>
+		<system-out>PASS shared_credit (267 checks)
+</system-out>
+	</testcase>
+	<testcase name="pending_forward" classname="pending_forward" time="0.0061205" status="run">
+		<properties/>
+		<system-out>PASS pending_forward (76 checks)
+</system-out>
+	</testcase>
+	<testcase name="media_lifetime" classname="media_lifetime" time="0.0057809" status="run">
+		<properties/>
+		<system-out>PASS media_lifetime (14 checks)
+</system-out>
+	</testcase>
+	<testcase name="recovery_reads" classname="recovery_reads" time="0.0067075" status="run">
+		<properties/>
+		<system-out>PASS recovery_reads (22 checks)
+</system-out>
+	</testcase>
+	<testcase name="merged_read_gate" classname="merged_read_gate" time="0.0056821" status="run">
+		<properties/>
+		<system-out>PASS merged_read_gate (32 checks)
+</system-out>
+	</testcase>
+	<testcase name="replacement_timeout_gate" classname="replacement_timeout_gate" time="0.0074652" status="run">
+		<properties/>
+		<system-out>PASS replacement_timeout_gate (19 checks)
+</system-out>
+	</testcase>
+	<testcase name="retirement_reads" classname="retirement_reads" time="0.0061941" status="run">
+		<properties/>
+		<system-out>PASS retirement_reads (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="remap_read_generation" classname="remap_read_generation" time="0.0060069" status="run">
+		<properties/>
+		<system-out>PASS remap_read_generation (19 checks)
+</system-out>
+	</testcase>
+	<testcase name="event_error_order" classname="event_error_order" time="0.0056841" status="run">
+		<properties/>
+		<system-out>PASS event_error_order (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="deadline_forward" classname="deadline_forward" time="0.005602" status="run">
+		<properties/>
+		<system-out>PASS deadline_forward (6 checks)
+</system-out>
+	</testcase>
+	<testcase name="quiesce_reads" classname="quiesce_reads" time="0.0061186" status="run">
+		<properties/>
+		<system-out>PASS quiesce_reads (7 checks)
+</system-out>
+	</testcase>
+	<testcase name="read_issue_snapshot" classname="read_issue_snapshot" time="0.0061145" status="run">
+		<properties/>
+		<system-out>PASS read_issue_snapshot (10 checks)
+</system-out>
+	</testcase>
+	<testcase name="ingress_scope" classname="ingress_scope" time="0.0066347" status="run">
+		<properties/>
+		<system-out>PASS ingress_scope (8 checks)
+</system-out>
+	</testcase>
+	<testcase name="read_teardown" classname="read_teardown" time="0.0063968" status="run">
+		<properties/>
+		<system-out>PASS read_teardown (4 checks)
+</system-out>
+	</testcase>
+	<testcase name="capacity_compensation" classname="capacity_compensation" time="0.0440435" status="run">
+		<properties/>
+		<system-out>PASS capacity_compensation (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="capacity_density" classname="capacity_density" time="0.0060631" status="run">
+		<properties/>
+		<system-out>PASS capacity_density (18 checks)
+</system-out>
+	</testcase>
+	<testcase name="capacity_atomicity" classname="capacity_atomicity" time="0.0063991" status="run">
+		<properties/>
+		<system-out>PASS capacity_atomicity (24 checks)
+</system-out>
+	</testcase>
+	<testcase name="capacity_hole_failure" classname="capacity_hole_failure" time="0.0057469" status="run">
+		<properties/>
+		<system-out>PASS capacity_hole_failure (12 checks)
+</system-out>
+	</testcase>
+	<testcase name="capacity_lease_boundary" classname="capacity_lease_boundary" time="0.0062016" status="run">
+		<properties/>
+		<system-out>PASS capacity_lease_boundary (16 checks)
+</system-out>
+	</testcase>
+	<testcase name="capacity_chain" classname="capacity_chain" time="0.110055" status="run">
+		<properties/>
+		<system-out>PASS capacity_chain (100156 checks)
+</system-out>
+	</testcase>
+	<testcase name="replacement_pipeline" classname="replacement_pipeline" time="0.0417164" status="run">
+		<properties/>
+		<system-out>PASS replacement_pipeline (27 checks)
+</system-out>
+	</testcase>
+	<testcase name="overlap_restart" classname="overlap_restart" time="0.0062425" status="run">
+		<properties/>
+		<system-out>PASS overlap_restart (86 checks)
+</system-out>
+	</testcase>
+	<testcase name="timeout_retry" classname="timeout_retry" time="0.0062188" status="run">
+		<properties/>
+		<system-out>PASS timeout_retry (15 checks)
+</system-out>
+	</testcase>
+	<testcase name="replay_prefix" classname="replay_prefix" time="0.0058137" status="run">
+		<properties/>
+		<system-out>PASS replay_prefix (46 checks)
+</system-out>
+	</testcase>
+	<testcase name="replacement_failure" classname="replacement_failure" time="0.0065383" status="run">
+		<properties/>
+		<system-out>PASS replacement_failure (12 checks)
+</system-out>
+	</testcase>
+	<testcase name="admission_boundaries" classname="admission_boundaries" time="0.0066278" status="run">
+		<properties/>
+		<system-out>PASS admission_boundaries (79 checks)
+</system-out>
+	</testcase>
+	<testcase name="replay_merge" classname="replay_merge" time="0.0068584" status="run">
+		<properties/>
+		<system-out>PASS replay_merge (61 checks)
+</system-out>
+	</testcase>
+	<testcase name="replay_replacement_merge" classname="replay_replacement_merge" time="0.0058093" status="run">
+		<properties/>
+		<system-out>PASS replay_replacement_merge (31 checks)
+</system-out>
+	</testcase>
+	<testcase name="replay_remap_generation" classname="replay_remap_generation" time="0.0062289" status="run">
+		<properties/>
+		<system-out>PASS replay_remap_generation (22 checks)
+</system-out>
+	</testcase>
+	<testcase name="retirement_write_swap" classname="retirement_write_swap" time="0.0065073" status="run">
+		<properties/>
+		<system-out>PASS retirement_write_swap (13 checks)
+</system-out>
+	</testcase>
+</testsuite>

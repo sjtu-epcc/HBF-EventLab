@@ -1,0 +1,6 @@
+{
+  "cuda_architectures": "native",
+  "ptx_architecture": "compute_75",
+  "python": "python",
+  "jobs": 6
+}

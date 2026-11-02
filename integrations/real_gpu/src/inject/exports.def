@@ -1,0 +1,5 @@
+LIBRARY hbflab_inject
+EXPORTS
+    DetourFinishHelperProcess @1 NONAME
+    HBFLabInjectionQuery
+    HBFLabInjectionAsyncQuery

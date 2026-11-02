@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-31",
+  "scope": "Environment configuration and platform adapter; not a new inference experiment",
+  "platform": "Windows x64, MSVC, CUDA 13.0, explicit 120a-real target",
+  "checks": {
+    "python_environment_tests": {"passed": 4},
+    "existing_python_validation_contract": {"passed": 5},
+    "machine_configuration": "precedence, relative paths and unknown-key rejection passed",
+    "cmake_architecture_override": "89-real / compute_80 configuration-only check passed",
+    "platform_cpp": "MSVC compilation and environment/alignment/memory-query execution passed",
+    "fresh_model_build": "passed in build-portability-model; sealed identity verified",
+    "ptx_gpu": "1024-wide multiply and device timers passed with automatic CUDA runtime discovery"
+  },
+  "limitations": [
+    "MSVC compiler probing required execution outside the sandbox after a program-database error",
+    "No Linux execution or alternative GPU architecture execution was performed",
+    "No model inference, TTFT/TPOT measurement or full regression rerun was performed"
+  ],
+  "logs": [
+    "build-portability-temp/model-build.log",
+    "build-portability-temp/model-rebuild.log",
+    "build-portability-temp/ptx-1024",
+    "build-portability-model/release-identity.json"
+  ]
+}

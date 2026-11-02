@@ -1,0 +1,12 @@
+{
+  "upstream": "b3fa69955ea81c3b60e77e3c1e2224c4a826ffb9",
+  "modified_sha256": {
+    "ggml/src/ggml-cuda/norm.cu": "405d86105b666617139edbcf341885065a0c979dda1c48c0bbaf56f1850cbb03",
+    "ggml/src/ggml-cuda/ggml-cuda.cu": "0d66b651a39075e6eb565c89d057d82f75fab6a5818093e84c350fa431f52c89",
+    "src/llama-model.cpp": "bbdddf5feaa3629f5b4a76d6c7c0eb64d72ff4f4d2f713874f1ec1e70b7d8a02",
+    "src/models/qwen3.cpp": "42abcb566204c7cab210f5456af29a244775e03a0d74f571caa2444b60149afb",
+    "src/llama-kv-cache.cpp": "ad316fe8c8b917089aa507bf2087d620f0174013f3e2a91ac13bc088a9aefdf3",
+    "ggml/src/ggml-alloc.c": "4fb9c0a5d636adcec767c40d0ca7b0804a09b564e20b766ef2f572c7d8c33a8f",
+    "src/models/llama.cpp": "b12fd70c494d83fa6bd0bbe90892835f23f478ef1a2687f3d33681e071eaba56"
+  }
+}

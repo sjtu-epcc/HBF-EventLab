@@ -1,0 +1,3 @@
+A computer uses several kinds of memory. The processor uses registers for immediate calculations, while main memory stores programs and data. The following detailed explanation describes how these parts work together:
+
+First,

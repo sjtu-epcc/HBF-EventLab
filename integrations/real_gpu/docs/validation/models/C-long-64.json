@@ -1,0 +1,147 @@
+{
+  "status": "pass",
+  "model_id": "HuggingFaceTB/SmolLM2-135M",
+  "architecture": "llama",
+  "profile_sha256": "d246bc1ea8bdfca09a46ec77db05595b8cbcb3653c49aa342a558e71c26d8f8d",
+  "tokens": 64,
+  "prompt_tokens": 163,
+  "numerical_contract": {
+    "relative_l2": 0.005,
+    "max_abs_over_native_rms": 0.04,
+    "tokens_exact": true,
+    "basis": "predeclared dimensionless FP16 KV/reduction envelope; independent attention oracle max_abs <= 1e-5; no tuning after runs"
+  },
+  "comparisons": {
+    "bypass": {
+      "native_tokens_exact": true,
+      "native_max_abs_error": 0.05998992919921875,
+      "native_rms_error": 0.010067179610199801,
+      "relative_l2": 0.0008547820463863386,
+      "max_abs_over_native_rms": 0.005093612752426303,
+      "kv": {
+        "steps": 64,
+        "length": 226,
+        "profile_sha256": "d246bc1ea8bdfca09a46ec77db05595b8cbcb3653c49aa342a558e71c26d8f8d",
+        "layers": 30,
+        "transactions": 66,
+        "cross_page_rows": 23400,
+        "appended_layer_tokens": 6780,
+        "page_pairs": 71280,
+        "frame_bytes": 16384,
+        "logical_pages": 3840,
+        "pages_per_block": 4,
+        "blocks_per_bank": 2048,
+        "allocated_pages": 1800,
+        "faults": 101280,
+        "hits": 102480,
+        "evictions": 101276,
+        "writebacks": 5280,
+        "dirty_frames": 0,
+        "pins": 0,
+        "media_records": 0,
+        "kv_commit_d2h_bytes": 5207040,
+        "h2d_bytes": 393216000,
+        "native_gpu_kv_bytes": 0
+      },
+      "released": {
+        "allocated_pages": 0,
+        "pins": 0,
+        "dirty_frames": 0,
+        "active_leases": 0
+      }
+    },
+    "modeled": {
+      "native_tokens_exact": true,
+      "native_max_abs_error": 0.05998992919921875,
+      "native_rms_error": 0.010067179610199801,
+      "relative_l2": 0.0008547820463863386,
+      "max_abs_over_native_rms": 0.005093612752426303,
+      "kv": {
+        "steps": 64,
+        "length": 226,
+        "profile_sha256": "d246bc1ea8bdfca09a46ec77db05595b8cbcb3653c49aa342a558e71c26d8f8d",
+        "layers": 30,
+        "transactions": 66,
+        "cross_page_rows": 23400,
+        "appended_layer_tokens": 6780,
+        "page_pairs": 71280,
+        "frame_bytes": 16384,
+        "logical_pages": 3840,
+        "pages_per_block": 4,
+        "blocks_per_bank": 2048,
+        "allocated_pages": 1800,
+        "faults": 101280,
+        "hits": 102480,
+        "evictions": 101276,
+        "writebacks": 5280,
+        "dirty_frames": 0,
+        "pins": 0,
+        "media_records": 106560,
+        "kv_commit_d2h_bytes": 5207040,
+        "h2d_bytes": 393216000,
+        "native_gpu_kv_bytes": 0
+      },
+      "released": {
+        "allocated_pages": 0,
+        "pins": 0,
+        "dirty_frames": 0,
+        "active_leases": 0
+      }
+    }
+  },
+  "paged_bypass_modeled_logits_bitwise_equal": true,
+  "ptx_weight_requests": 130176,
+  "helper_weight_requests": 5424,
+  "media_reads": 101280,
+  "media_writes": 5280,
+  "shared_arrival_clock_billing_verified": true,
+  "backend": {
+    "requests": 236880,
+    "sectors": 6622944,
+    "backpressure": 0,
+    "interface": "SimulationSession -> HostDriver -> DeviceDriver",
+    "input_closed": true,
+    "registered_globals": 261842,
+    "completed_globals": 261842,
+    "registered_fragments": 8220512,
+    "host_logical_success": 8220512,
+    "host_logical_failed": 0,
+    "host_replay_commands": 0,
+    "host_attempt_errors": 0,
+    "resident_fragment_limit": 256,
+    "peak_resident_fragments": 256,
+    "peak_registered_globals": 128,
+    "senses": 101412,
+    "cache_hits": 6521532,
+    "writebacks": 5280,
+    "replayed_pages": 21120,
+    "programs": 24962,
+    "erases": 6242,
+    "accepted": 6647906,
+    "delivered": 6647906
+  },
+  "scope": [
+    {
+      "tensor": "blk.10.ffn_norm.weight",
+      "offset": 0,
+      "bytes": 2304,
+      "op": "MUL",
+      "class": "automatic PTX"
+    },
+    {
+      "tensor": "blk.10.ffn_down.weight",
+      "offset": 0,
+      "bytes": 3072,
+      "op": "MUL_MAT",
+      "class": "warp helper"
+    },
+    {
+      "tensor": "all layer K/V",
+      "class": "Capacity page leases"
+    },
+    {
+      "tensor": "remaining weights/activations",
+      "class": "native unmodeled"
+    }
+  ]
+}

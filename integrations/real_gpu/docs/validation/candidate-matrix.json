@@ -1,0 +1,208 @@
+{
+  "status": "pass",
+  "models": 3,
+  "architecture_families": 2,
+  "cases": [
+    {
+      "case": "A-short-32",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "B-short-32",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "B-short-64",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "B-long-32",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "B-long-64",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "C-short-32",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "C-short-64",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "C-long-32",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "case": "C-long-64",
+      "returncode": 0,
+      "comparisons": [
+        {
+          "mode": "native",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "bypass",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        },
+        {
+          "mode": "modeled",
+          "complete_logits_byte_exact": true,
+          "tokens_exact": true
+        }
+      ],
+      "status": "pass"
+    }
+  ],
+  "model_processes": 27,
+  "backend_commit": "72e074508c462dceb7d42962c4885ecf17cc4d0d",
+  "build_identity_sha256": "718a7ac0e9336266f50f65957766b759dac8a84fba298d7b36f19b0db480b2a3"
+}

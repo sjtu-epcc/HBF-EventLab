@@ -1,0 +1,9 @@
+<|im_start|>system
+You are a helpful assistant. Answer directly without thinking aloud.<|im_end|>
+<|im_start|>user
+Write the integers from 1 to 1000 in increasing order, separated by commas. Do not add any explanation and do not stop before 1000.<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
