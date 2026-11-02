@@ -146,6 +146,13 @@ if(BUILD_TESTING)
     endforeach()
     add_test(NAME session_demo COMMAND hbf_eventlab_session_demo)
     add_executable(hbf_eventlab_session_tests tests/session.cpp)
+    add_executable(hbf_eventlab_backend_overlay_tests tests/backend_overlay.cpp)
+    target_link_libraries(hbf_eventlab_backend_overlay_tests PRIVATE HBFEventLab::core)
+    foreach(scenario install_guards install_atomic install_reentrant fault_override fault_exception
+            history_normal history_late_failure persistent_failure read_failure_dependency abort_later_version zero_reclaim)
+        add_test(NAME backend_overlay_${scenario} COMMAND hbf_eventlab_backend_overlay_tests ${scenario})
+        set_tests_properties(backend_overlay_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
     target_link_libraries(hbf_eventlab_session_tests PRIVATE HBFEventLab::core)
     foreach(scenario exclusive empty_frontier endpoint_input first_atomic late_atomic horizon_guard open_drained close_work close_empty
             open_timeout closed_stalled missing_predecessor feedback_closed feedback_guard feedback_future feedback_validation callback_error callback_model_error

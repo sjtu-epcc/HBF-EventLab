@@ -46,6 +46,7 @@ void HostDriver::reclaim() {
     if(!incremental_)return; // preserve finite-workload baseline and diagnostics
     const auto before=work_.size();
     std::set<SendUnitId> retired;
+    std::set<ContentKey> touched_versions;
     for(auto it=units_.begin();it!=units_.end();) {
         if(profile_)profile_->add(RuntimeCounter::ReclaimUnitVisits);
         const auto& u=it->second;
@@ -70,13 +71,16 @@ void HostDriver::reclaim() {
             const auto erased=work_.erase(f.id);
             if(profile_)profile_->add(RuntimeCounter::ReclaimedWork,erased);
         }
+        // Only normal writes appear in Version::normal; replay and reads cannot
+        // invalidate that directory. Record the owner only after safety checks.
+        if(u.content && !u.replay)touched_versions.insert(*u.content);
         unindex_unit(u);
         retired.insert(u.id);it=units_.erase(it);
         if(profile_)profile_->add(RuntimeCounter::ReclaimedUnits);
     }
     // Remove all indices before later events can dereference retired IDs.
-    for(auto& v:versions_) {
-        auto& ids=v.second.normal;
+    for(const auto& key:touched_versions) {
+        auto& ids=versions_.at(key).normal;
         ids.erase(std::remove_if(ids.begin(),ids.end(),[&](auto id){return retired.count(id);}),ids.end());
     }
     for(auto it=initial_enqueues_.begin();it!=initial_enqueues_.end();) {

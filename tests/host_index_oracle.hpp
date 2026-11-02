@@ -11,9 +11,12 @@ struct HostIndexTestAccess {
         decltype(h.global_fragment_refs_) refs;
         decltype(h.pending_limit_retry_units_) retries;
         decltype(h.reclaimable_globals_) reclaimable;
+        std::map<ContentKey,std::vector<SendUnitId>> normal;
+        for(const auto& v:h.versions_)normal.emplace(v.first,std::vector<SendUnitId>{});
         for(const auto& r:h.requests_)refs.emplace(r.first,0);
         for(const auto& entry:h.units_) {
             const auto& u=entry.second;const auto& f=u.fragments.front();
+            if(u.content&&!u.replay)normal.at(*u.content).push_back(u.id);
             if(!u.replay)for(const auto& fragment:u.fragments)++refs.at(fragment.parent);
             if(u.op==Op::Read) {
                 if(u.group && u.stage==HostDriver::UnitStage::Queued)
@@ -42,7 +45,16 @@ struct HostIndexTestAccess {
         check(refs==h.global_fragment_refs_,"Global reference index differs from resident fragments");
         check(retries==h.pending_limit_retry_units_,"Pending retry index differs from full scan");
         check(reclaimable==h.reclaimable_globals_,"Global reclamation candidates differ from full scan");
+        for(const auto& v:h.versions_) {
+            check(normal.at(v.first)==v.second.normal,"version normal directory differs from live Units");
+            if(!h.write_error_seen_) {
+                check(!v.second.aborted,"aborted version before first write error");
+                for(const auto& r:v.second.retries)check(!r.second.active,"retry before first write error");
+            }
+        }
+        if(!h.write_error_seen_)check(h.recovery_.tasks().empty(),"recovery history before first write error");
     }
+    static bool write_error_seen(const HostDriver& h) {return h.write_error_seen_;}
     static std::size_t references(const HostDriver& h,GlobalRequestId id) {return h.global_fragment_refs_.at(id);}
     static std::size_t retry_count(const HostDriver& h) {return h.pending_limit_retry_units_.size();}
     static bool no_read_indices(const HostDriver& h) {return h.queued_group_reads_.empty()&&h.unaccepted_reads_.empty();}

@@ -259,6 +259,7 @@ void HostDriver::receive(CommandId id,const DeliveredResponse& response) {
         const auto& wr=std::get<WriteResponse>(response.response);
         if(wr.command!=id||wr.channel!=block.channel)throw std::logic_error("response identity mismatch");
         success=wr.status==WriteStatus::Success;
+        write_error_seen_=write_error_seen_ || !success;
         stats_.pending_limit_errors+=wr.status==WriteStatus::PendingDluLimit;
         stats_.assembly_timeout_errors+=wr.status==WriteStatus::AssemblyTimeout;
         if(wr.status==WriteStatus::Success || wr.status==WriteStatus::AssemblyTimeout || wr.status==WriteStatus::ProgramFail) {
@@ -376,13 +377,13 @@ void HostDriver::advance() {
     bool changed;
     do {
         changed=false;
-        for(auto& item:versions_)if(!item.second.aborted) {
+        if(write_error_seen_)for(auto& item:versions_)if(!item.second.aborted) {
             for(const auto& older:version_order_.at(item.first.block)) {
                 if(older.content==item.first.content)break;
                 if(versions_.at(older).aborted) {abort_version(item.first,"PriorContentFailed");changed=true;break;}
             }
         }
-        for(auto& item:versions_)if(auto* task=recovery_.active(item.first))
+        if(write_error_seen_)for(auto& item:versions_)if(auto* task=recovery_.active(item.first))
             changed=advance_recovery(item.first,*task)||changed;
         changed=advance_write_retries()||changed;
         for(auto& item:units_) {
@@ -413,7 +414,7 @@ HostActivity HostDriver::activity() const {
     a.unfinished_global=unfinished_globals_;
     for(const auto& c:channels_) {a.queued_units+=c.queue.size();a.subscriptions+=c.wait.has_value();}
     a.unsettled_attempts=attempts_.size();a.recoveries=recovery_.active_count();
-    for(const auto& v:versions_)for(const auto& p:v.second.retries)a.recoveries+=p.second.active;
+    if(write_error_seen_)for(const auto& v:versions_)for(const auto& p:v.second.retries)a.recoveries+=p.second.active;
     a.events=owned_events_.size();return a;
 }
 bool HostDriver::workload_success() const {
@@ -421,7 +422,7 @@ bool HostDriver::workload_success() const {
 }
 std::string HostDriver::waiting_reason() const {
     if(!started_)return "HostNotStarted";
-    for(const auto& v:versions_)for(const auto& p:v.second.retries)if(p.second.active)
+    if(write_error_seen_)for(const auto& v:versions_)for(const auto& p:v.second.retries)if(p.second.active)
         return p.second.phase==RetryPhase::Draining?"WaitingForTimedOutPageAttempts":
             p.second.phase==RetryPhase::AwaitingPredecessor?"WaitingForWriteOrderCause":"WaitingForPageRepair";
     for(const auto& item:recovery_.tasks()) {

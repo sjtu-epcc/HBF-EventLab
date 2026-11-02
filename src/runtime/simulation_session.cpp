@@ -21,6 +21,12 @@ SimulationSession::SimulationSession(ResolvedSimulationConfiguration config,ISta
 void SimulationSession::outside_execution() const {
     if(running_)throw std::logic_error("session operation is external-only and not reentrant");
 }
+void SimulationSession::set_program_outcome(std::function<ProgramOutcome(const ProgramOperation&)> outcome) {
+    outside_execution();healthy();
+    if(started_ || input_closed_ || !outcome)
+        throw std::logic_error("install nonempty fault model before session input/advance/close");
+    device_.set_program_outcome(std::move(outcome));
+}
 void SimulationSession::healthy() const {
     if(failure_)throw std::logic_error("session has a terminal model/implementation error");
 }

@@ -84,6 +84,7 @@ void HostDriver::note_write_retry(Unit& u,const WriteResponse& response) {
 }
 
 bool HostDriver::advance_write_retries() {
+    if(!write_error_seen_)return false;
     bool changed=false;
     for(auto& entry:versions_) {
         const auto key=entry.first;auto& version=entry.second;

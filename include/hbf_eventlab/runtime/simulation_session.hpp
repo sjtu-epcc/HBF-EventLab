@@ -51,6 +51,11 @@ public:
     SessionReport run_to_completion(); // requires external input closed
     // Absolute safety ceilings, preserved across pauses; explicit changes only.
     void set_run_limits(RunLimits);
+    // Replaces the configured fault model. Install a nonempty callback before
+    // successful input registration, advancement or close; never during execution.
+    // The producer records its model/parameters (not serialized by configuration())
+    // and keeps captured objects alive until the last invocation.
+    void set_program_outcome(std::function<ProgramOutcome(const ProgramOperation&)>);
     const RunLimits& run_limits() const { return limits_; }
     Tick now() const { return events_.now(); }
     Tick input_floor() const { return events_.now(); }

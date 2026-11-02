@@ -3622,6 +3622,36 @@
 | 实现状态／验证状态 | 已实现；验证结果见[完整测试矩阵](verification.md)。 |
 | 已知限制 | BlockProgress、SenseOrder等仍可能触发多对象检查；Host与Device候选扫描尚未全面改为增量维护。内部事件数允许减少；诊断的回调归因采用首个入队原因，不是各原因的独立性能贡献。 |
 
+<a id="adr-host-efficiency-02"></a>
+
+#### ADR-HOST-EFFICIENCY-02｜首次写错误前跳过错误历史扫描，按实际回收版本清理索引。
+
+| 字段 | 内容 |
+|---|---|
+| 内容 | `write_error_seen_` 在首次失败写响应时置位；此前不扫描版本失败传播、恢复和页重试。回收时只清理本次确实删除普通写 Unit 所涉及版本的 `normal` 索引。 |
+| 规范关系／条目性质 | 无直接规定；工程实现机制，不改变硬件资源或协议。 |
+| 选择理由 | 增量运行保留内容历史；未发生错误时没有相关恢复工作，无变化的旧版本也不需要反复清理 Unit 列表。 |
+| 实现位置 | `HostDriver::receive/advance/activity/waiting_reason`、`advance_write_retries`、`reclaim`；函数局部 `touched_versions`。 |
+| 不变量 | 当前所有重试、恢复和中止入口均源于失败写响应；新增入口须维护该前提。标志单调，恢复后不清零。读依赖失败、正常完成、释放事件及订阅清理仍执行。回收只缩小索引清理范围，保留原安全条件、Global引用、内容历史与恢复数据。 |
+| 验证测试 | `backend_overlay_*` 的健康历史、首次晚到失败、只读错误依赖、新版本失败传播与零回收；测试侧 `HostIndexTestAccess` 从现存 Unit 重建全部版本目录，与索引比较。现有 `host_resident_*` 覆盖Pending／timeout重试、replay合并、恢复数据不足与回收。 |
+| 实现状态／验证状态 | 已实现；结果见[验证说明](verification.md)。 |
+| 已知限制 | 首次写错误后仍采用既有错误历史扫描；Unit扫描、版本发送顺序检查和其他回收目录没有全面改为增量处理。 |
+
+<a id="adr-session-fault-01"></a>
+
+#### ADR-SESSION-FAULT-01｜会话开始前可安装执行器的 program 结果模型。
+
+| 字段 | 内容 |
+|---|---|
+| 内容 | `SimulationSession::set_program_outcome` 在首次成功登记／推进／关闭前接受非空回调，并替换配置故障模型；禁止重入或在终结错误后修改。 |
+| 规范关系／条目性质 | 无直接规定；实验接口与生命周期约束。 |
+| 选择理由 | 适配层可注入可复现的故障结果，同时复用原Host准入、重试、replay和Device执行路径。 |
+| 实现位置 | `SimulationSession::set_program_outcome` 转发到 `DeviceDriver::set_program_outcome`。 |
+| 不变量 | 不绕过命令或恢复生命周期；空回调拒绝无副作用。回调所有者保留捕获对象，另行记录故障规则；配置导出不冒充任意回调的完整描述。 |
+| 验证测试 | `backend_overlay_install_guards/install_atomic/install_reentrant/fault_override/fault_exception/history_late_failure/persistent_failure`。 |
+| 实现状态／验证状态 | 已实现；结果见[验证说明](verification.md)。 |
+| 已知限制 | 任意回调不能由现有INI序列化；异常是会话终结错误，不等同于协议program-fail响应。 |
+
 ## 5. 参数与模型假设
 
 

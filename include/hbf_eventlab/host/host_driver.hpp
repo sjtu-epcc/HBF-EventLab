@@ -215,6 +215,10 @@ private:
     std::uint64_t next_work_=0,next_unit_=0,next_command_=0;
     std::uint64_t next_enqueue_=0;
     bool loaded_=false,started_=false,incremental_=false;
+    // Monotonic history gate: currently all retry/recovery/abort roots are failed
+    // Write responses. Keep true after recovery; old failures affect new versions.
+    // Any future non-response error entry must maintain this invariant too.
+    bool write_error_seen_=false;
     HostStatistics stats_;
     RuntimeProfile* profile_=nullptr;
     IStatisticsSink* statistics_sink_=nullptr;

@@ -1,5 +1,6 @@
 #include "hbf_eventlab/runtime/simulation_session.hpp"
 #include "hbf_eventlab/statistics/collector.hpp"
+#include "host_index_oracle.hpp"
 #include <iostream>
 #include <sstream>
 using namespace hbf_eventlab;
@@ -16,7 +17,7 @@ struct Fixture {
     Fixture(SimulationConfiguration c=config()):s(resolve_configuration(c),&stats){}
     void idle(Tick t){auto r=s.advance_before(t);check(r.run.status==RunStatus::WaitingForInput,r.run.explanation.c_str());}
     void done(bool success=true){s.close_input();auto r=s.run_to_completion();check(r.run.status==RunStatus::Completed,r.run.explanation.c_str());check(r.run.workload_success==success,"logical outcome");}
-    void reclaimed(){auto n=s.host().storage();check(!n.work&&!n.units&&!n.requests&&!n.attempts,"detailed records reclaimed");check(s.input_capacity().resident==0,"resident quota returned");}
+    void reclaimed(){HostIndexTestAccess::validate(s.host());auto n=s.host().storage();check(!n.work&&!n.units&&!n.requests&&!n.attempts,"detailed records reclaimed");check(s.input_capacity().resident==0,"resident quota returned");}
 };
 void capacity() {
     Fixture f;auto a=f.s.try_submit(wr(1));check(a.disposition==InputDisposition::Registered&&a.capacity.resident==64,"count logical fragments");
@@ -119,6 +120,7 @@ void callback_retry() {
 void timeout_retry() {
     Fixture f;f.s.submit(std::vector<GlobalRequest>{wr(1,0,2048),wr(2,2048,2048,1,Tick{12000000})});
     auto waiting=f.s.advance_before(Tick{11000000});
+    HostIndexTestAccess::validate(f.s.host());
     check(waiting.input_capacity.resident==64&&f.s.host().statistics().assembly_timeout_errors==32,"timed-out work retains quota pending retry");
     f.done();f.reclaimed();check(f.s.host().statistics().timeout_retry_commands==32,"only previous attempts counted as retransmission");
 }
