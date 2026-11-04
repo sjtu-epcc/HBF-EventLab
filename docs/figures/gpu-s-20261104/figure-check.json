@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "figure": "fixed-trace modeled timing, not measured latency",
+  "tokens": 8,
+  "integer_residuals_ps": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "ttft_increment_ps": 487788,
+  "mean_tpot_increment_ps": "267988",
+  "final_cumulative_increment_ps": 2363704,
+  "input_manifest_sha256": "8afe5ec4326180972be6f248d44a0b76b536a2658f8d5032c9f96b3b305f0b33",
+  "python_version": "3.12.14",
+  "matplotlib_version": "3.10.7"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "status": "predeclared_pending_calibration",
+  "supersedes_previous": true,
+  "reference": "Independent torch CPU Qwen3, exact GGUF values, F32 compute, native F16 KV",
+  "criteria": {
+    "logits": {"relative_rms_max": 0.001953125, "normalized_max": 0.0078125},
+    "hidden_qkv": {"relative_rms_max": 0.00390625, "normalized_max": 0.015625},
+    "kv_storage": {"relative_rms_max": 0.00390625, "normalized_max": 0.03125}
+  },
+  "basis": "Engineering budgets expressed in F16 unit roundoff u=2^-11: logits 4u/16u, hidden 8u/32u, KV 8u/64u. This describes a provisional fidelity goal, not a full-network forward-error bound. Historical S2/S3 errors were known during selection; e/f were held out for the first candidate study, g/h for this rerun. User explicitly requested adoption of the candidate criteria.",
+  "hard_conditions": "Every array meets both class thresholds; shape and finiteness; exact input/output tokens, EOS, stop and position; no CUPTI drops; exact valid GPU KV publication.",
+  "limitations": "Qwen3-0.6B F16, current pinned builds, prompt lengths and settings only. GPU per-operator isolation and nonlinear error bounds are not exhaustively verified. No accuracy guarantee for other inputs or models.",
+  "calibration_inputs": ["calibration-g", "calibration-h"],
+  "formal_inputs": ["main", "backup"]
+}

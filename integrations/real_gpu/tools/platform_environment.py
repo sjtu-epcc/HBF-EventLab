@@ -64,6 +64,16 @@ def runtime_environment(build, source_root, cuda_root=None, gpu_device='0'):
     # Prefer them over a different CUPTI version bundled in the CUDA toolkit.
     if cupti:
         libraries += [cupti / p for p in ('bin', 'bin/x64', 'lib', 'lib/x64', 'lib64')]
+    # NVIDIA redistributable cuBLAS may be outside the nvcc installation.
+    # Resolve only the library chosen by CMake, never an unrelated SDK on PATH.
+    cublas_library = cache_value(build, 'CUDA_cublas_LIBRARY')
+    if cublas_library and not cublas_library.endswith('-NOTFOUND'):
+        chosen = Path(cublas_library).resolve()
+        if not chosen.is_file():
+            raise ValueError('Configured cuBLAS library does not exist: ' + str(chosen))
+        libdir = chosen.parent
+        sdk = libdir.parent.parent if libdir.name == 'x64' else libdir.parent
+        libraries += [sdk / 'bin', sdk / 'bin/x64', libdir]
     if cuda:
         env['CUDA_PATH'] = str(cuda)
         libraries += [cuda / p for p in ('bin', 'bin/x64', 'lib', 'lib/x64',

@@ -1,0 +1,127 @@
+{
+  "status": "pass",
+  "scope": "new-backend-real-CUDA-fixed-historical-trace-mechanism",
+  "backend_source_sha256": "1713429bfc66c2939b6695029ef4b6178c4f6912eee3188067ff1530d967bab2",
+  "local_environment": {
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "compute_capability": [
+      8,
+      9
+    ],
+    "cuda_driver_api": 13020,
+    "cuda_runtime": 12090,
+    "gpu_free_bytes": 6218055680,
+    "gpu_total_bytes": 8585216000,
+    "host_available_bytes": 17749958656
+  },
+  "G2_metrics": {
+    "actual_outputs": 8,
+    "ttft_ps": 10040304000,
+    "itl_ps": [
+      3864877000,
+      3732482000,
+      5410031000,
+      5947936000,
+      5838706000,
+      5369777000,
+      5665642000
+    ],
+    "tpot_ps": 5118493000.0
+  },
+  "runs": [
+    {
+      "case": "G3-full",
+      "metrics": {
+        "actual_outputs": 8,
+        "ttft_ps": 10040791788,
+        "itl_ps": [
+          3865144988,
+          3732749988,
+          5410298988,
+          5948203988,
+          5838973988,
+          5370044988,
+          5665909988
+        ],
+        "tpot_ps": 5118760988.0
+      },
+      "wait_ps": 2363704
+    },
+    {
+      "case": "G3-timing-1",
+      "metrics": {
+        "actual_outputs": 8,
+        "ttft_ps": 10040791788,
+        "itl_ps": [
+          3865144988,
+          3732749988,
+          5410298988,
+          5948203988,
+          5838973988,
+          5370044988,
+          5665909988
+        ],
+        "tpot_ps": 5118760988.0
+      },
+      "wait_ps": 2363704
+    },
+    {
+      "case": "G3-timing-2",
+      "metrics": {
+        "actual_outputs": 8,
+        "ttft_ps": 10040791788,
+        "itl_ps": [
+          3865144988,
+          3732749988,
+          5410298988,
+          5948203988,
+          5838973988,
+          5370044988,
+          5665909988
+        ],
+        "tpot_ps": 5118760988.0
+      },
+      "wait_ps": 2363704
+    }
+  ],
+  "local_native_CPU_arrays": 1369,
+  "local_G3_CPU_arrays": 1369,
+  "local_native_G3_exact": {
+    "status": "pass",
+    "tokens_exact": true,
+    "complete_logits_exact": true,
+    "valid_snapshot_arrays": 3608,
+    "valid_snapshot_bytes_exact": true,
+    "unused_kv_padding_excluded": true,
+    "all_raw_events_and_callback_ids_exact": true
+  },
+  "coverage": {
+    "registered_valid_bytes": 10240,
+    "registered_storage_bytes": 12288,
+    "padding_bytes": 2048,
+    "touched_union_bytes": 10240,
+    "cumulative_read_bytes": 81920,
+    "read_globals": 24,
+    "read_logical_fragments": 1280,
+    "read_attempts": 1280,
+    "model_weight_bytes": 1503395840,
+    "selected_tensor_bytes": 6295552,
+    "registered_model_fraction": 6.81124673060157e-06,
+    "selected_tensor_fraction": 0.0016265452179570592
+  },
+  "negative_dependency_tests": 2,
+  "closed_and_drained": true,
+  "timing_repeats": 2,
+  "all_integer_residuals_ps": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "new_local_compute_measurements": false,
+  "HBF_hardware_prediction": false
+}

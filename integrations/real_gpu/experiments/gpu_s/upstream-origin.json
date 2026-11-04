@@ -1,0 +1,219 @@
+{
+  "repository": "https://github.com/ZeePgm/RealGPUAcess_v0",
+  "commit": "d6cb5016aed9ec72f3bc36f4be114bcd6cb8bdcb",
+  "experiment_base_commit": "f600d9de3e7b6e4f5889f536a0c21ad05b57eebd",
+  "backend_baseline": "8ccb1f353630f893f761b017d621812b7b9d5bf2",
+  "scope": "Only experiments/gpu_s. No old backend/vendor/tools copied. Historical run results require separate archive, not current acceptance.",
+  "imported_files": [
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 4828,
+      "sha256": "83e4dfc7ff1c93655d41e8c2c3d00b458b382aa9573dd7e1ed3f028a7e7ab772"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4893,
+      "sha256": "c781de1c264b87cf1f9a8e6385c006650df8b8c0514d1f1015e5746c7845b69f"
+    },
+    {
+      "path": "audit.py",
+      "bytes": 9604,
+      "sha256": "9f43b1677e585b2c27195982f5487106322e42b135afb8281000ecb0fd329fa1"
+    },
+    {
+      "path": "b2_candidate.py",
+      "bytes": 6992,
+      "sha256": "5e09985cf08d914b935f53b64670f731c1c3b249175ff3b5d40912024ad4655c"
+    },
+    {
+      "path": "b2_v2.json",
+      "bytes": 1350,
+      "sha256": "0d9f51cbfbbd5a6eb3aa22131db66ef2ec3e731ec6fcf6872ca2b252eadc1cf1"
+    },
+    {
+      "path": "bridge.cpp",
+      "bytes": 7325,
+      "sha256": "2e0924ae28cb213db4b20013c4c300887e1f0dea7a4230e1570d7c544e69652d"
+    },
+    {
+      "path": "common.py",
+      "bytes": 4535,
+      "sha256": "3c72da21e3b3aba77a6c130e6f506ec04f8a23cce70564c062277847e3b600b5"
+    },
+    {
+      "path": "diagnose_b2.py",
+      "bytes": 3542,
+      "sha256": "3192393816b34eace66779b144940940fdbf9348ba1a50d837b0cbe7011ce3fd"
+    },
+    {
+      "path": "hbf_gate.hpp",
+      "bytes": 9642,
+      "sha256": "5a0a3cebcd0ea961778fabd71411156777362730a1c23bdcac6f480d401894ac"
+    },
+    {
+      "path": "native.cpp",
+      "bytes": 18023,
+      "sha256": "a0e60d2365265dc94135acf629bbc1c7fe81029d334724cfe6904f9e2c3b9b3b"
+    },
+    {
+      "path": "native_reference.cpp",
+      "bytes": 18167,
+      "sha256": "40a302614dc8d935468df8af7c326837e073fa10cc7667b72d0c365397379efb"
+    },
+    {
+      "path": "native_s8.cpp",
+      "bytes": 18088,
+      "sha256": "995ffb70fc027b48fcd000a3a0c74be1d7c44efccee17d53e77b052e2a356138"
+    },
+    {
+      "path": "propagation.py",
+      "bytes": 6657,
+      "sha256": "e93e9c44efdf05e50e8e7bf853d1b0521c68bc5107bc17d325730ff0c42021fb"
+    },
+    {
+      "path": "reference.py",
+      "bytes": 6130,
+      "sha256": "cb2a307f02b9ff27c2d7ba2628009205c374fb3202ee2007594b73f1a5a50350"
+    },
+    {
+      "path": "report.py",
+      "bytes": 6446,
+      "sha256": "8f996cd38e119fbbdbcff1557115424b0754ea7f57a15fee3f6e906279441c04"
+    },
+    {
+      "path": "reproduce_snapshots.py",
+      "bytes": 6666,
+      "sha256": "37e90a6d5437dcae5cadeb5f68bb96ed6005fed9235a81557de45ee5c6c2c60e"
+    },
+    {
+      "path": "s2.py",
+      "bytes": 10355,
+      "sha256": "401644f65e1ad5cf9fa27c77f571c9d28023659a2e28c5d08c0266f61745f6a2"
+    },
+    {
+      "path": "s3.py",
+      "bytes": 13409,
+      "sha256": "6310ea3e9bed1854c4b9977378cebf212d0b1bf286ec62fcc36393e6b563360a"
+    },
+    {
+      "path": "s3_audit.py",
+      "bytes": 11657,
+      "sha256": "fc7a5ab0e12f960dfaffb22c1de785cc8cec5e78ad32a08d6051131ca2e28f92"
+    },
+    {
+      "path": "s4.py",
+      "bytes": 4056,
+      "sha256": "500ed9ee3f81bf5be7761e1fc8eb3144b6828355dab137525dd71c6fd574d538"
+    },
+    {
+      "path": "s4_audit.py",
+      "bytes": 11704,
+      "sha256": "67a3bb1236a65544ee4ad963d2ce3d209f07dca218e7ec1428fb8d27f0d99307"
+    },
+    {
+      "path": "s5_audit.py",
+      "bytes": 12441,
+      "sha256": "f391ea22aad0ed5a084c4ecc095335f375de804a0865e1b603a2c49962af3ad2"
+    },
+    {
+      "path": "s5_fixed.py",
+      "bytes": 9538,
+      "sha256": "5815f4922d54827ca251934c87719027a66c1a9681af21327601ed2b7dc0fd52"
+    },
+    {
+      "path": "s5_validate.py",
+      "bytes": 5344,
+      "sha256": "9b37f0f00a7d6064426d47fcdb6cc9e545358f58575afb7aaf07f0995275f7da"
+    },
+    {
+      "path": "s5_zero.py",
+      "bytes": 3958,
+      "sha256": "bfacc11b499150f2677978e4e1ea7e9928dd37809362954df979d6c2f5942d27"
+    },
+    {
+      "path": "s6.py",
+      "bytes": 7651,
+      "sha256": "9fa752c3ec619141a1d30b5216924b8fa9ee12607005960db624a90ef68e253d"
+    },
+    {
+      "path": "s6_pilot.py",
+      "bytes": 2946,
+      "sha256": "6809ae743ea7c750cd3cae218ca78ae6b8abb9f28b00356ed3bd482f4618f299"
+    },
+    {
+      "path": "s6_qualify_minimum.py",
+      "bytes": 4464,
+      "sha256": "7cf0358b775b8d2078af2fbbd59ac75546e7a05ad2c661ce9adddba1aa8c2a32"
+    },
+    {
+      "path": "s6_report.py",
+      "bytes": 2847,
+      "sha256": "92bee89b5b440ef958789bf0c831886b99b8e5a7c710340ae94653c562557f13"
+    },
+    {
+      "path": "s7.py",
+      "bytes": 13222,
+      "sha256": "0f4a3700474b73229ab610520730a0fb900085409d2c2e332a5f47dfd402e569"
+    },
+    {
+      "path": "s8.py",
+      "bytes": 9740,
+      "sha256": "8b23df7aa2a54468d7c2d7bfe55c4a3424466b91968e21723add8bacb21d118d"
+    },
+    {
+      "path": "s8_decomposition.py",
+      "bytes": 3125,
+      "sha256": "c763c9cd34a5121394078e92dc3dc91c5856d785b07778a4d4fde27bfc5ea6f8"
+    },
+    {
+      "path": "s8_segment_audit.py",
+      "bytes": 8718,
+      "sha256": "c5a88052a1230efbbb5b1c346c5a5de63b929e95c24171dc7f890ba2445f0fa0"
+    },
+    {
+      "path": "s8_segments.hpp",
+      "bytes": 3183,
+      "sha256": "7f49fc3f6e4c00306b0190f689fbf9323b5fde28d2dd1e436cceb04b098fcad9"
+    },
+    {
+      "path": "s8_validate.py",
+      "bytes": 2450,
+      "sha256": "8013d9bde67c30e6562242993609dacb81c9d0dd0c5d7f1aed9939227109be6a"
+    },
+    {
+      "path": "s9.py",
+      "bytes": 15732,
+      "sha256": "b3266ad7f0ecf63689fbaa7a7ec0b6ba74aec3897c4a6baaaab8a54d4f4488f2"
+    },
+    {
+      "path": "s9_validate.py",
+      "bytes": 4440,
+      "sha256": "63708e7e7a832c1b8bf0c3ecfb53d13ad751761bb00186045e13aa97245c92a3"
+    },
+    {
+      "path": "segment_audit.py",
+      "bytes": 8394,
+      "sha256": "b8b731106868dfb507bc685ba8a953f74baf30692af8c20c2ef87ad926e37b6b"
+    },
+    {
+      "path": "segment_inventory.py",
+      "bytes": 2647,
+      "sha256": "e5c0c93580aaf7b7ec67ab5daaf0a80e914185d66ea9283ecdd3eedd32c8549b"
+    },
+    {
+      "path": "segments.hpp",
+      "bytes": 1623,
+      "sha256": "0cde6923d80107aed935f08473375235206cc8190458fce7c724349e1999d433"
+    },
+    {
+      "path": "study.py",
+      "bytes": 15224,
+      "sha256": "7b287c7c1507f7f440dbd2d5ee324b4f7e5fd5ffb8cf23946e36d23b5ba6fbd1"
+    },
+    {
+      "path": "validate_propagation.py",
+      "bytes": 6276,
+      "sha256": "8a0226fba16af6ddb7bce39438cd288d5aa1cc976cae61bdbfe9c4519412ead8"
+    }
+  ]
+}

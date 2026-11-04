@@ -52,7 +52,7 @@ static void CUPTIAPI complete_buffer(CUcontext ctx, uint32_t stream, uint8_t * b
         std::lock_guard<std::mutex> guard(trace_mutex);
         while ((result = cuptiActivityGetNextRecord(buffer, valid, &activity)) == CUPTI_SUCCESS) {
             if (activity->kind != CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL) continue;
-            const auto * k = reinterpret_cast<const CUpti_ActivityKernel10 *>(activity);
+            const auto * k = reinterpret_cast<const HBFLAB_CUPTI_KERNEL_RECORD *>(activity);
             const int step = current_step.load();
             json row = {{"step", step}, {"phase", step == 0 ? "prefill" : "decode"},
                 {"name", k->name}, {"start_ns", k->start}, {"end_ns", k->end},

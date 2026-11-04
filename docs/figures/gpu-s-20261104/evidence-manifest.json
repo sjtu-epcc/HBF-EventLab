@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "original_run": "build-real-gpu-s-run-20261104-001",
+  "note": "Byte-exact compact evidence copied from the accepted run; not the complete raw archive. closed_and_drained in result refers only to successful G3 cases.",
+  "files": [
+    {
+      "path": "evidence/result.json",
+      "original_path": "build-real-gpu-s-run-20261104-001/result.json",
+      "bytes": 2936,
+      "sha256": "9b452af4f15f31557a074f0d3a961024e20dbda368e68327dc4bb08e973d4185"
+    },
+    {
+      "path": "evidence/conditions.json",
+      "original_path": "build-real-gpu-s-run-20261104-001/conditions.json",
+      "bytes": 3887,
+      "sha256": "477c97971b50f1f813b3b5d9163510a18f02617359f92434052c8b9417f4e4c1"
+    },
+    {
+      "path": "evidence/paired-audit.json",
+      "original_path": "build-real-gpu-s-run-20261104-001/G3-full/paired-audit.json",
+      "bytes": 7215,
+      "sha256": "0ebcaa39cd518bc4555da2f4c3a56d4717601d22f8021e50575b6cd3be191e1c"
+    },
+    {
+      "path": "evidence/initialization-program-fail-audit.json",
+      "original_path": "build-real-gpu-s-run-20261104-001/initialization-program-fail/audit.json",
+      "bytes": 265,
+      "sha256": "edeb078359a9cec09b1facb28a0f465721417a635a4f0f385e10c522993031fb"
+    },
+    {
+      "path": "evidence/consumer-time-limit-audit.json",
+      "original_path": "build-real-gpu-s-run-20261104-001/consumer-time-limit/audit.json",
+      "bytes": 352,
+      "sha256": "1b7f7bf5de20f7039bab06e9d8cf2a66a1539a229bbeefbefdae707a501a62a3"
+    },
+    {
+      "path": "evidence/final-artifact-verification.json",
+      "original_path": "build-real-gpu-s-evidence/final-artifact-verification.json",
+      "bytes": 228,
+      "sha256": "fcf36acef722b04b3c92798206942633301158a086cb8752a5dbd318a9cf9162"
+    }
+  ],
+  "full_artifact_index_sha256": "df7ae69f032cc891abc407d6c0d6e8b52c0c036d8f818620479e78ffff65129a"
+}

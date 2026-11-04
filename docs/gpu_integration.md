@@ -1,5 +1,7 @@
 # Real GPU integration baseline
 
+> **2026-11-04 update:** the separate S-series minimum experiment now builds and passes real CUDA/new-backend acceptance on the local RTX 4070 Laptop GPU. It reuses the explicitly identified upstream RTX 5070 compute table; it is not a new local compute-time measurement or a calibrated HBF prediction. See [S integration results and reproduction](gpu_s_integration.md). The 2026-11-03 results below remain historical; the two async frontend overlap failures are not closed by the S experiment.
+
 ## Branches and status
 
 - `main`: backend baseline `8ccb1f353630f893f761b017d621812b7b9d5bf2`, including incremental sessions, resident budgets, guarded fault injection and Host/runtime optimizations.
