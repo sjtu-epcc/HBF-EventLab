@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hbf-eventlab-experiments"
+version = "0.5.0"
+description = "Standard-library experiment runners for the HBF EventLab C++ simulator"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+plots = ["matplotlib>=3.6", "numpy>=1.23"]
+
+[tool.setuptools.packages.find]
+include = ["experiments", "experiments.*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"experiments.capacity" = ["plans/*.json"]
+"experiments.interleave_arrival" = ["plans/*.json"]

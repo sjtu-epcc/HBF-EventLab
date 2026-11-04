@@ -1,0 +1,7 @@
+HBF_EVENTLAB_WORKLOAD 1
+# 2 channels: four local pages on each. Fault injector targets channel 0, block 0.
+WRITE 1 0 32768 content=1
+READ 2 0 32768 after=1 expect=1 group=7
+# Independent logical block 1 on both channels.
+WRITE 3 65536 8192 content=2
+READ 4 65536 8192 after=3 expect=2

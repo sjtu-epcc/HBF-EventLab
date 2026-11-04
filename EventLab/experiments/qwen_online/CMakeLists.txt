@@ -1,0 +1,27 @@
+set(HBF_EVENTLAB_QWEN_SOURCE_DIR "" CACHE PATH "External Small_case source directory (CUDA executor only)")
+if(NOT EXISTS "${HBF_EVENTLAB_QWEN_SOURCE_DIR}/src/qwen.cu" OR
+   NOT EXISTS "${HBF_EVENTLAB_QWEN_SOURCE_DIR}/include/hbf_gpu/qwen.hpp")
+    message(FATAL_ERROR "Set HBF_EVENTLAB_QWEN_SOURCE_DIR to the reviewed Small_case checkout; its old Host/backend will not be built.")
+endif()
+if(CMAKE_VERSION VERSION_LESS 3.24)
+    message(FATAL_ERROR "The optional Qwen experiment requires CMake 3.24+")
+endif()
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()
+enable_language(CUDA)
+find_package(CUDAToolkit REQUIRED)
+add_library(hbf_eventlab_qwen_executor STATIC "${HBF_EVENTLAB_QWEN_SOURCE_DIR}/src/qwen.cu")
+target_include_directories(hbf_eventlab_qwen_executor PUBLIC "${HBF_EVENTLAB_QWEN_SOURCE_DIR}/include")
+set_target_properties(hbf_eventlab_qwen_executor PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
+# CUDA dynamic runtime avoids adding another static C runtime to the core's /MD build.
+set_target_properties(hbf_eventlab_qwen_executor PROPERTIES CUDA_RUNTIME_LIBRARY Shared)
+target_link_libraries(hbf_eventlab_qwen_executor PUBLIC CUDA::cudart)
+add_executable(hbf_eventlab_qwen driver.cpp)
+target_link_libraries(hbf_eventlab_qwen PRIVATE HBFEventLab::tensor_bridge hbf_eventlab_qwen_executor)
+if(WIN32)
+    find_file(HBF_EVENTLAB_CUDART_DLL NAMES "cudart64_${CUDAToolkit_VERSION_MAJOR}.dll"
+        PATHS "${CUDAToolkit_BIN_DIR}" NO_DEFAULT_PATH REQUIRED)
+    add_custom_command(TARGET hbf_eventlab_qwen POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${HBF_EVENTLAB_CUDART_DLL}" $<TARGET_FILE_DIR:hbf_eventlab_qwen>)
+endif()

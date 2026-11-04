@@ -1,0 +1,8 @@
+{
+  "dlus": 8,
+  "orders": ["dlu_major", "fragment_round_robin"],
+  "open_dlus": [4, 5],
+  "mocs_selected": [256, 512],
+  "pending_limits": [8],
+  "program_ps": [500000]
+}

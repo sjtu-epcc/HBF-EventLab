@@ -1,0 +1,12 @@
+/build*/
+/simulator/
+/replay/
+/full-run/
+/smoke-*/
+*.log
+*.csv
+*.jsonl
+*.safetensors
+*.parquet
+*.traceg
+*.traceg.xz

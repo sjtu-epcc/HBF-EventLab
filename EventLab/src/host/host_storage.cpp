@@ -1,0 +1,114 @@
+#include "hbf_eventlab/host/host_driver.hpp"
+#include <algorithm>
+
+namespace hbf_eventlab {
+HostStorage HostDriver::storage() const {
+    return {requests_.size(),results_.size(),work_.size(),units_.size(),attempts_.size(),versions_.size(),retention_.size()};
+}
+void HostDriver::set_input_capacity_handler(std::function<void(InputCapacity)> handler) {
+    if(loaded_||started_||input_capacity_handler_||!handler)
+        throw std::logic_error("attach capacity handler once before input/start");
+    input_capacity_handler_=std::move(handler);
+}
+InputAdmission HostDriver::try_submit(const std::vector<GlobalRequest>& input) {
+    if(!incremental_||!started_)throw std::logic_error("submit requires start_incremental");
+    return admit_input(input,false);
+}
+InputAdmission HostDriver::try_start_incremental(const std::vector<GlobalRequest>& input) {
+    if(loaded_||started_)throw std::logic_error("Host input mode already selected");
+    return admit_input(input,true);
+}
+InputAdmission HostDriver::admit_input(const std::vector<GlobalRequest>& input,bool initial) {
+    RuntimeScope timing(profile_,RuntimeRegion::AdmitInput);
+    std::uint64_t count=0;
+    for(const auto& r:input) {
+        if(!r.bytes||r.bytes%host_unit_bytes)throw std::invalid_argument("unaligned/empty Global range");
+        count=checked_add(count,r.bytes/host_unit_bytes);
+    }
+    // Do not materialize an arbitrarily large rejected range. TooLarge is not a
+    // promise that all other input contracts have passed validation.
+    if(config_.max_resident_fragments && count>config_.max_resident_fragments) {
+        if(profile_)profile_->add(RuntimeCounter::InputTooLarge);
+        return {InputDisposition::TooLarge,count,input_capacity()};
+    }
+    auto prepared=prepare(input); // all ordinary contract errors precede mutation
+    if(config_.max_resident_fragments && count>config_.max_resident_fragments-work_.size()) {
+        if(profile_) {profile_->add(RuntimeCounter::InputBackpressured);profile_->add(RuntimeCounter::BackpressuredFragments,count);}
+        return {InputDisposition::Backpressured,count,input_capacity()};
+    }
+    register_input(std::move(prepared));
+    if(initial) {incremental_=true;loaded_=true;start();}
+    if(profile_)profile_->add(RuntimeCounter::InputRegistered);
+    return {InputDisposition::Registered,count,input_capacity()};
+}
+void HostDriver::reclaim() {
+    RuntimeScope timing(profile_,RuntimeRegion::Reclaim);
+    if(!incremental_)return; // preserve finite-workload baseline and diagnostics
+    const auto before=work_.size();
+    std::set<SendUnitId> retired;
+    std::set<ContentKey> touched_versions;
+    for(auto it=units_.begin();it!=units_.end();) {
+        if(profile_)profile_->add(RuntimeCounter::ReclaimUnitVisits);
+        const auto& u=it->second;
+        // Later checks can only reject reclamation; queued/in-flight units
+        // cannot become safe here. Keep the same callback reclamation boundary.
+        if(u.stage!=UnitStage::Done && u.stage!=UnitStage::Cancelled) {++it;continue;}
+        bool safe=true;
+        if(u.content) {
+            const auto& v=versions_.at(*u.content);
+            const auto retry=v.retries.find(u.fragments.front().logical.page);
+            if(retry!=v.retries.end()&&retry->second.active)safe=false;
+            if(const auto* task=recovery_.active(*u.content)) {
+                if(!u.replay)safe=false;
+                else if(task->phase==RecoveryPhase::Replaying && u.pass==task->pass &&
+                        u.fragments.front().logical.page==task->page)safe=false;
+            }
+        }
+        if(!u.replay)for(const auto& f:u.fragments)
+            if(work_.at(f.id).result==LogicalResult::Pending)safe=false;
+        if(!safe) {++it;continue;}
+        if(!u.replay)for(const auto& f:u.fragments) {
+            const auto erased=work_.erase(f.id);
+            if(profile_)profile_->add(RuntimeCounter::ReclaimedWork,erased);
+        }
+        // Only normal writes appear in Version::normal; replay and reads cannot
+        // invalidate that directory. Record the owner only after safety checks.
+        if(u.content && !u.replay)touched_versions.insert(*u.content);
+        unindex_unit(u);
+        retired.insert(u.id);it=units_.erase(it);
+        if(profile_)profile_->add(RuntimeCounter::ReclaimedUnits);
+    }
+    // Remove all indices before later events can dereference retired IDs.
+    for(const auto& key:touched_versions) {
+        auto& ids=versions_.at(key).normal;
+        ids.erase(std::remove_if(ids.begin(),ids.end(),[&](auto id){return retired.count(id);}),ids.end());
+    }
+    for(auto it=initial_enqueues_.begin();it!=initial_enqueues_.end();) {
+        auto& ids=it->second;
+        ids.erase(std::remove_if(ids.begin(),ids.end(),[&](const auto& x){return retired.count(x.second);}),ids.end());
+        if(ids.empty())it=initial_enqueues_.erase(it);else ++it;
+    }
+    // Consume only affected Globals at the same stable reclamation boundary.
+    for(auto id:reclaimable_globals_) {
+        if(global_fragment_refs_.at(id)!=0 || results_.at(id).state==LogicalResult::Pending)
+            throw std::logic_error("Global reclaimed while still referenced/pending");
+        requests_.erase(id);global_fragment_refs_.erase(id);
+        if(profile_)profile_->add(RuntimeCounter::ReclaimedRequests);
+    }
+    reclaimable_globals_.clear();
+    for(auto it=release_globals_.begin();it!=release_globals_.end();) {
+        auto& ids=it->second;
+        ids.erase(std::remove_if(ids.begin(),ids.end(),[&](auto id){return !requests_.count(id);}),ids.end());
+        if(ids.empty()) {
+            const auto event=release_events_.at(it->first);
+            events_.cancel(event);owned_events_.erase(event);release_events_.erase(it->first);
+            it=release_globals_.erase(it);
+        } else ++it;
+    }
+    if(work_.size()<before) {
+        input_generation_=checked_add(input_generation_,1);
+        if(input_capacity_handler_&&!input_capacity_event_)
+            input_capacity_event_=schedule(events_.now(),[this]{input_capacity_event_.reset();input_capacity_handler_(input_capacity());});
+    }
+}
+} // namespace hbf_eventlab

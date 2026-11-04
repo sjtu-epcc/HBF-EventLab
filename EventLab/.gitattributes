@@ -1,0 +1,6 @@
+# 文本文件统一使用 LF；二进制文件自动识别
+* text=auto eol=lf
+
+# Windows 批处理脚本使用 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

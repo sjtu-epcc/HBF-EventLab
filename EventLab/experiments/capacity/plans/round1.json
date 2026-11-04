@@ -1,0 +1,10 @@
+{
+  "dlus": 64,
+  "orders": ["dlu_major", "fragment_round_robin"],
+  "open_dlus": [1, 2, 4, 5, 8, 9, 16, 17, 32],
+  "mocs_selected": [256, 512, 1024],
+  "pending_limits": [4, 8, 16, 64],
+  "program_ps": [500000, 2000000, 8000000],
+  "erase_ps": 1000000,
+  "assembly_timeout_ps": 10000000
+}
