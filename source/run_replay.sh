@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BASE=/home/server/hbf-experiments/20261103-gpt2-updated
+BASE=/home/server/hbf-experiments/20261105-gpt2-64b-multibank
 OLD=/home/server/hbf-experiments/20261028-gpt2-incremental
 ROOT="$BASE/simulator"
 REPLAY="$OLD/replay"
@@ -10,6 +10,7 @@ CONFIG="$OLD/gpt2-sim-v5/gpgpusim.config"
 export HBF_BACKEND=eventlab HBF_EVENTLAB_PRELOAD_IMAGE=1 HBF_EVENTLAB_SEED_IMAGE=0
 export HBF_EVENTLAB_IMAGE_PAGE_FILE="$REPLAY/image-pages.txt"
 export HBF_EVENTLAB_PAGES_PER_CHANNEL=8192 HBF_EVENTLAB_UCIE_GRADE=3
+export HBF_EVENTLAB_DEVICE_CONFIG="$BASE/config/gpt2-eventlab-device.ini"
 export HBF_EVENTLAB_RESIDENT_FRAGMENTS=4096 HBF_EVENTLAB_BURST_WRITES=1
 export HBF_EVENTLAB_TRACE="$RUN/eventlab.csv"
 export GPGPUSIM_ROOT="$ROOT/gpu-simulator/gpgpu-sim"

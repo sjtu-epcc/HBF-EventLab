@@ -36,6 +36,8 @@ void GpuPageController::validate_request(const GpuTraceRequest& item) const {
     if(!config_.sector_requests&&(r.bytes%64||r.address.value%64||item.byte_mask.any()))
         throw std::invalid_argument("GPU request must be 64B aligned without a live byte mask");
     if(item.byte_mask.any()&&r.bytes>128)throw std::invalid_argument("masked access exceeds 128B window");
+    if(r.op==Op::Read && ((r.address.value%4096+r.bytes-1)/64-(r.address.value%4096)/64+1)>config_.mshrs)
+        throw std::invalid_argument("GPU read spans more 64B units than available MSHRs");
 }
 void GpuPageController::enqueue(GpuTraceRequest item) {
     if(!started_)throw std::logic_error("streaming GPU must be started");
@@ -80,7 +82,7 @@ void GpuPageController::finish(std::size_t i,bool success,const std::string& rea
     auto result=results_.emplace(id,GpuRequestResult{success,r.at,now,r.trace.source,reason});
     if(observer_)observer_(id,result.first->second);
 }
-void GpuPageController::flush_incomplete(std::uint64_t key,const std::string& reason) {
+void GpuPageController::flush_incomplete(Key key,const std::string& reason) {
     const auto found=pages_.find(key);if(found==pages_.end()||found->second.backend||found->second.coverage.full())return;
     cancel(found->second.timer);auto waiters=found->second.waiters;pages_.erase(found);++stats_.incomplete_writes;
     for(auto i:waiters)finish(i,false,reason);
@@ -92,35 +94,57 @@ bool GpuPageController::admit(std::size_t i) {
     for(auto dependency:r.after){const auto& dep=requests_.at(index_.at(dependency));if(!dep.done)return false;
         if(!results_.at(dependency).success){finish(i,false,"DependencyFailed");return true;}}
     if(outstanding_>=config_.issue_limit)return false;
-    const auto key=r.address.value/4096;
-    auto found=pages_.find(key);
-    if(found!=pages_.end()) {
-        auto& page=found->second;
-        if(page.op!=r.op) {
-            if(page.op==Op::Write&&!page.backend&&!page.coverage.full())flush_incomplete(key,"ReadAfterIncompleteWrite");
+    const auto page_number=r.address.value/4096;
+    const Key write_key{page_number,64};
+    std::vector<Key> keys;
+    if(r.op==Op::Read) {
+        const auto write=pages_.find(write_key);
+        if(write!=pages_.end()) {
+            if(!write->second.backend&&!write->second.coverage.full())
+                flush_incomplete(write_key,"ReadAfterIncompleteWrite");
             return false;
         }
-        if(r.op==Op::Read&&(!config_.merge_reads||page.expected!=r.expected_content))return false;
-        if(r.op==Op::Write&&(page.backend||page.content!=r.content||page.ready))return false;
-        if(r.op==Op::Read)++stats_.mshr_hits;
+        const auto first=static_cast<std::uint32_t>((r.address.value%4096)/64);
+        const auto last=static_cast<std::uint32_t>(((r.address.value%4096)+r.bytes-1)/64);
+        std::size_t missing=0;
+        for(auto unit=first;unit<=last;++unit) {
+            const Key key{page_number,unit};keys.push_back(key);
+            const auto found=pages_.find(key);
+            if(found==pages_.end())++missing;
+            else if(!config_.merge_reads||found->second.expected!=r.expected_content)return false;
+        }
+        if(missing>config_.mshrs-mshr_count())return false;
     } else {
-        if(r.op==Op::Read&&mshr_count()>=config_.mshrs)return false;
-        if(r.op==Op::Write) {
+        // Writes still assemble complete 4KiB pages. Do not race a read unit
+        // on the same page, even when their byte ranges do not overlap.
+        const auto first=pages_.lower_bound(Key{page_number,0});
+        if(first!=pages_.end()&&first->first.first==page_number&&first->first!=write_key)return false;
+        const auto found=pages_.find(write_key);
+        if(found==pages_.end()) {
             std::size_t buffered=0;for(const auto& p:pages_)buffered+=p.second.op==Op::Write&&!p.second.backend;
             if(buffered>=config_.write_buffers)return false;
-        }
-        Page page{r.op,key*4096,r.content,r.expected_content,{},hbf_sim_import::hbf_write_coverage_t{4096},{},{},false};
-        found=pages_.emplace(key,std::move(page)).first;
-        if(r.op==Op::Write)found->second.timer=schedule(Tick{checked_add(events_.now().value,config_.write_deadline.value)},
-            [this,key]{flush_incomplete(key,"IncompleteWriteDeadline");});
-        else if(config_.read_window.value)found->second.timer=schedule(Tick{checked_add(events_.now().value,config_.read_window.value)},
-            [this,key]{auto it=pages_.find(key);if(it!=pages_.end()){it->second.timer.reset();it->second.ready=true;service_pages();}});
-        else found->second.ready=true;
+        } else if(found->second.backend||found->second.content!=r.content||found->second.ready)return false;
+        keys.push_back(write_key);
     }
-    auto& page=found->second;page.waiters.push_back(i);
-    record.issued=true;record.at=events_.now();++outstanding_;++stats_.issued;
+    for(const auto key:keys) {
+        auto found=pages_.find(key);
+        if(found==pages_.end()) {
+            const auto address=r.op==Op::Read?key.first*4096+key.second*64:key.first*4096;
+            const auto bytes=r.op==Op::Read?64:4096;
+            Page page{r.op,address,bytes,r.content,r.expected_content,{},hbf_sim_import::hbf_write_coverage_t{4096},{},{},false};
+            found=pages_.emplace(key,std::move(page)).first;
+            if(r.op==Op::Write)found->second.timer=schedule(Tick{checked_add(events_.now().value,config_.write_deadline.value)},
+                [this,key]{flush_incomplete(key,"IncompleteWriteDeadline");});
+            else if(config_.read_window.value)found->second.timer=schedule(Tick{checked_add(events_.now().value,config_.read_window.value)},
+                [this,key]{auto it=pages_.find(key);if(it!=pages_.end()){it->second.timer.reset();it->second.ready=true;service_pages();}});
+            else found->second.ready=true;
+        } else if(r.op==Op::Read)++stats_.mshr_hits;
+        found->second.waiters.push_back(i);
+    }
+    record.pending=keys.size();record.issued=true;record.at=events_.now();++outstanding_;++stats_.issued;
     if(r.op==Op::Read)stats_.requested_read_bytes=checked_add(stats_.requested_read_bytes,r.bytes);
     else {
+        auto& page=pages_.at(write_key);
         unsigned added=0;
         const auto& mask=record.trace.byte_mask;
         const bool valid=mask.any()?page.coverage.add_mask((r.address.value-r.address.value%128)%4096,mask,&added)
@@ -133,9 +157,9 @@ bool GpuPageController::admit(std::size_t i) {
     stats_.max_mshrs=std::max<std::uint64_t>(stats_.max_mshrs,mshr_count());
     return true;
 }
-void GpuPageController::submit(std::uint64_t key,Page& page) {
+void GpuPageController::submit(Key key,Page& page) {
     const GlobalRequestId id{next_backend_+1};
-    GlobalRequest r{id,page.op,GlobalByteAddress{page.address},4096,page.content,{}, {},events_.now(),page.expected};
+    GlobalRequest r{id,page.op,GlobalByteAddress{page.address},page.bytes,page.content,{}, {},events_.now(),page.expected};
     if(page.op==Op::Write)r.expected_content.reset();
     const auto admission=host_.try_submit(r);
     if(admission.disposition==InputDisposition::TooLarge)
@@ -143,7 +167,7 @@ void GpuPageController::submit(std::uint64_t key,Page& page) {
     if(admission.disposition==InputDisposition::Backpressured){++stats_.input_backpressure;return;}
     ++next_backend_;page.backend=id;backend_.emplace(id,key);
     if(page.op==Op::Write)++stats_.page_writes;
-    else{++stats_.page_reads;stats_.media_read_bytes+=4096;}
+    else{++stats_.page_reads;stats_.media_read_bytes+=page.bytes;}
     stats_.max_mshrs=std::max<std::uint64_t>(stats_.max_mshrs,mshr_count());
 }
 void GpuPageController::service_pages() {
@@ -159,7 +183,12 @@ void GpuPageController::backend_completed(const WorkResult& result,Tick) {
     const auto key=it->second;auto page=pages_.find(key);
     if(page==pages_.end())throw std::logic_error("missing GPU page MSHR");
     auto waiters=page->second.waiters;cancel(page->second.timer);pages_.erase(page);backend_.erase(it);
-    for(auto i:waiters)finish(i,result.state==LogicalResult::Success,result.reason);
+    for(auto i:waiters) {
+        auto& request=requests_.at(i);
+        if(!request.pending)throw std::logic_error("GPU read unit completion underflow");
+        if(result.state!=LogicalResult::Success){request.failed=true;request.reason=result.reason;}
+        if(!--request.pending)finish(i,!request.failed,request.reason);
+    }
     service_pages();wake();
 }
 void GpuPageController::pump() {

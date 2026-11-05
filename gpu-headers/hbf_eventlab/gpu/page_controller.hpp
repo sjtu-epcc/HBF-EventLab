@@ -26,8 +26,7 @@ struct GpuControllerStatistics {
 };
 struct GpuRequestResult { bool success;Tick issued,completed;std::uint32_t source;std::string reason; };
 
-// Online cache-line/page conversion. A page operation is submitted through
-// HostDriver; response-driven retries and replay remain inside the Host.
+// Online 64B read/page write conversion. HostDriver owns retries and replay.
 class GpuPageController {
 public:
     GpuPageController(HostDriver&,EventQueue&,std::vector<GpuTraceRequest>,GpuControllerConfiguration={});
@@ -43,14 +42,16 @@ public:
     const std::map<GlobalRequestId,GpuRequestResult>& results() const {return results_;}
 private:
     struct Page {
-        Op op;std::uint64_t address,content;std::optional<std::uint64_t> expected;
+        Op op;std::uint64_t address,bytes,content;std::optional<std::uint64_t> expected;
         std::vector<std::size_t> waiters;
         hbf_sim_import::hbf_write_coverage_t coverage{4096};
         std::optional<GlobalRequestId> backend;
         std::optional<EventId> timer;
         bool ready=false;
     };
-    struct Request {GpuTraceRequest trace;bool issued=false,done=false;Tick at;};
+    struct Request {GpuTraceRequest trace;bool issued=false,done=false;Tick at;
+        std::size_t pending=0;bool failed=false;std::string reason;};
+    using Key=std::pair<std::uint64_t,std::uint32_t>; // page, 64B unit; 64 means whole-page write
     EventId schedule(Tick,std::function<void()>);
     void validate_request(const GpuTraceRequest&) const;
     void cancel(std::optional<EventId>&);
@@ -58,18 +59,18 @@ private:
     void pump();
     bool admit(std::size_t);
     void service_pages();
-    void submit(std::uint64_t,Page&);
+    void submit(Key,Page&);
     void backend_completed(const WorkResult&,Tick);
     void finish(std::size_t,bool,const std::string&);
-    void flush_incomplete(std::uint64_t,const std::string&);
+    void flush_incomplete(Key,const std::string&);
     std::size_t mshr_count() const;
     Tick next_cycle() const;
     HostDriver& host_;EventQueue& events_;GpuControllerConfiguration config_;
     std::vector<Request> requests_;
     std::map<GlobalRequestId,std::size_t> index_;
     std::map<std::uint32_t,std::deque<std::size_t>> sources_;
-    std::map<std::uint64_t,Page> pages_;
-    std::map<GlobalRequestId,std::uint64_t> backend_;
+    std::map<Key,Page> pages_;
+    std::map<GlobalRequestId,Key> backend_;
     std::map<GlobalRequestId,GpuRequestResult> results_;
     std::set<EventId> events_owned_;
     std::optional<EventId> pump_event_;

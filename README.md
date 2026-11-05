@@ -1,5 +1,11 @@
 # GPT-2 124M + simulated GPU + incremental HBF source snapshot
 
+## 2026-11-05 GPU 接入修正
+
+当前工作分支 `gpt2-64b-multibank-20261105` 在下述 2026-11-03 原始快照上继续开发。GPU sector 读现在按覆盖的 64B 单元提交并完成；本轮 16 channel × 4 die × 16 bank 的临时实验几何结构见 `config/gpt2-eventlab-device.ini`，实际几何在运行日志中打印。多页 block 的初始权重页共享 block 内容版本，保持普通 Host 写入。后端及接入测试 524/524 通过。第 6 个 kernel 由旧接入的 30,999,754 周期降至 4,204,937 周期；完整模拟 TTFT/TPOT 仍待 1480-kernel 回放完成并严格验收。细节见 `docs/GPT2_64B_MULTIBANK_20261105.md`。
+
+以下为 2026-11-03 原始快照的历史记录，旧哈希和旧超时结论只对应原始提交。
+
 This branch is a **source snapshot of the code actually used** for the 2026-11-03 GPT-2/WikiText-2 timing experiment. It is intended for GPU/HBF interface and backend engineers to reproduce and change the slow memory path. It contains no model weights, dataset copy, trace archive, SSH credentials, run logs, or claimed TTFT/TPOT result.
 
 ## Provenance

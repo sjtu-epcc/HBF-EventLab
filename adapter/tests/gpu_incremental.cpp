@@ -45,8 +45,15 @@ int main(int argc,char** argv){try{
             for(unsigned i=0;i<16;++i){auto r=request(3+i,Op::Read,i*32,32);r.request.not_before=f.events.now();gpu.enqueue(r);}
             f.drain(gpu);
             check(gpu.success()&&gpu.results().size()==18,"lost/duplicate GPU completion");
-            check(gpu.statistics().page_reads==1&&gpu.statistics().mshr_hits==15,"cache lines were not merged into one page");
-            check(f.host.results().size()==3,"backpressured input duplicated");
+            check(gpu.statistics().page_reads==8&&gpu.statistics().mshr_hits==8&&
+                  gpu.statistics().media_read_bytes==512,"32B sectors were not paired into 64B Host reads");
+            check(f.host.results().size()==10,"backpressured input duplicated");
+            if(mode=="cross_unit"){
+                auto r=request(50,Op::Read,48,32);r.request.not_before=f.events.now();gpu.enqueue(r);
+                f.drain(gpu);
+                check(gpu.statistics().completed==19&&gpu.statistics().page_reads==10&&
+                      gpu.statistics().media_read_bytes==640,"cross-unit read did not wait for both 64B results");
+            }
             if(mode=="recovery")check(f.host.statistics().replay_passes==1,"recovery bypassed");
             if(mode=="streaming"){
                 for(unsigned i=0;i<64;++i){auto r=request(100+i,Op::Read,32,32);r.request.not_before=f.events.now();gpu.enqueue(r);f.drain(gpu);}

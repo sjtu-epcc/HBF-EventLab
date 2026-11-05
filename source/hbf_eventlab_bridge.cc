@@ -7,6 +7,7 @@
 #include "hbf_eventlab/gpu/page_controller.hpp"
 #include "hbf_eventlab/gpu/page_interleaver.hpp"
 #include "hbf_eventlab/runtime/device_driver.hpp"
+#include "hbf_eventlab/configuration/simulation_configuration.hpp"
 #include <cmath>
 #include <chrono>
 #include "hbf_eventlab/diagnostics/runtime_profile.hpp"
@@ -17,6 +18,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <tuple>
 
 using namespace hbf_eventlab;
 namespace {
@@ -87,7 +89,21 @@ struct hbf_eventlab_bridge_t::implementation {
        !pages_per_channel||pages_per_channel>65536)
       throw std::invalid_argument("EventLab bridge requires 4KiB pages, 1..16 total channels, 1..65536 resident pages/channel");
     if(c->hbf_placement_mode==2)throw std::invalid_argument("explicit upstream placement table is not supported by EventLab bridge");
-    Geometry geometry{total_channels,1,1,1,pages_per_channel,1};
+    // Use the backend's demonstrator lane geometry, scaled to the requested
+    // per-channel residency. A backend INI may override every geometry field.
+    if(pages_per_channel%512)
+      throw std::invalid_argument("multi-bank geometry requires pages/channel divisible by 512");
+    Geometry geometry{total_channels,4,16,8,pages_per_channel/512,2};
+    if(const char *path=std::getenv("HBF_EVENTLAB_DEVICE_CONFIG")) {
+      std::ifstream input(path);
+      if(!input)throw std::invalid_argument("cannot open EventLab device configuration");
+      geometry=read_configuration(input,path).device.geometry;
+    }
+    if(geometry.host_channels!=total_channels || geometry.channel_bytes()!=checked_mul(pages_per_channel,4096))
+      throw std::invalid_argument("EventLab geometry must match GPU channel count and resident pages/channel");
+    std::fprintf(stderr,"EVENTLAB_GEOMETRY channels=%u dies_per_channel=%u banks_per_die=%u pages_per_block=%u blocks_per_bank=%llu spare_blocks_per_bank=%u slots_per_bank=2\n",
+      geometry.host_channels,geometry.dies_per_channel,geometry.banks_per_die,geometry.pages_per_block,
+      static_cast<unsigned long long>(geometry.blocks_per_bank),geometry.spare_blocks_per_bank);
     StaticDeviceDescription description{geometry,{256,32,false,true},
       {256,Tick{1000000000},geometry.block_group_dlus()}};
     ExecutionConfiguration execution;
@@ -167,14 +183,28 @@ struct hbf_eventlab_bridge_t::implementation {
     std::fprintf(stderr,"EVENTLAB_PRELOAD begin pages=%llu write_mode=%s\n",
       static_cast<unsigned long long>(initial_pages.size()),burst?"burst4096":"fragment64");
     std::size_t preload_pending=0;
+    std::map<std::tuple<std::uint64_t,std::uint64_t,std::uint64_t>,std::uint64_t> image_block_content;
     const auto drain_preload=[this]{
       events.run();
-      if(!controller->drained()||!host->activity().drained()||!device->activity().drained())
+      const auto ha=host->activity();const auto da=device->activity();
+      if(!controller->drained()||!ha.drained()||!da.drained()) {
+        std::fprintf(stderr,"EVENTLAB_PRELOAD stalled after=%llu controller=%d host_unfinished=%zu host_queued=%zu device_pending=%zu device_bank_ops=%zu reason=%s\n",
+          static_cast<unsigned long long>(image_pages),controller->drained(),ha.unfinished_global,ha.queued_units,
+          da.pending_dlus,da.bank_operations,controller->waiting_reason().c_str());
         throw std::logic_error("EventLab image preload did not drain");
+      }
     };
     for(const auto page:initial_pages) {
       if(page>=c->hbf_size/4096)throw std::invalid_argument("initial image page outside HBF capacity");
-      auto& slot=map_page(page);slot.content=++next_content;
+      auto& slot=map_page(page);
+      const auto global_slot=slot.address/4096;
+      const auto channel=global_slot%total_channels;
+      const auto local_slot=global_slot/total_channels;
+      const auto block=local_slot/geometry.block_group_dlus();
+      const auto lane=local_slot%geometry.lanes();
+      auto [content,created]=image_block_content.try_emplace({channel,block,lane},0);
+      if(created)content->second=++next_content;
+      slot.content=content->second;
       slot.image=GlobalRequestId{++next_id};
       GpuTraceRequest r;r.source=UINT32_MAX;
       r.request={slot.image,Op::Write,GlobalByteAddress{slot.address},4096,slot.content};
