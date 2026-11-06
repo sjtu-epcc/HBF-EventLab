@@ -129,9 +129,14 @@ struct hbf_eventlab_bridge_t::implementation {
     GpuControllerConfiguration gc;
     gc.cycle=clock_ticks(1,gpu->get_config().get_core_freq());
     gc.issue_width=total_channels*2;gc.issue_limit=checked_add(limit,256);
-    gc.mshrs=32;gc.write_buffers=c->hbf_write_buffer_entries;
+    gc.mshrs=setting("HBF_EVENTLAB_GPU_MSHRS",32);
+    if(!gc.mshrs||gc.mshrs>limit)
+      throw std::invalid_argument("HBF_EVENTLAB_GPU_MSHRS must be in 1..gpgpu_hbf_max_outstanding");
+    gc.write_buffers=c->hbf_write_buffer_entries;
     gc.write_deadline=clock_ticks(c->hbf_write_agg_timeout,frequency);
     gc.merge_reads=c->hbf_mshr_enabled;gc.sector_requests=true;
+    std::fprintf(stderr,"EVENTLAB_GPU_CONFIG mshr_units64=%zu issue_limit=%zu host_resident_fragments=%zu\n",
+      gc.mshrs,gc.issue_limit,hc.max_resident_fragments);
     if(c->hbf_read_mode==1)gc.read_window=clock_ticks(c->hbf_read_agg_window,frequency);
     controller=std::make_unique<GpuPageController>(*host,events,std::vector<GpuTraceRequest>{},gc);
     controller->set_result_observer([this](GlobalRequestId id,const GpuRequestResult& result){finish(id,result);});
@@ -222,7 +227,7 @@ struct hbf_eventlab_bridge_t::implementation {
       if(preload_pending)drain_preload();
       sampled=events.now();epoch=static_cast<long double>(sampled.value)/1.0e12L;
     }
-    std::fprintf(stderr,"HBF backend=EventLab | live GPU requests | image_pages=%llu seeded_pages=%llu | symbolic data | one-page erase-block profile\n",
+    std::fprintf(stderr,"HBF backend=EventLab | live GPU requests | image_pages=%llu seeded_pages=%llu | symbolic data | configured geometry\n",
                  static_cast<unsigned long long>(image_pages),static_cast<unsigned long long>(seeded_pages));
     diagnostic_dump("preload_done");
   }
