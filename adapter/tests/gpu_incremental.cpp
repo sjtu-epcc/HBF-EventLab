@@ -59,6 +59,18 @@ int main(int argc,char** argv){try{
                 for(unsigned i=0;i<64;++i){auto r=request(100+i,Op::Read,32,32);r.request.not_before=f.events.now();gpu.enqueue(r);f.drain(gpu);}
                 check(gpu.statistics().completed==82&&f.host.input_capacity().resident==0,"streaming did not reclaim");
             }
+            if(mode=="retire_history"){
+                auto r=request(50,Op::Read,0,32);r.request.not_before=f.events.now();gpu.enqueue(r);
+                bool rejected=false;try{gpu.retire_completed_history();}catch(const std::logic_error&){rejected=true;}
+                check(rejected,"in-flight history retired");
+                f.drain(gpu);gpu.retire_completed_history();
+                check(gpu.drained()&&gpu.results().empty()&&gpu.statistics().completed==19,
+                      "drained history was not released with cumulative statistics");
+                auto next=request(51,Op::Read,32,32);next.request.not_before=f.events.now();gpu.enqueue(next);
+                f.drain(gpu);
+                check(gpu.success()&&gpu.results().size()==1&&gpu.statistics().completed==20,
+                      "new request after retirement lost completion");
+            }
         }
     }
     std::cout<<"PASS gpu_incremental_"<<mode<<"\n";return 0;

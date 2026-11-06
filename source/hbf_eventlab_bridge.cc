@@ -65,6 +65,7 @@ struct hbf_eventlab_bridge_t::implementation {
   using DiagClock=std::chrono::steady_clock;
   DiagClock::time_point diag_start=DiagClock::now(),diag_last=diag_start;
   std::uint64_t diag_advance_ns=0,diag_push_ns=0,diag_pop_ns=0,diag_busy_ns=0,diag_calls=0;
+  bool image_dependencies_retired=false;
   void diagnostic_dump(const char* phase) {
     const auto now=DiagClock::now();
     const char* path=std::getenv("HBF_DIAG_OUTPUT");
@@ -288,13 +289,24 @@ struct hbf_eventlab_bridge_t::implementation {
     max_return_queue=std::max<std::uint64_t>(max_return_queue,queued);
     log("COMPLETED",id,mf,result.completed);
   }
+  void retire_history() {
+    if(!owned.empty()||!controller->drained()||!host->activity().drained()||!device->activity().drained())return;
+    if(!image_dependencies_retired) {
+      for(auto& item:mapping)item.second.image={};
+      image_dependencies_retired=true;
+    }
+    const auto removed=controller->retire_completed_history();
+    if(removed)std::fprintf(stderr,"EVENTLAB_HISTORY_RETIRED requests=%zu cumulative_completed=%llu\n",
+      removed,static_cast<unsigned long long>(controller->statistics().completed));
+  }
   void advance(double seconds) {
     if(!std::isfinite(seconds)||seconds<0)throw std::invalid_argument("invalid GPU time");
     // GPGPU-Sim resets domain clocks between kernels. Preserve a monotonic
     // EventLab epoch; its prior kernel must have drained before this reset.
     if(last_seconds>=0&&seconds<last_seconds) {
-      if(!owned.empty()||!host->activity().drained()||!device->activity().drained())
+      if(!owned.empty()||!controller->drained()||!host->activity().drained()||!device->activity().drained())
         throw std::logic_error("GPU clock reset with in-flight HBF work");
+      retire_history();
       epoch+=last_seconds+1.0L/gpu->get_config().get_dram_freq();
     }
     last_seconds=seconds;
@@ -319,6 +331,9 @@ struct hbf_eventlab_bridge_t::implementation {
   }
   bool busy() const {return !owned.empty()||!controller->drained()||!host->activity().drained()||!device->activity().drained();}
   void print(FILE *fp) {
+    // Accel-Sim normally reports at each kernel boundary while its clock is
+    // cumulative. Retire there as well as on a clock reset.
+    retire_history();
     const auto& c=controller->statistics();const auto& d=device->statistics();const auto& h=host->statistics();
     std::fprintf(fp,"\n========= EventLab Live GPU Backend =========\n");
     std::fprintf(fp,"EVENTLAB_GPU admitted=%llu completed=%llu returned=%llu failed=%llu owned=%zu sector32=%llu max_owned=%llu max_return_queue=%llu\n",

@@ -1,5 +1,9 @@
 # GPT-2 124M + simulated GPU + incremental HBF source snapshot
 
+## 2026-11-07 full-replay memory repair
+
+The 512-MSHR replay passed the formerly failing kernel 342, then exited 250 after 720/1480 kernels when `std::bad_alloc` hit the launcher's 24 GiB virtual-memory limit. The GPU controller had retained all completed request and result records across kernels. `GpuPageController::retire_completed_history()` now releases those records only after drain, while keeping cumulative statistics; the bridge invokes it at drained kernel statistics boundaries. A two-kernel GPT-2 smoke exited 0, audited 768 GPU requests, and logged two history retirements. Backend/adapter tests passed 525/525. A new full replay is running in `/home/server/hbf-experiments/20261107-gpt2-retired-history/full-run/`; **no TTFT/TPOT should be reported until its strict final audit passes**. The prior failed outputs remain preserved.
+
 ## 2026-11-06 kernel 342 progress and guarded replay
 
 The prior 1480-kernel replay exited 250 inside kernel 342 after completing 341 kernels; it did not reach the first output token. `source/hbf_eventlab_bridge.cc` now accepts `HBF_EVENTLAB_GPU_MSHRS` (default 32, bounded by the simulator outstanding limit). On the exact kernel 342 trace, 512 MSHRs with Accel-Sim deadlock detection enabled completed with `run.rc=0`, 19,186,219 simulated GPU cycles, and 4,824,672/4,824,672/4,824,672 admitted/completed/returned requests (`failed=0`, `owned=0`, Device drained). A complete request lifecycle audit passed. The single-kernel simulator took 1 h 14 min 26 s of wall time; that duration is **not** TTFT.

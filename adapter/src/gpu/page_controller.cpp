@@ -49,6 +49,16 @@ void GpuPageController::enqueue(GpuTraceRequest item) {
     const auto i=requests_.size();index_.emplace(r.id,i);sources_[item.source].push_back(i);
     requests_.push_back({std::move(item),false,false,{}});wake();
 }
+std::size_t GpuPageController::retire_completed_history() {
+    if(!drained())throw std::logic_error("cannot retire in-flight GPU requests");
+    const auto retired=requests_.size();
+    retired_requests_=checked_add(retired_requests_,retired);
+    std::vector<Request>().swap(requests_);
+    std::map<GlobalRequestId,std::size_t>().swap(index_);
+    std::map<std::uint32_t,std::deque<std::size_t>>().swap(sources_);
+    std::map<GlobalRequestId,GpuRequestResult>().swap(results_);
+    return retired;
+}
 GpuPageController::~GpuPageController() {
     *alive_=false;for(auto id:events_owned_)events_.cancel(id);
 }
@@ -214,7 +224,7 @@ void GpuPageController::pump() {
     if(release&&!pump_event_)pump_event_=schedule(*release,[this]{pump_event_.reset();wake();});
     // Resource/dependency stalls wake only on actual completions/deadlines.
 }
-bool GpuPageController::drained() const {return stats_.completed==requests_.size()&&!outstanding_&&pages_.empty()&&backend_.empty()&&events_owned_.empty();}
+bool GpuPageController::drained() const {return stats_.completed==retired_requests_+requests_.size()&&!outstanding_&&pages_.empty()&&backend_.empty()&&events_owned_.empty();}
 std::string GpuPageController::waiting_reason() const {
     if(!started_)return "GpuNotStarted";
     if(outstanding_>=config_.issue_limit)return "GpuIssueLimit";

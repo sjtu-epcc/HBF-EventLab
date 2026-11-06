@@ -34,6 +34,9 @@ public:
     void start();
     // Streaming dependencies may refer only to previously admitted source IDs.
     void enqueue(GpuTraceRequest);
+    // Release a drained batch when future requests will not refer to its IDs.
+    // Cumulative statistics remain intact; results() then covers only new work.
+    std::size_t retire_completed_history();
     void set_result_observer(std::function<void(GlobalRequestId,const GpuRequestResult&)> f) { observer_=std::move(f); }
     bool drained() const;
     bool success() const {return drained()&&!stats_.failed;}
@@ -76,6 +79,7 @@ private:
     std::optional<EventId> pump_event_;
     std::optional<Tick> last_issue_cycle_;
     std::size_t outstanding_=0;
+    std::uint64_t retired_requests_=0;
     std::uint64_t next_backend_=0;
     bool started_=false;
     std::shared_ptr<bool> alive_=std::make_shared<bool>(true);
