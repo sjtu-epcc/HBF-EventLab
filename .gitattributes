@@ -6,3 +6,5 @@
 *.hpp text eol=lf
 *.h text eol=lf
 *.cu text eol=lf
+results/gpt2-20261107/* -text
+results/gpt2-20261107/README.md text eol=lf

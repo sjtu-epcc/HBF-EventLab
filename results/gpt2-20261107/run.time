@@ -1,0 +1,7 @@
+timer=python-resource
+platform=linux
+wall_seconds=59857.113733
+user_seconds=59869.500048
+system_seconds=80.358675
+max_rss_kib=9404804
+exit_code=0

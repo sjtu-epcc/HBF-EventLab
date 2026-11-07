@@ -1,0 +1,68 @@
+{
+  "model": "GPT-2 124M",
+  "model_path": "/home/server/gpt2",
+  "model_sha256": "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707",
+  "dataset": "/home/server/wikitext/wikitext-2-raw-v1/test-00000-of-00001.parquet",
+  "dataset_sha256": "5f1bea067869d04849c0f975a2b29c4ff47d867f484f5010ea5e861eab246d91",
+  "dataset_row": 3,
+  "prompt": " Robert Boulter is an English film",
+  "prompt_token_ids": [
+    5199,
+    347,
+    2852,
+    353,
+    318,
+    281,
+    3594,
+    2646
+  ],
+  "generated_token_ids": [
+    4014,
+    290,
+    6260,
+    13
+  ],
+  "generated_text": " critic and writer.",
+  "precision": "float32",
+  "batch_size": 1,
+  "torch": "2.4.1+cu121",
+  "transformers": "4.46.2",
+  "cuda": "12.1",
+  "gpu": "NVIDIA RTX A6000",
+  "capture": false,
+  "weight_bytes": 497759232,
+  "native_instrumented_wall_seconds": [
+    0.16612942283973098,
+    0.016825127881020308,
+    0.007352421060204506,
+    0.007171947974711657
+  ],
+  "token_boundaries": [
+    {
+      "output_index": 0,
+      "phase": "prefill",
+      "token_id": 4014,
+      "kernel_ids": []
+    },
+    {
+      "output_index": 1,
+      "phase": "decode",
+      "token_id": 290,
+      "kernel_ids": []
+    },
+    {
+      "output_index": 2,
+      "phase": "decode",
+      "token_id": 6260,
+      "kernel_ids": []
+    },
+    {
+      "output_index": 3,
+      "phase": "decode",
+      "token_id": 13,
+      "kernel_ids": []
+    }
+  ],
+  "timing_boundary": "GPU prefill/last-position LM head/argmax; then cached autoregressive decode; excludes tokenization, loading and host launch overhead",
+  "stop_policy": "EOS or requested count; no forward pass after last output"
+}

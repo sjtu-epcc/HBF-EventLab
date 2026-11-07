@@ -1,0 +1,91 @@
+{
+  "status": "complete",
+  "backend_base_commit": "8ccb1f353630f893f761b017d621812b7b9d5bf2",
+  "model": "GPT-2 124M",
+  "dataset": "/home/server/wikitext/wikitext-2-raw-v1/test-00000-of-00001.parquet",
+  "prompt": " Robert Boulter is an English film",
+  "generated_text": " critic and writer.",
+  "generated_tokens": 4,
+  "precision": "float32",
+  "ttft_ms": 72.99253617021276,
+  "tpot_ms": 48.000169030732856,
+  "core_clock_mhz": 1410,
+  "total_gpu_cycles": 305960191,
+  "kernel_count": 1480,
+  "eventlab_gpu": {
+    "admitted": 70710912,
+    "completed": 70710912,
+    "returned": 70710912,
+    "failed": 0,
+    "owned": 0,
+    "sector32": 70710912,
+    "max_owned": 2056,
+    "max_return_queue": 1928
+  },
+  "eventlab_device": {
+    "senses": 483306,
+    "programs": 121551,
+    "erases": 15360,
+    "replay_passes": 0,
+    "attempt_errors": 0,
+    "tick_ps": 3656564607157,
+    "drained": 1
+  },
+  "eventlab_page": {
+    "image_pages": 121551,
+    "seeded_pages": 0,
+    "reads": 53056354,
+    "writes": 121551,
+    "mshr_hits": 17654558,
+    "mapped": 121551,
+    "incomplete": 0
+  },
+  "lifecycle_audit": {
+    "valid": true,
+    "requests": 70710912,
+    "max_inflight": 2056,
+    "mean_return_latency_us": 5.075282778731492
+  },
+  "per_token": [
+    {
+      "output_index": 0,
+      "phase": "prefill",
+      "token_id": 4014,
+      "kernel_count": 343,
+      "end_cycle": 102919476,
+      "completion_ms": 72.99253617021276,
+      "interval_ms": 72.99253617021276
+    },
+    {
+      "output_index": 1,
+      "phase": "decode",
+      "token_id": 290,
+      "kernel_count": 379,
+      "end_cycle": 170216747,
+      "completion_ms": 120.72109716312056,
+      "interval_ms": 47.7285609929078
+    },
+    {
+      "output_index": 2,
+      "phase": "decode",
+      "token_id": 6260,
+      "kernel_count": 379,
+      "end_cycle": 238225156,
+      "completion_ms": 168.95401134751773,
+      "interval_ms": 48.23291418439716
+    },
+    {
+      "output_index": 3,
+      "phase": "decode",
+      "token_id": 13,
+      "kernel_count": 379,
+      "end_cycle": 305960191,
+      "completion_ms": 216.99304326241133,
+      "interval_ms": 48.03903191489362
+    }
+  ],
+  "host_write_mode": "burst4096",
+  "model_sha256": "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707",
+  "dataset_sha256": "5f1bea067869d04849c0f975a2b29c4ff47d867f484f5010ea5e861eab246d91",
+  "scope": "Trace-driven simulated GPU plus incremental EventLab; normal weight writes before timed inference; KV/activations in simulated HBM; excludes host/tokenization/loading/queue time; uncalibrated hardware model"
+}
