@@ -13,3 +13,11 @@ foreach(scenario backpressure recovery partial too_large streaming cross_unit re
 endforeach()
 add_executable(probe_current probe_preload.cpp)
 target_link_libraries(probe_current PRIVATE HBFEventLab::core)
+
+add_executable(gpu_configuration_tests "${ADAPTER}/tests/gpu_configuration.cpp")
+target_link_libraries(gpu_configuration_tests PRIVATE HBFEventLab::core)
+foreach(scenario mocs supported address output unknown roundtrip timing write_mode fault limits clock experiment)
+  add_test(NAME gpu_configuration_${scenario} COMMAND gpu_configuration_tests ${scenario}
+    "${CMAKE_CURRENT_SOURCE_DIR}/../config/gpt2-eventlab-device.ini")
+  set_tests_properties(gpu_configuration_${scenario} PROPERTIES TIMEOUT 60)
+endforeach()

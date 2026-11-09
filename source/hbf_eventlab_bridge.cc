@@ -7,13 +7,15 @@
 #include "hbf_eventlab/gpu/page_controller.hpp"
 #include "hbf_eventlab/gpu/page_interleaver.hpp"
 #include "hbf_eventlab/runtime/device_driver.hpp"
-#include "hbf_eventlab/configuration/simulation_configuration.hpp"
+#include "hbf_eventlab/gpu/configured_backend.hpp"
+#include <filesystem>
 #include <cmath>
 #include <chrono>
 #include "hbf_eventlab/diagnostics/runtime_profile.hpp"
 #include <cstdlib>
 #include <deque>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <set>
@@ -50,9 +52,9 @@ struct hbf_eventlab_bridge_t::implementation {
   Tick sampled{};
   long double epoch=0,last_seconds=-1;
   EventQueue events;
-  std::unique_ptr<DeviceDriver> device;
-  std::unique_ptr<GpuPageInterleaver> interleaver;
-  std::unique_ptr<HostDriver> host;
+  std::unique_ptr<ConfiguredGpuBackend> backend;
+  DeviceDriver* device=nullptr;
+  HostDriver* host=nullptr;
   std::unique_ptr<GpuPageController> controller;
   std::map<std::uint64_t,Mapping> mapping;
   std::vector<std::uint64_t> next_slot;
@@ -84,48 +86,40 @@ struct hbf_eventlab_bridge_t::implementation {
   implementation(const memory_config *c,gpgpu_sim *g):config(c),gpu(g),
       stacks(c->hbf_num_stacks),channels(c->hbf_num_channels),
       total_channels(stacks*channels),
-      pages_per_channel(setting("HBF_EVENTLAB_PAGES_PER_CHANNEL",4096)),
+      pages_per_channel(0),
       limit(c->hbf_max_outstanding) {
-    if(!stacks||!channels||total_channels>16||c->hbf_page_size!=4096||!limit||
-       !pages_per_channel||pages_per_channel>65536)
+    if(!stacks||!channels||total_channels>16||c->hbf_page_size!=4096||!limit)
       throw std::invalid_argument("EventLab bridge requires 4KiB pages, 1..16 total channels, 1..65536 resident pages/channel");
     if(c->hbf_placement_mode==2)throw std::invalid_argument("explicit upstream placement table is not supported by EventLab bridge");
-    // Use the backend's demonstrator lane geometry, scaled to the requested
-    // per-channel residency. A backend INI may override every geometry field.
-    if(pages_per_channel%512)
-      throw std::invalid_argument("multi-bank geometry requires pages/channel divisible by 512");
-    Geometry geometry{total_channels,4,16,8,pages_per_channel/512,2};
-    if(const char *path=std::getenv("HBF_EVENTLAB_DEVICE_CONFIG")) {
-      std::ifstream input(path);
-      if(!input)throw std::invalid_argument("cannot open EventLab device configuration");
-      geometry=read_configuration(input,path).device.geometry;
-    }
-    if(geometry.host_channels!=total_channels || geometry.channel_bytes()!=checked_mul(pages_per_channel,4096))
-      throw std::invalid_argument("EventLab geometry must match GPU channel count and resident pages/channel");
-    std::fprintf(stderr,"EVENTLAB_GEOMETRY channels=%u dies_per_channel=%u banks_per_die=%u pages_per_block=%u blocks_per_bank=%llu spare_blocks_per_bank=%u slots_per_bank=2\n",
-      geometry.host_channels,geometry.dies_per_channel,geometry.banks_per_die,geometry.pages_per_block,
-      static_cast<unsigned long long>(geometry.blocks_per_bank),geometry.spare_blocks_per_bank);
-    StaticDeviceDescription description{geometry,{256,32,false,true},
-      {256,Tick{1000000000},geometry.block_group_dlus()}};
-    ExecutionConfiguration execution;
+    const char* path=std::getenv("HBF_EVENTLAB_DEVICE_CONFIG");
+    if(!path)throw std::invalid_argument("HBF_EVENTLAB_DEVICE_CONFIG must name a complete backend INI");
+    // Backend settings have exactly one authority. Legacy overrides must be
+    // migrated to the INI; GPU-only MSHR/routing settings remain external.
+    for(const char* name:{"HBF_EVENTLAB_PAGES_PER_CHANNEL","HBF_EVENTLAB_UCIE_GRADE",
+                         "HBF_EVENTLAB_BURST_WRITES","HBF_EVENTLAB_RESIDENT_FRAGMENTS","HBF_EVENTLAB_FAIL_ONCE"})
+      if(std::getenv(name))throw std::invalid_argument(std::string("move legacy backend override into INI: ")+name);
+    auto resolved=read_gpu_backend(path);
+    const auto geometry=resolved.values().device.geometry;
+    pages_per_channel=geometry.channel_bytes()/4096;
+    if(geometry.host_channels!=total_channels || !pages_per_channel || pages_per_channel>65536)
+      throw std::invalid_argument("backend geometry must match GPU channel routing and 1..65536 pages/channel");
+    if(c->hbf_channel_bw_gbps!=resolved.values().execution.ucie.effective_gbytes_per_second())
+      throw std::invalid_argument("GPU channel bandwidth must match backend INI speed grade");
+    const auto output=resolved.values().output.effective_config.empty()
+        ?std::string(path)+".effective.ini":resolved.values().output.effective_config;
+    if(std::filesystem::weakly_canonical(output)==std::filesystem::weakly_canonical(path))
+      throw std::invalid_argument("effective config must not overwrite input INI");
+    std::ofstream effective(output);
+    if(!effective)throw std::runtime_error("cannot write effective configuration: "+output);
+    write_effective_configuration(effective,resolved);effective.close();
+    if(!effective)throw std::runtime_error("failed writing effective configuration");
+    write_configuration_summary(std::cerr,resolved);
+    std::fprintf(stderr,"EVENTLAB_CONFIG source=%s effective=%s GPU legacy media timing fields ignored\n",path,output.c_str());
+    backend=std::make_unique<ConfiguredGpuBackend>(std::move(resolved),events);
+    device=&backend->device;host=&backend->host;
+    const auto& hc=backend->configuration.values().host;
+    const bool burst=hc.writes==WriteCommandMode::Burst4096;
     const auto frequency=gpu->get_config().get_dram_freq();
-    execution.media_timing.sense=clock_ticks(c->hbf_tR,frequency);
-    execution.media_timing.program=clock_ticks(c->hbf_tPROG,frequency);
-    execution.media_timing.erase=clock_ticks(c->hbf_tBERS,frequency);
-    const auto grade=setting("HBF_EVENTLAB_UCIE_GRADE",3);
-    if(grade<1||grade>3)throw std::invalid_argument("EventLab UCIe grade must be 1..3");
-    execution.ucie.speed_grade=static_cast<UcieSpeedGrade>(grade);
-    if(c->hbf_channel_bw_gbps!=execution.ucie.effective_gbytes_per_second())
-      throw std::invalid_argument("GPU channel bandwidth must match latest EventLab UCIe grade (48/94/188 GB/s)");
-    device=std::make_unique<DeviceDriver>(description,execution,events);
-    interleaver=std::make_unique<GpuPageInterleaver>(total_channels,geometry.channel_bytes());
-    HostConfiguration hc;hc.max_open_dlus_per_channel=8;
-    const auto burst=setting("HBF_EVENTLAB_BURST_WRITES",0);
-    if(burst>1)throw std::invalid_argument("HBF_EVENTLAB_BURST_WRITES must be 0 or 1");
-    if(burst)hc.writes=WriteCommandMode::Burst4096;
-    hc.max_logical_fragments=0;
-    hc.max_resident_fragments=setting("HBF_EVENTLAB_RESIDENT_FRAGMENTS",4096);
-    host=std::make_unique<HostDriver>(*device,events,*interleaver,hc);
     if(diag_enabled){host->set_runtime_profile(diagnostic_profile);device->set_runtime_profile(diagnostic_profile);}
     GpuControllerConfiguration gc;
     gc.cycle=clock_ticks(1,gpu->get_config().get_core_freq());
@@ -178,10 +172,6 @@ struct hbf_eventlab_bridge_t::implementation {
     const auto seed_image=setting("HBF_EVENTLAB_SEED_IMAGE",0);
     if(seed_image)
       throw std::invalid_argument("incremental backend requires ordinary Host writes; SEED_IMAGE is unsupported");
-    if(setting("HBF_EVENTLAB_FAIL_ONCE",0))
-      device->set_program_outcome([used=false](const ProgramOperation&)mutable{
-        if(!used){used=true;return ProgramOutcome::FailedReusable;}return ProgramOutcome::Success;
-      });
     // Keep the streaming controller's ready queue bounded while constructing a
     // pre-existing model image. Enqueuing thousands of pages before the first
     // event jump makes the controller repeatedly scan a large blocked queue.
@@ -191,7 +181,7 @@ struct hbf_eventlab_bridge_t::implementation {
     std::size_t preload_pending=0;
     std::map<std::tuple<std::uint64_t,std::uint64_t,std::uint64_t>,std::uint64_t> image_block_content;
     const auto drain_preload=[this]{
-      events.run();
+      backend->drain_events();
       const auto ha=host->activity();const auto da=device->activity();
       if(!controller->drained()||!ha.drained()||!da.drained()) {
         std::fprintf(stderr,"EVENTLAB_PRELOAD stalled after=%llu controller=%d host_unfinished=%zu host_queued=%zu device_pending=%zu device_bank_ops=%zu reason=%s\n",
@@ -315,11 +305,7 @@ struct hbf_eventlab_bridge_t::implementation {
     sampled=Tick{static_cast<std::uint64_t>(std::floor(ps))};
     // Leave the sampled endpoint open for this GPU cycle's arrivals. This
     // preserves the latest EventQueue's normal/deadline settlement semantics.
-    while(const auto next=events.next_time()) {
-      if(!(*next<sampled))break;
-      events.run_next();
-    }
-    events.advance_idle_to(sampled);
+    backend->advance_open(sampled);
   }
   mem_fetch *pop(unsigned source) {
     auto found=returns.find(source);if(found==returns.end()||found->second.empty())return nullptr;

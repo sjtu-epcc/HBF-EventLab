@@ -1,0 +1,30 @@
+CASE experiment exit=0
+CONFIG channels=16 dies/channel=4 banks/die=16 pages/block=8 blocks/bank=16 spare/bank=2 base=0 interleave_bytes=4096 command_write_bytes=4096 open_dlus=8 mocs=256 mocs_supported=256 pending_limit=32
+CONFIG tick=1ps speed_grade=3 bandwidth_GBps=188 sense=15000000 program=200000000 erase=2000000000 assembly_timeout=1000000000 read_window=10000 read_threshold=32 host_policy=fcfs nand_policy=fcfs ucie_policy=fifo
+CONFIG retention_fragments=65536 replay_pass_limit=3 pending_retries=3 timeout_retries=3 retry_delay=1000000 max_tick=none event_limits=0/100000/100000
+SMOKE completed=48 reads64=16 merges=16 programs=16 senses=16 accepted=32 read_ps=15001841 drained=1
+
+CASE timing exit=0
+SMOKE completed=48 reads64=16 merges=16 programs=16 senses=16 accepted=32 read_ps=402841 drained=1
+SMOKE completed=48 reads64=16 merges=16 programs=16 senses=16 accepted=32 read_ps=4002841 drained=1
+PASS timing
+
+CASE write_mode exit=0
+SMOKE completed=48 reads64=16 merges=16 programs=16 senses=16 accepted=32 read_ps=60002841 drained=1
+SMOKE completed=48 reads64=16 merges=16 programs=16 senses=16 accepted=1040 read_ps=60002000 drained=1
+PASS write_mode
+
+CASE fault exit=0
+SMOKE completed=48 reads64=16 merges=16 programs=17 senses=16 accepted=33 read_ps=60002841 drained=1
+PASS fault
+
+CASE roundtrip exit=0
+SMOKE completed=48 reads64=16 merges=16 programs=16 senses=16 accepted=32 read_ps=60002841 drained=1
+PASS roundtrip
+
+CASE clock exit=0
+PASS clock
+
+CASE limits exit=0
+PASS limits
+

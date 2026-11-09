@@ -1,3 +1,17 @@
+# Simulated GPU experiment: unified backend configuration
+
+This experiment snapshot is published on `sjtu-epcc/HBF-EventLab` branch
+`exp/simulated-gpu-unified-config`. It preserves the collaborator's experiment
+history and directory layout; the backend lives in `EventLab/`. This branch
+has independent history from main and is not intended for a direct merge.
+
+Latest changes, local smoke results, limitations, and Linux handoff:
+[Unified configuration handoff](docs/GPU_UNIFIED_CONFIGURATION_20261109.md).
+Rebuild the Linux GPU simulator and pass a short replay before the full run.
+The existing GPT-2 result below was produced before this configuration change.
+
+---
+
 # GPT-2 124M + simulated GPU + incremental HBF source snapshot
 
 ## 2026-11-07 full-replay memory repair
