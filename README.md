@@ -9,11 +9,12 @@ The project supports research into **Host–HBF coordination, access organizatio
 
 **The current implementation models a selected subset of the behaviors defined by the specification. It is an uncalibrated model of functionality and timing, and does not represent a complete OCP implementation or imply conformance certification.**
 
-## Backend Baseline and GPU Integration Status
+## GPU experiments
 
-This branch integrates the new CUDA / paged-KV frontend from [RealGPUAcess_v0](https://github.com/ZeePgm/RealGPUAcess_v0) under [integrations/real_gpu](integrations/real_gpu/README.md), using this repository's backend directly (no second vendored HBF tree). The backend-only baseline is commit `8ccb1f353630f893f761b017d621812b7b9d5bf2` on `main`; this integration is developed separately on `feat/real-gpu-integration`. See the [integration and validation guide](docs/gpu_integration.md) before building or interpreting GPU results.
-
-The existing [Qwen tensor-callback experiment](experiments/qwen_online/CMakeLists.txt) is a legacy, optional reference and is disabled by default. It is not the new frontend. Neither CPU backend regressions nor simulator wall-time improvements establish predictive modeled TTFT/TPOT: an independent compute/request timeline and token-completion model are still required for that experiment.
+Optional [real GPU experiments](integrations/real_gpu/README.md) connect CUDA
+execution to the incremental Host. S/F experiments combine frozen GPU activity
+windows with online HBF access latency to derive modeled token completion times.
+The default backend build requires no CUDA or model weights.
 
 ## Current Capabilities
 
@@ -121,16 +122,12 @@ and yields on logical completion. The executor retains real bytes; HBF validates
 symbolic content. This requires no CUDA or model weights. See the
 [bridge contract and example](docs/tensor_bridge.md).
 
-An optional [Qwen CUDA integration experiment](docs/qwen_online.md) uses the same
+An optional [Qwen CUDA integration experiment](experiments/qwen_online/README.md) uses the same
 Host and bridge, with an externally supplied CUDA executor. It checks an independent
 CPU reference against native and HBF-connected GPU runs, including input-capacity
 backpressure, a final compute interval, and error aborts. Only a selected immutable
 weight range is constrained by HBF; real weights remain in the GPU executor.
 The default build does not require CUDA, PyTorch, or model weights.
-
-For the next GPU experiments, see the [GPU experiment handoff](docs/gpu_experiment_handoff.md)
-for the current incremental-Host path, multi-tensor coverage work, compute-time
-measurement, validation requirements, and division of responsibilities.
 
 ## Documentation
 

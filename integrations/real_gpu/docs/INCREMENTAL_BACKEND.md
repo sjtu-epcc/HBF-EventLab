@@ -1,33 +1,6 @@
 # Incremental backend adaptation
 
-> Historical upstream adaptation record: the pinned commit, six-file overlay,
-> and test/performance results below describe the imported snapshot only.
-> This integration builds the current HBF-EventLab repository root instead;
-> do not reapply the historical overlay. See the [current integration guide](../../../docs/gpu_integration.md).
-
-This release pins HBF-EventLab upstream commit
-`72e074508c462dceb7d42962c4885ecf17cc4d0d`. The complete upstream archive has
-205 files. A two-file local Session extension permits guarded installation of a
-program-outcome fault function before any input or advancement. Original and
-patched hashes are recorded in `third_party/hbf-eventlab-origin.json`.
-Four additional Host files reduce historical scans without changing event
-decisions: before the first failed Write response, recovery/retry/abort scans are
-dormant; reclamation visits only versions whose units were retired. Once a Write
-error occurs, the original error-history scans run for the rest of the Session.
-All upstream history and sealed-version checks remain intact. The combined local
-overlay therefore changes six upstream files; it is not an unmodified checkout.
-Ungrouped Regular reads also skip a predecessor scan whose grouping/Batch
-conditions cannot apply. The normal/fault trace comparison and all 466 upstream
-tests were repeated after this addition.
-
-The isolated optimization passed 466 upstream tests, 12 byte-exact normal/fault
-CLI trace comparisons, and deterministic benchmark comparisons. In the dedicated
-2,048-block history fixture, baseline software wall time divided by optimized
-wall time was approximately 8.24, measured on the history-scan variant before the
-Regular-read shortcut. This is simulator software cost, not modeled
-HBF hardware performance. Raw before/after results and the interrupted slow model
-diagnostic are retained in the development validation archive; the release
-contains compact acceptance and backend provenance records.
+The frontend links the repository backend directly. See [build instructions](../README.md).
 
 ## Execution path
 
@@ -124,14 +97,3 @@ complete drain. Every failed path prevents dependent execution. Initialization
 programs are counted separately from application writebacks, even when only an
 initial prefix succeeds.
 
-## Validation and source completeness
-
-See [release validation](VALIDATION.md), the compact records under validation/,
-and [source provenance](../third_party/hbf-eventlab-origin.json). Fresh release
-checks are distinguished from the inherited nine-case candidate matrix.
-
-Source packaging preserves nested build-* filenames such as
-cmake/build-info.cmake. It excludes root build directories, model inputs, local
-profiles and large traces. The source archive and relative release-manifest.json
-are generated and verified by ../tools/package_source.py. Rebuild after moving
-or extracting the source tree to create a new location-bound build identity.

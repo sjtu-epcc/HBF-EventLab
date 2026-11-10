@@ -3562,7 +3562,7 @@
 | 选择理由 | 复用外部计算内核检验原Host在线路径，保留真实数据与符号状态分工；通过独立CPU参照和原生GPU对照发现数值或接入差异。 |
 | 模型假设／参数依据 | 外部CUDA权重常驻；清单中的单个只读范围映射到Global空间，普通Host初始化content=1。默认选8KiB、resident=64、chunk=4096；相邻回调固定1000ps、尾段5000ps为功能默认，非实测。每个父访问等待全部子Global最终归属，错误阻止CUDA继续。 |
 | 实现位置（函数／成员） | [SelectedRange::validate / intersection](../experiments/qwen_online/access_plan.hpp)；[driver.cpp的Args、注册/初始化、advance、访存gate与finish](../experiments/qwen_online/driver.cpp)；[run.py三方/异常运行](../experiments/qwen_online/run.py)；[verify.py的numerical / behavior / timeline](../experiments/qwen_online/verify.py)。 |
-| 验证测试与覆盖 | [compute_tail.cpp](../tests/compute_tail.cpp)：ranges；[审计器测试](../tests/test_qwen_online.py)；[Qwen复现](qwen_online.md)：CPU/native/HBF logits、hidden/KV、生成结果，地址交集、原Host内容评估、恰好一次完成、容量反馈与排空；持续program fail和读途中限额中止。 |
+| 验证测试与覆盖 | [compute_tail.cpp](../tests/compute_tail.cpp)：ranges；[审计器测试](../tests/test_qwen_online.py)；[Qwen复现](../experiments/qwen_online/README.md)：CPU/native/HBF logits、hidden/KV、生成结果，地址交集、原Host内容评估、恰好一次完成、容量反馈与排空；持续program fail和读途中限额中止。 |
 | 实现状态／验证状态 | 已实现；V1。Windows CUDA实测；可选GPU实验不包含在默认CTest计数中。 |
 | 已知限制 | 选中子范围不能代表全部权重覆盖；不模拟真实NAND字节传输、KV写回、HBM容量、多GPU或异步重叠。外部执行器源码独立提供，发布其源码前须确认授权。 |
 

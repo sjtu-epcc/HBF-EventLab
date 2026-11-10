@@ -1,45 +1,33 @@
-# Upstream release validation (historical)
+# GPU validation scope
 
-**All results below describe the imported RealGPUAcess_v0 snapshot, not a new
-run against this repository's backend or current machine.** The 716-case suite
-combines CPU, CUDA and injection checks. Current integration evidence and missing
-model validation are recorded separately in the [integration guide](../../../docs/gpu_integration.md).
+Build commands are in the [frontend README](../README.md). Run CTest for the
+chosen CPU/CUDA configuration and the standalone Python environment, identity
+and numerical-validator tests. The default backend suite does not require a GPU.
 
-Final acceptance is recorded in [release-validation.json](validation/release-validation.json).
-Release checks use binaries built in this release directory.
+## Fixed-activity S/F experiments
 
-| Evidence | Scope |
-|---|---|
-| core-tests.xml / core-tests.log | Fresh full CPU/CUDA/injection regression; 716 passed, zero failures/skips |
-| operators.json | Fresh 18-case independent attention/PTX/rejection suite |
-| validator-tests.log | Fresh five-test independent Python validation contract |
-| model-validation.json | Fresh Qwen3-0.6B short/32 and SmolLM2-135M long/64, all three modes |
-| candidate-matrix.json | Previously accepted nine-case, 27-process candidate matrix; inherited provenance, not another release-directory run |
-| backend-provenance.json | Complete pinned backend identity and six local patch files |
-| environment-adaptation.json | Later environment configuration and platform-adapter checks |
+[S](../experiments/gpu_s/README.md) checks selected dependencies, numerical
+reference comparisons and token-time conservation. [F](../experiments/gpu_ffn/README.md)
+checks FFN coverage, native/joint logits and tokens, fragment outcomes, parent
+completion, final drain and conservation. Each execution records its effective
+configuration, build identity and audit results. F2/F3 reuse a verified F1
+activity table. One token does not define TPOT; use multiple outputs for TPOT.
 
-Each fresh model run checks complete logits, prompt/generated tokens, exact
-selected byte/sector coverage, actual GPU waits/kernels, KV publication, eviction/
-writeback, final Host fragment outcomes, resident budget, closed input and resource
-drain. Complete logits and tokens are compared with corresponding accepted
-candidate outputs and previous main-backend references.
+## Asynchronous and paged-KV runtime
 
-The 18-case suite includes dimensions of the larger Qwen3-1.7B model. The release
-checks ran two representative model cases. The nine-case candidate matrix is
-earlier validation evidence, not a new run of all nine cases.
+Run the frontend CPU/CUDA and model-specific checks separately. The
+`lab_shared_gpu_owner` and `lab_shared_gpu_scaled` overlap-coverage checks have
+shown scheduling-sensitive failures; passing isolated runs does not resolve
+that limitation. S/F acceptance does not establish asynchronous overlap coverage.
 
-Validation includes same-Tick continuation, future watermarks, finite Host input
-budgets, physical retry/replay, logical block snapshot ordering and normal-failure
-drain. Partial initialization is not reported as application writeback. Severe
-Session errors or exhausted run limits may prevent drain and cannot count as
-successful accesses.
+Model execution and process injection require their own explicit checks.
+Software wall time, simulated access latency and modeled token times use
+separate definitions. HBF timing parameters are uncalibrated model inputs.
 
-The validated environment is Windows x64, Visual Studio 2022, CUDA 13.0, RTX 5070
-SM120a and Python 3.12. Large raw traces and build products are not distributed
-in the source package. Model weights and toolchains are external inputs.
+## Result provenance
 
-Model acceptance uses FCFS, no attached statistics sink and memory backing.
-File, prefetch, thermal and refresh interfaces have independent core checks.
-Their simultaneous activation in every model run is not implied. Existing GPU
-timestamp time mapping is retained; wall time is software cost, not a prediction
-of hardware throughput or a measured-compute TTFT/TPOT experiment.
+[Published S/F results](gpu-s-f-new-backend/README.md) specify their original
+hardware, backend revision and experiment settings. Compact upstream records
+under `validation/` are historical results, not evidence of running a different
+checkout. Reproduction requires the matching external model and raw inputs;
+local paths, build outputs and new run artifacts should remain outside tracked documentation.

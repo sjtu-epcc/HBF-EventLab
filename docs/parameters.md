@@ -201,4 +201,4 @@ C++ 装配流程位于 [统一配置实现](../src/configuration/simulation_conf
 
 `TensorBridgeConfiguration::global_chunk_bytes`默认4096字节，必须为正的64B倍数，通过适配器构造函数提供。它只组织父访存的Global子范围，不是设备几何或命令窗口，因此不增加核心INI配置项。`access()`的`compute`是本次访存前的显式计算Tick数；默认0使用因果续体。`advance_compute()`独立推进相同单位的计算区间及尾段。tensor范围与content由注册表给出。详见[tensor桥接](tensor_bridge.md)。
 
-可选Qwen实验的`--tensor/--offset/--bytes`、`--max-new`、`--compute-ps/--tail-ps`属于外部执行器/输入模型，保留在实验CLI，不加入核心INI。`--resident`覆盖既有Host预算，`--config`使用既有后端解析；具体默认值、覆盖优先级和选中范围限制见[Qwen参数表](qwen_online.md#运行)。固定计算间隔不来自OCP或GPU实测，不能与链路/介质校准参数混为一谈。
+可选Qwen实验的`--tensor/--offset/--bytes`、`--max-new`、`--compute-ps/--tail-ps`属于外部执行器/输入模型，保留在实验CLI，不加入核心INI。`--resident`覆盖既有Host预算，`--config`使用既有后端解析；具体默认值、覆盖优先级和选中范围限制见[Qwen参数表](../experiments/qwen_online/README.md#运行)。固定计算间隔不来自OCP或GPU实测，不能与链路/介质校准参数混为一谈。

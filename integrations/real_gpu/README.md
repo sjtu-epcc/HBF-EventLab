@@ -1,35 +1,31 @@
-# Real GPU integration baseline
+# Real GPU experiments
 
-S/F fixed-activity experiments are available in [the S/F integration guide](../../docs/gpu_sf_integration.md).
-Their validation is separate from the earlier asynchronous/capacity baseline below.
+The optional GPU frontend uses the HBF EventLab backend at the repository root.
+GPU execution owns real weight bytes; the backend models symbolic content,
+resource use and access completion through its existing incremental Host.
 
-Imported from [ZeePgm/RealGPUAcess_v0 at 41b9f736](https://github.com/ZeePgm/RealGPUAcess_v0/tree/41b9f736164c8517c35aaafb6743a803bf656257). This branch provides real CUDA execution, selected weight interception, asynchronous requests, finite frames and all-layer paged F16 KV on the **current HBF-EventLab backend**.
+| Experiment | Purpose | Entry |
+|---|---|---|
+| S fixed activity trace | Selected ranges, dependency completion and token-time conservation | [S instructions](experiments/gpu_s/README.md) |
+| F1–F3 FFN coverage | Compare 1, 4 and 28 FFN layers using one frozen GPU activity table | [F instructions](experiments/gpu_ffn/README.md) |
+| Asynchronous / paged KV | Runtime, finite frames and mutable snapshot contracts | Model commands below |
 
-**Start with the [repository integration guide](../../docs/gpu_integration.md).** It gives root-relative build commands, current validation and the independent event-model work still required. This is a functional collaboration baseline, **not a predictive modeled TTFT/TPOT release**.
+S/F token times combine a frozen GPU activity table with online HBF access latency.
+The asynchronous runtime uses a different time mapping; its software wall time
+is reported separately. [Validation scope](docs/VALIDATION.md) describes these boundaries.
 
-**Current acceptance:** CPU suite 604/604 and Python checks 39/39 passed. The full frontend CPU/CUDA suite is **220/222 (not fully passed)** with two overlap-coverage failures under investigation. Full llama.cpp build/model inference was not completed on the integration machine because cuBLAS development components and model inputs are missing. See the guide for complete records; historical upstream results do not fill these gaps.
+## Backend and dependencies
 
-![Architecture](docs/architecture.png)
-
-```text
-CUDA / paged KV -> LiveTimingService -> TimingBackend
-    -> SimulationSession -> HostDriver -> DeviceDriver
-    -> final Global result -> parent completion -> dependent GPU work
-```
-
-## Backend and source identity
-
-The backend is the repository root (`../..`), not a second vendored tree. The backend-only publication baseline is `8ccb1f353630f893f761b017d621812b7b9d5bf2`. Both CMake entries accept `HBFLAB_EVENTLAB_SOURCE`; the Windows wrapper accepts `-BackendSource` / `backend_source`.
-
-[Import provenance](integration-origin.json) records the source commit, original hashes, exclusions and licensing authorization. The old backend origin/overlay, release manifest and documents under [docs/validation](docs/VALIDATION.md) are **historical upstream records**. They are not proof of fresh inference against this backend. Do not apply the old six-file overlay again.
-
-The synchronous immutable TensorAccessBridge remains a tested reference. The asynchronous mutable path directly uses SimulationSession through the frontend producer adapter; see the [adapter contract](docs/INCREMENTAL_BACKEND.md).
+CMake links the backend from this repository; `HBFLAB_EVENTLAB_SOURCE` can select
+an explicit checkout. The [incremental adapter contract](docs/INCREMENTAL_BACKEND.md)
+describes ownership and completion. [Import provenance](integration-origin.json)
+and dependency license notices preserve upstream attribution.
 
 ## Environment and build
 
-Use CMake >=3.24, a C++17 compiler, Python >=3.11 and a compatible CUDA toolkit/GPU. Model builds additionally require CUPTI/cuBLAS. The original validation machine used VS2022, CUDA13.0 and RTX5070 SM120a; this is historical evidence, not a portability guarantee. Explicitly select your architecture.
+Use CMake >=3.24, a C++17 compiler, Python >=3.11 and a compatible CUDA toolkit/GPU. Model builds additionally require CUPTI/cuBLAS. Select the architecture supported by your GPU and toolkit.
 
-Commands in this README run from **this `integrations/real_gpu` directory**; commands in the repository guide run from the repository root.
+Commands in this README run from **this `integrations/real_gpu` directory**.
 
 ```powershell
 python -m venv .venv
@@ -63,7 +59,7 @@ The imported model scope is dense Qwen3/llama, one sequence, F16 matrix weights/
 
 The baseline uses FCFS Host/NAND, no statistics observer and memory backing. `resident_fragments=256` is a Host budget for logical 64-byte fragments, not GPU frame capacity or Device MOCS. The default four 4KiB frames are a paging-pressure configuration, not a realistic general server KV budget. KV writeback creates a whole-block snapshot; the original Host owns splitting, retries and recovery replay. Completed result/version history can grow with cumulative input.
 
-Real bytes stay in CUDA allocations and capacity backing; HBF models symbolic behavior and timing. The original GPU/host-readiness time mapping is retained. **CPU service and diagnostic overhead can affect future simulated arrivals.** Neither `process_wall_ms` nor final backend time is a predictive token latency. An independent compute/request clock, causal dependency model and token completion events remain to be implemented.
+Real bytes stay in CUDA allocations and capacity backing; HBF models symbolic behavior and timing. The original GPU/host-readiness time mapping is retained. **CPU service and diagnostic overhead can affect future simulated arrivals.** Neither `process_wall_ms` nor final backend time is a predictive token latency. Use the S/F fixed-activity experiments above for the separate modeled token-time construction.
 
 File backing, bounded prefetch, retention/refresh and thermal APIs exist and have separate upstream checks; their simultaneous activation in all model runs is not implied. Refresh requires explicit service calls.
 
@@ -71,4 +67,4 @@ File backing, bounded prefetch, retention/refresh and thermal APIs exist and hav
 
 Clone/archive the **whole HBF-EventLab branch**, not just this subdirectory. The old standalone `package_source.py create` is disabled because it would omit the current backend; historical archive verification remains available. Do not publish local build identities, profiles, weights or raw traces as source.
 
-Original frontend and overlay contributions are distributed under Apache-2.0 with project-maintainer authorization; existing third-party terms are retained. See [LICENSE](LICENSE), [third-party notices](THIRD_PARTY_NOTICES.md), [dependencies](docs/DEPENDENCIES.md), [architecture](docs/ARCHITECTURE.md) and [historical validation](docs/VALIDATION.md).
+Original frontend and overlay contributions are distributed under Apache-2.0 with project-maintainer authorization; existing third-party terms are retained. See [LICENSE](LICENSE), [third-party notices](THIRD_PARTY_NOTICES.md), [dependencies](docs/DEPENDENCIES.md), [architecture](docs/ARCHITECTURE.md) and [validation scope](docs/VALIDATION.md).

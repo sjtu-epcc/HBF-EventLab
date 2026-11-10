@@ -281,8 +281,8 @@ python experiments/read_scheduling/plot.py out/read-scheduling-minimal
 
 ## 可选Qwen在线验证
 
-默认512项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](qwen_online.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已有构建记录，本次后端接口与历史扫描优化未重新构建或运行可选CUDA目标。
+默认512项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](../experiments/qwen_online/README.md#运行)。程序性能诊断的开关对照也使用无CUDA的原Host闭环；可选Qwen的诊断入口已有构建记录，本次后端接口与历史扫描优化未重新构建或运行可选CUDA目标。
 
 2026-10-26在Windows、MSVC 19.43、CUDA 12.9.1、RTX 4070 Laptop GPU完成：独立CPU参照、原生GPU、HBF接入GPU三方生成结果一致；logits最大绝对误差约6.53e-5、RMSE约7.25e-6，低于运行前确定的阈值；两个GPU模式的全部快照逐字节一致。默认选区为8KiB，50个Global、3200次命令尝试终结，25次输入容量背压，Host/Device排空。
 
-附加验证覆盖非零tensor偏移与零计算间隔、初始化持续program fail的错误中止及排空、选中读途中运行限制的错误中止和未完成诊断。计算尾段明确计入；模拟时间不来自程序墙钟。该实验只验证所选权重子范围的在线契约，不证明整个模型的所有访存已经通过HBF，也不是校准后的GPU–HBF性能结果。配置、范围、阈值与完整复现命令统一见[Qwen实验说明](qwen_online.md)。
+附加验证覆盖非零tensor偏移与零计算间隔、初始化持续program fail的错误中止及排空、选中读途中运行限制的错误中止和未完成诊断。计算尾段明确计入；模拟时间不来自程序墙钟。该实验只验证所选权重子范围的在线契约，不证明整个模型的所有访存已经通过HBF，也不是校准后的GPU–HBF性能结果。配置、范围、阈值与完整复现命令统一见[Qwen实验说明](../experiments/qwen_online/README.md)。

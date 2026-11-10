@@ -99,9 +99,9 @@ weight offload. F2/F3 save `reference-binding.json`
 and reports only its newly executed subprocess cost; the reused native process
 cost remains in the reference batch and is not presented as a new measurement.
 
-## Main-repository integration
+## Build dependencies and checks
 
-See [integration guide](../../../../docs/gpu_sf_integration.md). `BASE_BUILD`
+See the [GPU build instructions](../../README.md#environment-and-build). `BASE_BUILD`
 must be built from this checkout's integrated llama entry and sealed using
 `tools/integrated_build_identity.py`. The F build compiles the current repository
 backend itself; no backend vendor tree or overlay is used. The build wrapper

@@ -11,7 +11,7 @@
 - 仅 M2 选定权重范围经过公共 `TensorAccessBridge`、`SimulationSession`、Host、Device。
   权重实际仍在 GPU；HBF 校验的是符号内容，不是物理字节搬运。
 - G2 为纯记录零等待重放。G3 的模拟时间 = **同一固定计算表 + 实际后端返回的模拟等待**。
-- 此集成默认复用组员 RTX 5070 的合格固定表。它是明确声明的外部输入，
+- 此集成默认复用上游 RTX 5070 的合格固定表。它是明确声明的外部输入，
   **不是本地 GPU 新采样的计算时间**。本地 CUPTI 只验证边界、覆盖、依赖因果及真实 CUDA 执行。
 - H0 未经硬件校准；微小模拟差异不证明真实硬件可观测的性能收益。
 - 固定轨迹不允许丢段、截掉 EOS 后缀、重选时长或替换模型哈希来通过验收。
@@ -33,12 +33,10 @@ python integrations/real_gpu/experiments/gpu_s/verify_records.py `
 [verify_records.py](verify_records.py) 检查所有恢复字节、包/表/采样身份，
 重新运行历史数组数值及 KV 发布核验，并在新目录做 G2 重放。
 它**不执行新 GPU 或新后端**；历史通过与新运行通过必须分开报告。
-曾缺失的 10,825 个快照由组员重新生成后与原索引逐字节匹配；包内保留恢复过程，
-不应把新的墙钟或 API 时间戳说成历史采样时间戳。
 
 ## 构建
 
-先按前端集成指南构建模型依赖，指定完整 CUDA/cuBLAS 和 CUPTI SDK，关闭 CUDA graphs。
+先按[GPU 构建说明](../../README.md#environment-and-build)构建模型依赖，指定完整 CUDA/cuBLAS 和 CUPTI SDK，关闭 CUDA graphs。
 `BASE_BUILD` 必须来自本前端的 `adapters/llama_cpp/integrated` CMake 入口。
 独立 cuBLAS SDK 可使用 `CMAKE_INCLUDE_PATH`、`CUDA_cublas_LIBRARY` 和
 `CUDA_cublasLt_LIBRARY` 指定；运行环境从真实缓存路径解析 SDK DLL，不更改系统 PATH。
@@ -74,7 +72,7 @@ python "$frontend/experiments/gpu_s/integrated.py" `
 
 Python 需要 NumPy、PyTorch CPU 及 vendor `gguf-py` 的依赖。不得使用 `-O` 或
 `PYTHONOPTIMIZE`（会禁用历史审计中的断言）。当前 fixture 固定 8 步上限，非通用模型执行器。
-新入口显式接收构建、模型、原始记录和输出目录，不使用组员机器的绝对路径。
+新入口显式接收构建、模型、原始记录和输出目录，不使用机器特定的绝对路径。
 原 `s6.py` / `s7.py` / `s8.py` 等 `run` 入口仍保存历史研究批次选择，**不是本集成复现入口**。
 旧 S0/S1 若单独使用，可通过 `GPU_S_BUILD`、`GPU_S_BASE_BUILD` 选择构建。
 
