@@ -8,7 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 import numpy as np
 from common import read,write,sha
-from study import ROOT,BASE,invoke
+from batches import batch_path
+from study import ROOT,BASE,invoke, JOINT_BUILD
 from reference import CpuQwen
 from audit import numerical,boundaries,stored_kv
 from integrated_build_identity import verify_build
@@ -16,9 +17,9 @@ from platform_environment import executable
 
 def run(out):
     out.mkdir(parents=True,exist_ok=False)
-    prior=ROOT/'output/gpu-s/20261031-s0-s2-002';p=read(prior/'S0/profile.json');lock=read(prior/'S0/study-lock.json')
+    prior=batch_path('s2-original');p=read(prior/'S0/profile.json');lock=read(prior/'S0/study-lock.json')
     assert sha(p['model_path'])==p['gguf_sha256'] and sha(p['conversion'])==lock['conversion_sha256']
-    binary=executable(ROOT/'build-s3/bin','gpu_s_joint');verify_build(BASE)
+    binary=executable(JOINT_BUILD/'bin','gpu_s_joint');verify_build(BASE)
     prompts={'calibration-e':'A box contains four pencils and two pens. How many objects are in the box?',
              'calibration-f':'Give a short explanation of why a shadow appears when light is blocked.'}
     for name,message in prompts.items():

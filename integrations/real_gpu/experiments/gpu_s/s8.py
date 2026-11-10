@@ -6,7 +6,8 @@ import shutil
 import subprocess
 from pathlib import Path
 from common import read, rows, write, sha, metrics
-from study import ROOT, BASE, invoke, environment
+from batches import batch_path, MANIFEST
+from study import ROOT, BASE, invoke, environment, JOINT_BUILD
 from integrated_build_identity import verify_build
 from s5_audit import positive, exact, normalized
 from s5_validate import operations
@@ -28,10 +29,10 @@ def table_audit(folder, table, expected_header=None):
 
 
 def run(study):
-    g2 = ROOT/'output/gpu-s/20261101-s7-001/G2'
-    s6 = ROOT/'output/gpu-s/20261101-s6-minimum-acceptance-001'
-    prior = ROOT/'output/gpu-s/20261101-s5b-002/S5'
-    binary = ROOT/'build-s3/bin/gpu_s_s8.exe'
+    g2 = batch_path('s7')/'G2'
+    s6 = batch_path('s6-qualified')
+    prior = batch_path('s5')/'S5'
+    binary = JOINT_BUILD/'bin/gpu_s_s8.exe'
     assert read(g2/'stage-result.json')['status'] == 'pass'
     tablefile = s6/'compute-table.json'; table = read(tablefile)
     assert sha(tablefile) == read(g2/'stage-result.json')['table_sha256']
@@ -39,7 +40,7 @@ def run(study):
     assert table['header']['frozen_G1']
     assert not study.exists(); folder = study/'G3'; folder.mkdir(parents=True)
     write(folder/'dependency-build-identity.json', verify_build(BASE))
-    config = read(ROOT/'output/gpu-s/20261101-s6-001/config.json')
+    config = read(batch_path('s6')/'config.json')
     assert sha(config['model_path']) == table['header']['model_sha256']
     prompt = folder/'prompt.txt'; prompt.write_bytes((prior/'prompt.txt').read_bytes())
     assert sha(prompt) == table['header']['prompt_sha256']
@@ -55,7 +56,7 @@ def run(study):
         'source_hashes': {p.name: sha(p) for p in Path(__file__).parent.iterdir() if p.is_file()},
         'core_Host_Device_modified': False})
     snap = folder/'source-and-binary-snapshot'; snap.mkdir()
-    for p in [p for p in Path(__file__).parent.iterdir() if p.is_file()]+[binary, ROOT/'build-s3/CMakeCache.txt']:
+    for p in [p for p in Path(__file__).parent.iterdir() if p.is_file()]+[binary, JOINT_BUILD/'CMakeCache.txt']:
         shutil.copyfile(p, snap/p.name)
 
     def execute(name, mode, hbf):
@@ -72,9 +73,9 @@ def run(study):
     assert stored_kv(native, config)['status'] == 'pass'
     cpu = folder/'cpu-8'
     ref = CpuQwen(config); ref.run(read(native/'summary.json')['prompt_ids'], 8, cpu); del ref
-    target = read(ROOT/'output/gpu-s/20261101-s2-b2-v2-001/S0/numerical-targets-predeclared.json')
+    target = read(batch_path('s2')/'S0/numerical-targets-predeclared.json')
     assert numerical(native, cpu, config, target)['status'] == 'pass'
-    expected_ops = operations(ROOT/'output/gpu-s/20261101-s6-001/sample-3')
+    expected_ops = operations(batch_path('s6')/table['header']['sample'])
     assert operations(native) == expected_ops
     print('Final table-driven executable: native values/KV/events/CUDA operations match S5/S6; CPU pass.', flush=True)
     results = []
@@ -112,7 +113,8 @@ def run(study):
         'full_native_HBF_exact': behavior['gpu_native_exact'], 'numerical_arrays': numeric['arrays_compared'],
         'coverage': behavior['coverage'], 'deterministic_simulated_state_full_timing_exact': True,
         'S9_started': False, 'precision_limits_inherited': True}
-    write(folder/'stage-result.json', summary); write(ROOT/'docs/validation/gpu-s8.json', summary)
+    write(folder/'stage-result.json', summary)
+    if not MANIFEST: write(ROOT/'docs/validation/gpu-s8.json', summary)
     write(study/'artifact-index.json', {'files': [{'path': p.relative_to(study).as_posix(), 'bytes': p.stat().st_size, 'sha256': sha(p)}
         for p in sorted(study.rglob('*')) if p.is_file() and p.name != 'artifact-index.json']})
     print('S8 pass; S9 not executed.', flush=True)

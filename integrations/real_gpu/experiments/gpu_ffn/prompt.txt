@@ -1,0 +1,9 @@
+<|im_start|>system
+You are a helpful assistant. Answer directly in English without thinking aloud.<|im_end|>
+<|im_start|>user
+Explain how a computer uses memory in about one hundred words.<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+

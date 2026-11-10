@@ -35,11 +35,19 @@ static bool stop_before_selected=false, intentional_stop=false;
 static void need(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
 static std::uint64_t stamp(){std::uint64_t value=0;need(cuptiGetTimestamp(&value)==CUPTI_SUCCESS,"CUPTI timestamp failed");return value;}
 #ifdef GPU_S_JOINT
+#ifdef GPU_FFN_EXPERIMENT
+#include "../gpu_ffn/gate.hpp"
+#else
 #include "hbf_gate.hpp"
+#endif
 static std::unique_ptr<S3Gate> gate;
 #endif
 #ifdef GPU_S_SEGMENTS
+#ifdef GPU_FFN_EXPERIMENT
+#include "../gpu_ffn/segments.hpp"
+#else
 #include "s8_segments.hpp"
+#endif
 #endif
 static void emit(json row){row["event_id"]=++event_id;row["request_id"]=1;row["step"]=step.load();row["timestamp_ns"]=stamp();events<<row.dump()<<'\n';need(bool(events),"Event write failed");}
 static json info(const ggml_tensor* t){return {{"name",t->name},{"dtype",ggml_type_name(t->type)},{"shape",{t->ne[0],t->ne[1],t->ne[2],t->ne[3]}},{"strides",{t->nb[0],t->nb[1],t->nb[2],t->nb[3]}},{"bytes",ggml_nbytes(t)},{"address",reinterpret_cast<std::uintptr_t>(t->data)}};}

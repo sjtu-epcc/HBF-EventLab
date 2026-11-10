@@ -1,5 +1,8 @@
 # Real GPU integration baseline
 
+S/F fixed-activity experiments are available in [the S/F integration guide](../../docs/gpu_sf_integration.md).
+Their validation is separate from the earlier asynchronous/capacity baseline below.
+
 Imported from [ZeePgm/RealGPUAcess_v0 at 41b9f736](https://github.com/ZeePgm/RealGPUAcess_v0/tree/41b9f736164c8517c35aaafb6743a803bf656257). This branch provides real CUDA execution, selected weight interception, asynchronous requests, finite frames and all-layer paged F16 KV on the **current HBF-EventLab backend**.
 
 **Start with the [repository integration guide](../../docs/gpu_integration.md).** It gives root-relative build commands, current validation and the independent event-model work still required. This is a functional collaboration baseline, **not a predictive modeled TTFT/TPOT release**.

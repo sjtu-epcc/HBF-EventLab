@@ -6,7 +6,8 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 from common import read, rows, write, sha
-from study import ROOT, BASE, invoke, environment
+from batches import batch_path
+from study import ROOT, BASE, invoke, environment, JOINT_BUILD
 from integrated_build_identity import verify_build
 from audit import boundaries, numerical, stored_kv
 from reference import CpuQwen
@@ -15,20 +16,20 @@ from segment_audit import audit as segment_audit, signature
 
 
 def run(study):
-    s2=ROOT/'output/gpu-s/20261101-s2-b2-v2-001'
-    s3=ROOT/'output/gpu-s/20261101-s3-b2-v2-001'
-    s4=ROOT/'output/gpu-s/20261101-s4-001'
-    s5=ROOT/'output/gpu-s/20261101-s5-001'
+    s2=batch_path('s2')
+    s3=batch_path('s3')
+    s4=batch_path('s4')
+    s5=batch_path('s5-zero')
     assert not study.exists();folder=study/'S5';folder.mkdir(parents=True)
     p=read(s2/'S0/profile.json');target=read(s2/'S0/numerical-targets-predeclared.json')
-    regions=read(s4/'S4/M2-regions.json');binary=ROOT/'build-s3/bin/gpu_s_segmented.exe'
+    regions=read(s4/'S4/M2-regions.json');binary=JOINT_BUILD/'bin/gpu_s_segmented.exe'
     assert sha(p['model_path'])==p['gguf_sha256']
     write(folder/'dependency-build-identity.json',verify_build(BASE))
     for prior,stage in [(s2,'S2'),(s3,'S3'),(s4,'S4')]:assert read(prior/stage/'stage-result.json')['status']=='pass'
     assert read(s5/'S5/stage-result.json')['S5-a']=='pass'
     prompt=folder/'prompt.txt';prompt.write_bytes((s2/'S0/inputs/main.txt').read_bytes())
     ini=folder/'effective-H0.ini';ini.write_bytes((s2/'S0/backend-preflight/effective-H0.ini').read_bytes())
-    sources=[x for x in Path(__file__).parent.iterdir() if x.is_file()]+[binary,ROOT/'build-s3/CMakeCache.txt']
+    sources=[x for x in Path(__file__).parent.iterdir() if x.is_file()]+[binary,JOINT_BUILD/'CMakeCache.txt']
     snapshot=folder/'source-and-binary-snapshot';snapshot.mkdir()
     for x in sources:shutil.copyfile(x,snapshot/x.name)
     write(folder/'conditions.json',{'frozen_utc':datetime.now(timezone.utc).isoformat(),'binary_sha256':sha(binary),

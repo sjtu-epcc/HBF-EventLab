@@ -1,0 +1,528 @@
+{
+  "backend_commit": "8ccb1f353630f893f761b017d621812b7b9d5bf2",
+  "source_sha256": {
+    "output/gpu-s/20261105-new-backend-s5-s9/s8/G3/G2-G3-paired.csv": "489bd9915b3fd010f207af262d3a4ff8b9dd18bd312d33c34054e97a3cd1faaa",
+    "output/gpu-s/20261105-new-backend-s5-s9/s6/instrumentation-comparison.csv": "dc7727426b0ecbc7c4ef346d16e85956d1d98df396b5be3d2500c97f816a3b96",
+    "output/gpu-s/20261105-new-backend-s5-s9/s8/G3/stage-result.json": "499c3fcdc06ff66299a667ede499d49b61c12c6c41a67e67eae2a01e01333738",
+    "output/gpu-s/20261105-new-backend-s5-s9/s6/sampling-assessment.json": "68f2e7f08ff31fb92d44467428a321bbde18b0d3f107770e62456fe8e0b90c95",
+    "output/gpu-s/20261105-new-backend-s5-s9/s6-qualified/stage-result.json": "98d2b91dca3440b9d2c49690e75ba1f6d61a77e873df0a36d390e684a78b3197",
+    "output/gpu-s/20261105-new-backend-s5-s9/s6/distribution-report.json": "96487a50d4f8588ea83efca60c069271d884bd0bfa6d2b0eefc58c5e1dcf932e",
+    "output/gpu-s/20261105-new-backend-s5-s9/s5-fixed/S5/stage-result.json": "133c3cc4c0f1f053d1a30124542b985a21316a989a4d627706634c975ad4fbdf",
+    "output/gpu-s/20261105-new-backend-s5-s9/s7/G2/stage-result.json": "b241c46cc32cb2572dd9e9d137658f390480827947574b5bdd461fe9daa2726c",
+    "output/gpu-s/20261105-new-backend-s5-s9/s9/figure-audit.json": "886990aed39eeb36a68e8ee5882cd3e12f9bf81e1dde11e6e6be011a2988431c",
+    "output/gpu-s/20261105-new-backend-s5-s9/s8/G3/native-verify/summary.json": "2796b9a1485562c0af08a96b96aabb45d170247a4ab1646e06a2be83f73e9247",
+    "output/gpu-s/20261105-new-backend-s5-s9/s8/G3/G3-full/gates.jsonl": "c15ae4705b83664a432f22f51af43531d690f8b52a12bdb5ebc6345f1472778e",
+    "output/gpu-s/20261105-new-backend-s5-s9/s8/G3/effective-H0.ini": "b91705e39e83bc51cf636ce9415beb63363444e1a564f930b5727a3fea4d4ec7",
+    "output/gpu-s/20261105-new-backend-s5-s9/s8/G3/dependency-build-identity.json": "0a7775f81f4ce223251d39ff40b54b17c73d14d571bf0301aafa90779dde0b37",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/result.json": "0562c10c68bf2337c62ab578cb36931ddb6925c098ef5d9fab747f1baeec150e",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F2/result.json": "506dcd1998ebfb98e16ffabb15bc11b5e78a6bfe1405675f262e308f990d8f0f",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F3/result.json": "c399599d9f26537182f43d490a0951794f1a193ed0b37b61906e030423d6b71c",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/paired-tokens.csv": "2a49723859b1705e54213858456606cf61bcf9216198df71372f38aeba4f4f6e",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F2/paired-tokens.csv": "78e13ad9333362489fb7918efc690a64f890e9a24f16c8e3c8eb948b8a485d3c",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F3/paired-tokens.csv": "bb8e1b1d0c9ba6dfebac7cf71d7265f15a7bec55c5d676a3e89db2f4964250c6",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/build-identity.json": "06438668bb32a45518b70421e7115e3ff99967659ebdb2bb6470c57da016eb8f",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F2/build-identity.json": "06438668bb32a45518b70421e7115e3ff99967659ebdb2bb6470c57da016eb8f",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F3/build-identity.json": "06438668bb32a45518b70421e7115e3ff99967659ebdb2bb6470c57da016eb8f",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/negative-checks.json": "bbb3dd02cd73ec4b77ef12c281e238461a62b8ebe39e7d4c8434d698a1fbc2c7",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F2/negative-checks.json": "bbb3dd02cd73ec4b77ef12c281e238461a62b8ebe39e7d4c8434d698a1fbc2c7",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F3/negative-checks.json": "bbb3dd02cd73ec4b77ef12c281e238461a62b8ebe39e7d4c8434d698a1fbc2c7",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/native/summary.json": "bea10a7774fe417888ff98f4e20f156442f7b86c022e5a657b22d0a89d33d5a3",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/H0-512MiB.ini": "30a65740f9af690b204eabcb33c9f9b2cb4baf6db12a9914a70295f4739c45fe",
+    "output/gpu-s/20261105-new-backend-s5-s9/s6-qualified/compute-table.json": "d718644fba7abbf76763ab11951c02c9155d2c99b28601f85501edbc05dfafaf",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F1/compute-table.json": "1cd73a78747cf14844e031334bf2bcaaadf43d15153e5066c8b9f9a77c0221b0",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F2/compute-table.json": "1cd73a78747cf14844e031334bf2bcaaadf43d15153e5066c8b9f9a77c0221b0",
+    "output/gpu-ffn/20261105-new-backend-f1-f3/F3/compute-table.json": "1cd73a78747cf14844e031334bf2bcaaadf43d15153e5066c8b9f9a77c0221b0"
+  },
+  "figures": [
+    "01-s-timing",
+    "02-s-sampling",
+    "03-f-timing",
+    "04-f-cost",
+    "05-cross-trace",
+    "06-cross-scale",
+    "07-cross-normalized"
+  ],
+  "S_token_pairs_ps": [
+    {
+      "output_index": 1,
+      "token_id": 32,
+      "G2_relative_ps": 9886771000,
+      "G3_relative_ps": 9887258788,
+      "step_compute_ps": 9886771000,
+      "step_wait_ps": 487788,
+      "cumulative_wait_ps": 487788,
+      "G2_interval_ps": 9886771000,
+      "G3_interval_ps": 9887258788,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 2,
+      "token_id": 6366,
+      "G2_relative_ps": 13593037000,
+      "G3_relative_ps": 13593792776,
+      "step_compute_ps": 3706266000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 755776,
+      "G2_interval_ps": 3706266000,
+      "G3_interval_ps": 3706533988,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 3,
+      "token_id": 5711,
+      "G2_relative_ps": 17724625000,
+      "G3_relative_ps": 17725648764,
+      "step_compute_ps": 4131588000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 1023764,
+      "G2_interval_ps": 4131588000,
+      "G3_interval_ps": 4131855988,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 4,
+      "token_id": 4938,
+      "G2_relative_ps": 22841848000,
+      "G3_relative_ps": 22843139752,
+      "step_compute_ps": 5117223000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 1291752,
+      "G2_interval_ps": 5117223000,
+      "G3_interval_ps": 5117490988,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 5,
+      "token_id": 311,
+      "G2_relative_ps": 28629379000,
+      "G3_relative_ps": 28630938740,
+      "step_compute_ps": 5787531000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 1559740,
+      "G2_interval_ps": 5787531000,
+      "G3_interval_ps": 5787798988,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 6,
+      "token_id": 3553,
+      "G2_relative_ps": 34009584000,
+      "G3_relative_ps": 34011411728,
+      "step_compute_ps": 5380205000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 1827728,
+      "G2_interval_ps": 5380205000,
+      "G3_interval_ps": 5380472988,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 7,
+      "token_id": 323,
+      "G2_relative_ps": 39535954000,
+      "G3_relative_ps": 39538049716,
+      "step_compute_ps": 5526370000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 2095716,
+      "G2_interval_ps": 5526370000,
+      "G3_interval_ps": 5526637988,
+      "conservation_residual_ps": 0
+    },
+    {
+      "output_index": 8,
+      "token_id": 17179,
+      "G2_relative_ps": 44965798000,
+      "G3_relative_ps": 44968161704,
+      "step_compute_ps": 5429844000,
+      "step_wait_ps": 267988,
+      "cumulative_wait_ps": 2363704,
+      "G2_interval_ps": 5429844000,
+      "G3_interval_ps": 5430111988,
+      "conservation_residual_ps": 0
+    }
+  ],
+  "S_sampling_ms": [
+    {
+      "sample": 1.0,
+      "gpu_active_ms": 44.963531,
+      "instrumented_request_ms": 16781.6053,
+      "reference_request_ms": 168.8094
+    },
+    {
+      "sample": 2.0,
+      "gpu_active_ms": 44.814397,
+      "instrumented_request_ms": 16726.9466,
+      "reference_request_ms": 166.4702
+    },
+    {
+      "sample": 3.0,
+      "gpu_active_ms": 46.548366,
+      "instrumented_request_ms": 16628.5503,
+      "reference_request_ms": 174.4876
+    },
+    {
+      "sample": 4.0,
+      "gpu_active_ms": 44.645847,
+      "instrumented_request_ms": 16675.5932,
+      "reference_request_ms": 169.7628
+    },
+    {
+      "sample": 5.0,
+      "gpu_active_ms": 44.965798,
+      "instrumented_request_ms": 16645.3161,
+      "reference_request_ms": 169.8414
+    },
+    {
+      "sample": 6.0,
+      "gpu_active_ms": 45.180837,
+      "instrumented_request_ms": 16720.8382,
+      "reference_request_ms": 189.8799
+    },
+    {
+      "sample": 7.0,
+      "gpu_active_ms": 44.767241,
+      "instrumented_request_ms": 16704.25,
+      "reference_request_ms": 166.9386
+    },
+    {
+      "sample": 8.0,
+      "gpu_active_ms": 45.371197,
+      "instrumented_request_ms": 16778.3671,
+      "reference_request_ms": 212.2652
+    },
+    {
+      "sample": 9.0,
+      "gpu_active_ms": 45.671369,
+      "instrumented_request_ms": 16678.1693,
+      "reference_request_ms": 182.3998
+    },
+    {
+      "sample": 10.0,
+      "gpu_active_ms": 45.9978,
+      "instrumented_request_ms": 16724.9744,
+      "reference_request_ms": 168.9155
+    }
+  ],
+  "S_selected_sample": "sample-5",
+  "F_token_pairs_ps": {
+    "F1": [
+      {
+        "step": 0,
+        "token_id": 32,
+        "type": "token_emitted",
+        "G2_relative_ps": 6391889000,
+        "G3_relative_ps": 6883838906,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 491949906,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 1,
+        "token_id": 6366,
+        "type": "token_emitted",
+        "G2_relative_ps": 10086812000,
+        "G3_relative_ps": 11070711812,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 983899812,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 2,
+        "token_id": 5711,
+        "type": "token_emitted",
+        "G2_relative_ps": 14097293000,
+        "G3_relative_ps": 15573142718,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 1475849718,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 3,
+        "token_id": 4938,
+        "type": "token_emitted",
+        "G2_relative_ps": 19024861000,
+        "G3_relative_ps": 20992660624,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 1967799624,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 4,
+        "token_id": 311,
+        "type": "token_emitted",
+        "G2_relative_ps": 24587935000,
+        "G3_relative_ps": 27047684530,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 2459749530,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 5,
+        "token_id": 3553,
+        "type": "token_emitted",
+        "G2_relative_ps": 29991424000,
+        "G3_relative_ps": 32943123436,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 2951699436,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 6,
+        "token_id": 323,
+        "type": "token_emitted",
+        "G2_relative_ps": 35553343000,
+        "G3_relative_ps": 38996992342,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 3443649342,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 7,
+        "token_id": 17179,
+        "type": "token_emitted",
+        "G2_relative_ps": 40495695000,
+        "G3_relative_ps": 44431294248,
+        "step_wait_ps": 491949906,
+        "cumulative_wait_ps": 3935599248,
+        "conservation_residual_ps": 0
+      }
+    ],
+    "F2": [
+      {
+        "step": 0,
+        "token_id": 32,
+        "type": "token_emitted",
+        "G2_relative_ps": 6391889000,
+        "G3_relative_ps": 8359688624,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 1967799624,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 1,
+        "token_id": 6366,
+        "type": "token_emitted",
+        "G2_relative_ps": 10086812000,
+        "G3_relative_ps": 14022411248,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 3935599248,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 2,
+        "token_id": 5711,
+        "type": "token_emitted",
+        "G2_relative_ps": 14097293000,
+        "G3_relative_ps": 20000691872,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 5903398872,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 3,
+        "token_id": 4938,
+        "type": "token_emitted",
+        "G2_relative_ps": 19024861000,
+        "G3_relative_ps": 26896059496,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 7871198496,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 4,
+        "token_id": 311,
+        "type": "token_emitted",
+        "G2_relative_ps": 24587935000,
+        "G3_relative_ps": 34426933120,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 9838998120,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 5,
+        "token_id": 3553,
+        "type": "token_emitted",
+        "G2_relative_ps": 29991424000,
+        "G3_relative_ps": 41798221744,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 11806797744,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 6,
+        "token_id": 323,
+        "type": "token_emitted",
+        "G2_relative_ps": 35553343000,
+        "G3_relative_ps": 49327940368,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 13774597368,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 7,
+        "token_id": 17179,
+        "type": "token_emitted",
+        "G2_relative_ps": 40495695000,
+        "G3_relative_ps": 56238091992,
+        "step_wait_ps": 1967799624,
+        "cumulative_wait_ps": 15742396992,
+        "conservation_residual_ps": 0
+      }
+    ],
+    "F3": [
+      {
+        "step": 0,
+        "token_id": 32,
+        "type": "token_emitted",
+        "G2_relative_ps": 6391889000,
+        "G3_relative_ps": 20166486368,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 13774597368,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 1,
+        "token_id": 6366,
+        "type": "token_emitted",
+        "G2_relative_ps": 10086812000,
+        "G3_relative_ps": 37636006736,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 27549194736,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 2,
+        "token_id": 5711,
+        "type": "token_emitted",
+        "G2_relative_ps": 14097293000,
+        "G3_relative_ps": 55421085104,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 41323792104,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 3,
+        "token_id": 4938,
+        "type": "token_emitted",
+        "G2_relative_ps": 19024861000,
+        "G3_relative_ps": 74123250472,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 55098389472,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 4,
+        "token_id": 311,
+        "type": "token_emitted",
+        "G2_relative_ps": 24587935000,
+        "G3_relative_ps": 93460921840,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 68872986840,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 5,
+        "token_id": 3553,
+        "type": "token_emitted",
+        "G2_relative_ps": 29991424000,
+        "G3_relative_ps": 112639008208,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 82647584208,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 6,
+        "token_id": 323,
+        "type": "token_emitted",
+        "G2_relative_ps": 35553343000,
+        "G3_relative_ps": 131975524576,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 96422181576,
+        "conservation_residual_ps": 0
+      },
+      {
+        "step": 7,
+        "token_id": 17179,
+        "type": "token_emitted",
+        "G2_relative_ps": 40495695000,
+        "G3_relative_ps": 150692473944,
+        "step_wait_ps": 13774597368,
+        "cumulative_wait_ps": 110196778944,
+        "conservation_residual_ps": 0
+      }
+    ]
+  },
+  "F_process_costs": {
+    "F1": {
+      "returncode": 0,
+      "process_wall_seconds": 210.07424220000394,
+      "peak_working_set_bytes": 1841291264,
+      "wall_scope": "Whole process including load, initialization, inference, CUPTI and recording; never simulated HBF time."
+    },
+    "F2": {
+      "returncode": 0,
+      "process_wall_seconds": 729.8733423000667,
+      "peak_working_set_bytes": 1870651392,
+      "wall_scope": "Whole process including load, initialization, inference, CUPTI and recording; never simulated HBF time."
+    },
+    "F3": {
+      "returncode": 0,
+      "process_wall_seconds": 5274.583414399996,
+      "peak_working_set_bytes": 2061033472,
+      "wall_scope": "Whole process including load, initialization, inference, CUPTI and recording; never simulated HBF time."
+    }
+  },
+  "registered_valid_mib": {
+    "S": 0.009765625,
+    "F1": 18.0,
+    "F2": 72.0,
+    "F3": 504.0
+  },
+  "cumulative_read_mib": {
+    "S": 0.078125,
+    "F1": 144.0,
+    "F2": 576.0,
+    "F3": 4032.0
+  },
+  "parent_reads": {
+    "S": 16,
+    "F1": 24,
+    "F2": 96,
+    "F3": 672
+  },
+  "read_fragments": {
+    "S": 1280,
+    "F1": 2359296,
+    "F2": 9437184,
+    "F3": 66060288
+  },
+  "cumulative_wait_ms": {
+    "S": 0.002363704,
+    "F1": 3.935599248,
+    "F2": 15.742396992,
+    "F3": 110.196778944
+  },
+  "ttft_tpot_increase_percent": {
+    "S": [
+      0.0049337442932581325,
+      0.005347685384774213
+    ],
+    "F1": [
+      7.696471356120233,
+      10.097551405259576
+    ],
+    "F2": [
+      30.78588542448093,
+      40.390205621038305
+    ],
+    "F3": [
+      215.50119797136654,
+      282.7314393472682
+    ]
+  },
+  "wait_us_per_mib": {
+    "S": 30.255411199999998,
+    "F1": 27.330550333333335,
+    "F2": 27.330550333333335,
+    "F3": 27.330550333333335
+  }
+}

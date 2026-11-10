@@ -13,14 +13,20 @@ def run(folder):
     for r in ledger['inputs']:
         p = folder/r['snapshot']
         assert p.stat().st_size == r['bytes'] and sha(p) == r['sha256']
-    g2 = rows(folder/'inputs/output/gpu-s/20261101-s7-001/G2/tokens.jsonl')
-    g3 = rows(folder/'inputs/output/gpu-s/20261101-s8-002/G3/G3-full/tokens.jsonl')
-    source = ROOT/'output/gpu-s/20261101-s8-002/G3/G3-full/gates.jsonl'
-    copied = folder/'validator-inputs/gates.jsonl'; copied.parent.mkdir(exist_ok=True)
-    if source.exists():
-        shutil.copyfile(source, copied)
+    inputs = ledger.get('validation_inputs')
+    if inputs:
+        g2 = rows(folder/inputs['g2_tokens'])
+        g3 = rows(folder/inputs['g3_tokens'])
+        copied = source = folder/inputs['g3_gates']
     else:
-        assert copied.exists(), 'Missing raw gate snapshot'
+        g2 = rows(folder/'inputs/output/gpu-s/20261101-s7-001/G2/tokens.jsonl')
+        g3 = rows(folder/'inputs/output/gpu-s/20261101-s8-002/G3/G3-full/tokens.jsonl')
+        source = ROOT/'output/gpu-s/20261101-s8-002/G3/G3-full/gates.jsonl'
+        copied = folder/'validator-inputs/gates.jsonl'; copied.parent.mkdir(exist_ok=True)
+        if source.exists():
+            shutil.copyfile(source, copied)
+        else:
+            assert copied.exists(), 'Missing raw gate snapshot'
     gates = rows(copied)
     paired = csv_read(folder/'tables/paired-tokens.csv')
     for i, (a, b, c) in enumerate(zip(g2, g3, paired)):
@@ -40,8 +46,10 @@ def run(folder):
     assert sum(int(r['G3_interval_ps']) for r in phases) == g3[-1]['relative_ps']
     assert sum(int(r['HBF_wait_ps']) for r in phases) == g3[-1]['wait_ps']
     for r in csv_read(folder/'tables/native-reference.csv'):
-        events = rows(folder/'inputs/output/gpu-s/20261101-s6-001'/
+        event_path = (folder/inputs['native_events'][r['sample']] if inputs else
+                      folder/'inputs/output/gpu-s/20261101-s6-001'/
                       ('sample-'+r['sample']+'-reference')/'events.jsonl')
+        events = rows(event_path)
         t0 = next(e['timestamp_ns'] for e in events if e['type'] == 'request_begin')
         ts = [e['timestamp_ns'] for e in events if e['type'] == 'token_emitted']
         assert len(ts) == 8

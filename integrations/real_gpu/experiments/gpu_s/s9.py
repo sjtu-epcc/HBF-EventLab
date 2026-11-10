@@ -98,25 +98,28 @@ def plot(folder):
 
 
 def run(study):
-    s7 = ROOT/'output/gpu-s/20261101-s7-001'; s8 = ROOT/'output/gpu-s/20261101-s8-002'
-    s6 = ROOT/'output/gpu-s/20261101-s6-001'; qualified = ROOT/'output/gpu-s/20261101-s6-minimum-acceptance-001'
+    from batches import BATCHES, MANIFEST, batch_path
+    s7 = batch_path('s7'); s8 = batch_path('s8')
+    s6 = batch_path('s6'); qualified = batch_path('s6-qualified')
     g2, g3 = s7/'G2', s8/'G3'; a, b = read(g2/'stage-result.json'), read(g3/'stage-result.json')
     assert a['status'] == b['status'] == 'pass'
     assert a['table_sha256'] == b['table_sha256'] == sha(qualified/'compute-table.json')
     assert not study.exists(); study.mkdir(parents=True); tables = study/'tables'; tables.mkdir()
-    inputs = study/'inputs'; inputs.mkdir(); sources = []
+    inputs = study/'inputs'; inputs.mkdir(); sources = []; snapshots = {}
     def source(p):
-        p = Path(p); rel = p.relative_to(ROOT)
+        p = Path(p)
+        rel = p.relative_to(ROOT) if p.is_relative_to(ROOT) else Path('external')/sha(p)/p.name
         dest = inputs/rel; dest.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(p, dest)
-        record = {'path': rel.as_posix(), 'sha256': sha(p), 'bytes': p.stat().st_size,
+        record = {'path': p.relative_to(ROOT).as_posix() if p.is_relative_to(ROOT) else str(p), 'sha256': sha(p), 'bytes': p.stat().st_size,
                   'snapshot': dest.relative_to(study).as_posix()}; sources.append(record)
+        snapshots[p] = record['snapshot']
         return p
     essential = [g2/'stage-result.json', g2/'metrics.json', g2/'tokens.jsonl',
         g3/'stage-result.json', g3/'conditions.json', g3/'G2-G3-paired.csv', g3/'G2-G3-decomposition.csv',
         g3/'decomposition-audit.json', g3/'compute-table.json', g3/'effective-H0.ini',
-        g3/'prompt.txt', g3/'G3-full/tokens.jsonl', g3/'G3-full/audit.json',
+        g3/'prompt.txt', g3/'G3-full/tokens.jsonl', g3/'G3-full/gates.jsonl', g3/'G3-full/audit.json',
         qualified/'stage-result.json', s6/'compute-samples.jsonl',
-        s6/'sampling_protocol.json', ROOT/'output/gpu-s/20261101-s2-b2-v2-001/S0/profile.json']
+        s6/'sampling_protocol.json', batch_path('s2')/'S0/profile.json']
     for p in essential: source(p)
     def loadcsv(p): source(p); return csv_read(p)
     paired = csv_read(g3/'G2-G3-paired.csv'); decomp = csv_read(g3/'G2-G3-decomposition.csv')
@@ -142,7 +145,7 @@ def run(study):
             'tpot_ns': sum(wall['itl_ns'])/len(wall['itl_ns']),
             'request_to_last_token_ns': wall['request_to_last_token_ns'],
             'instrumented_request_ns': s['instrumented_wall']['request_to_last_token_ns'],
-            'source': (s6/s['name']/'sample.json').relative_to(ROOT).as_posix()})
+            'source': (s6/s['name']/'sample.json').as_posix()})
         source(s6/s['name']/'sample.json')
         source(s6/(s['name']+'-reference')/'events.jsonl')
     csv_write(tables/'native-reference.csv', reference)
@@ -186,21 +189,24 @@ def run(study):
     csv_write(tables/'status.csv', status); csv_write(tables/'software-costs.csv', costs)
     histories = []
     for label, rel in [
-        ('S0', '20261101-s2-b2-v2-001/S0'), ('S1', '20261101-s2-b2-v2-001/S1'),
-        ('S2-old', '20261031-s0-s2-002/S2'), ('S2-revised', '20261101-s2-b2-v2-001/S2'),
-        ('S3-revalidated', '20261101-s3-b2-v2-001/S3'), ('S4', '20261101-s4-001/S4'),
-        ('S5', '20261101-s5b-002/S5'), ('S6-original', '20261101-s6-001'),
-        ('S6-minimum-scope', '20261101-s6-minimum-acceptance-001'),
-        ('S7', '20261101-s7-001/G2'), ('S8-interrupted-audit', '20261101-s8-001/G3'),
-        ('S8', '20261101-s8-002/G3')]:
-        path = ROOT/'output/gpu-s'/rel/'stage-result.json'
+        ('S0', 's2/S0'), ('S1', 's2/S1'),
+        ('S2-old', 's2-original/S2'), ('S2-revised', 's2/S2'),
+        ('S3-revalidated', 's3/S3'), ('S4', 's4/S4'),
+        ('S5', 's5/S5'), ('S6-original', 's6'),
+        ('S6-minimum-scope', 's6-qualified'),
+        ('S7', 's7/G2'), ('S8-interrupted-audit', 's8-interrupted/G3'),
+        ('S8', 's8/G3')]:
+        key, _, subdir = rel.partition('/')
+        if MANIFEST and key not in BATCHES:
+            continue
+        path = batch_path(key)/subdir/'stage-result.json'
         if path.exists():
             record = read(source(path))
             histories.append({'stage': label, 'status': record['status'],
                 'scope': record.get('acceptance_scope', record.get('execution_scope', 'original_conditions')),
-                'source': path.relative_to(ROOT).as_posix()})
+                'source': path.as_posix()})
     csv_write(tables/'stage-history.csv', histories)
-    source(ROOT/'output/gpu-s/20261101-s2-b2-v2-001/S0/environment.json')
+    source(batch_path('s2')/'S0/environment.json')
     source(g3/'dependency-build-identity.json')
     write(study/'effective-settings.json', {'GPU': read(g3/'G3-full/summary.json')['environment'],
         'table_header': read(g3/'compute-table.json')['header'], 'M2': read(g2/'inputs/M2-regions.json'),
@@ -212,14 +218,21 @@ def run(study):
         'figure1-ttft-tpot': ['tables/figure1-metrics.csv', 'tables/native-reference.csv'],
         'figure2-token-itl': ['tables/figure2-itl.csv'],
         'figure3-prefill-decode': ['tables/figure3-phases.csv'],
-        'upstream_pair': (g3/'G2-G3-paired.csv').relative_to(ROOT).as_posix(),
-        'upstream_decomposition': (g3/'G2-G3-decomposition.csv').relative_to(ROOT).as_posix()})
+        'upstream_pair': (g3/'G2-G3-paired.csv').as_posix(),
+        'upstream_decomposition': (g3/'G2-G3-decomposition.csv').as_posix()})
     shutil.copyfile(Path(__file__), study/'s9.py')
     shutil.copyfile(Path(__file__).with_name('common.py'), study/'common.py')
     write(study/'plot-environment.json', {'matplotlib': matplotlib.__version__,
         'numpy': np.__version__, 'backend': 'Agg', 'font': 'DejaVu Sans',
         'rebuild': 'python s9.py --study <artifact-folder> --plot-only'})
-    write(study/'provenance.json', {'inputs': sources, 'plotter_sha256': sha(Path(__file__)),
+    validation_inputs = {
+        'g2_tokens': snapshots[g2/'tokens.jsonl'],
+        'g3_tokens': snapshots[g3/'G3-full/tokens.jsonl'],
+        'g3_gates': snapshots[g3/'G3-full/gates.jsonl'],
+        'native_events': {str(sample['sample']): snapshots[s6/(sample['name']+'-reference')/'events.jsonl']
+                          for sample in rows(s6/'compute-samples.jsonl')},
+    }
+    write(study/'provenance.json', {'inputs': sources, 'validation_inputs': validation_inputs, 'plotter_sha256': sha(Path(__file__)),
         'acceptance_scope': b['acceptance_scope'], 'table_sha256': b['table_sha256'],
         'new_GPU_execution': False, 'new_A_series_regression': False,
         'phase_wall_costs_available': False, 'scope_note': 'Existing source-bound analysis only; no new calibration or precision guarantee.'})
@@ -231,7 +244,7 @@ def run(study):
         'modeled_HBF_wait_ps': b['runs'][0]['wait_ps'], 'unmeasured_wall_subphases_explicitly_marked': True,
         'S10_started': False}
     write(study/'stage-result.json', result)
-    write(ROOT/'docs/validation/gpu-s9.json', result)
+    if not MANIFEST: write(ROOT/'docs/validation/gpu-s9.json', result)
     print('S9 generated three PNG/SVG figures and source-bound tables; review report and rendered figures.')
 
 

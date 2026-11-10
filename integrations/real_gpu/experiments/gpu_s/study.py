@@ -20,6 +20,8 @@ from integrated_build_identity import verify_build
 BUILD = Path(os.environ.get('GPU_S_BUILD', ROOT/'../../build-real-gpu-s')).resolve()
 BASE = Path(os.environ.get('GPU_S_BASE_BUILD', ROOT/'../../build-real-gpu-model')).resolve()
 
+JOINT_BUILD = BUILD
+
 
 def environment():
     env = runtime_environment(BASE, ROOT)

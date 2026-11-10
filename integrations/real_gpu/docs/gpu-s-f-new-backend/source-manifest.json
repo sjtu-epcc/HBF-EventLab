@@ -1,0 +1,350 @@
+{
+  "backend_commit": "8ccb1f353630f893f761b017d621812b7b9d5bf2",
+  "report_commit": "2f7602a9898d6fcfd8648b22c8d8155d99e376b7",
+  "historical_F1_identity_matches": [
+    {
+      "path": "experiments/gpu_ffn/audit_tests.cpp",
+      "recorded_sha256": "98548e3f6ace6a5b9de20e7e1d81c044b473e77a3fe10dd57c108c93b7f4f312"
+    },
+    {
+      "path": "experiments/gpu_ffn/build.ps1",
+      "recorded_sha256": "9409b2493e8b6cf138c79ff79d57b7592692529209185b116a398d46dd9ebce2"
+    },
+    {
+      "path": "experiments/gpu_ffn/CMakeLists.txt",
+      "recorded_sha256": "49f5835538041e0b52a554446958e035d708487c2e39e414c7cac1eddbeb98d3"
+    },
+    {
+      "path": "experiments/gpu_ffn/gate.hpp",
+      "recorded_sha256": "88e1950f9c397cf6b1beb73818852854ee92b6ebd87f4ffdd1fdee3a5b69402b"
+    },
+    {
+      "path": "experiments/gpu_ffn/H0-512MiB.ini",
+      "recorded_sha256": "30a65740f9af690b204eabcb33c9f9b2cb4baf6db12a9914a70295f4739c45fe"
+    },
+    {
+      "path": "experiments/gpu_ffn/online_audit.hpp",
+      "recorded_sha256": "ee134a0cac7b3482d1ad65f9f328a1169aadbde49c42954232258c0ba3c0a479"
+    },
+    {
+      "path": "experiments/gpu_ffn/prompt.txt",
+      "recorded_sha256": "ce4fa40becfa4a191064fbda15721985a953ae231557ea6f6f8f7b669e0d1a74"
+    },
+    {
+      "path": "experiments/gpu_ffn/README.md",
+      "recorded_sha256": "a08c981034e1b2f115258381906f8ba7873b8b69e3f65de40015cf1fdbc5cb08"
+    },
+    {
+      "path": "experiments/gpu_ffn/run.py",
+      "recorded_sha256": "19681d806982e2cfb4ef5737d5a78d8fa66ac36e61c0253dbf7c5f1ba48c1997"
+    },
+    {
+      "path": "experiments/gpu_ffn/segments.hpp",
+      "recorded_sha256": "ed2e3a4f187f050422660417b5d07e1b894bebe14464ca6d41f56e6112fac70d"
+    },
+    {
+      "path": "experiments/gpu_ffn/test_run.py",
+      "recorded_sha256": "9aeb785cbe28d722d7d8e45704c6b49641acb50854588569320d41b2cfe807db"
+    },
+    {
+      "path": "experiments/gpu_ffn/validate.py",
+      "recorded_sha256": "5abf091f7b286c5a4a9c9d2734edec4744e3af3465be50a2e839bbf8c333f9b6"
+    },
+    {
+      "path": "experiments/gpu_s/native_s8.cpp",
+      "recorded_sha256": "57f4da4fb675338dd6e2ce5f5f561e878b63b3cb1ca50ca99f444c6eb743a7bb"
+    }
+  ],
+  "files": [
+    {
+      "path": "experiments/gpu_s/audit.py",
+      "sha256": "9f43b1677e585b2c27195982f5487106322e42b135afb8281000ecb0fd329fa1",
+      "local_source_sha256": "9f43b1677e585b2c27195982f5487106322e42b135afb8281000ecb0fd329fa1"
+    },
+    {
+      "path": "experiments/gpu_s/b2_candidate.py",
+      "sha256": "45f7b728b3e24ed4c9068de7a0c72192f853898cb7fd1961bbd15edd72f31993",
+      "local_source_sha256": "45f7b728b3e24ed4c9068de7a0c72192f853898cb7fd1961bbd15edd72f31993"
+    },
+    {
+      "path": "experiments/gpu_s/b2_v2.json",
+      "sha256": "0d9f51cbfbbd5a6eb3aa22131db66ef2ec3e731ec6fcf6872ca2b252eadc1cf1",
+      "local_source_sha256": "0d9f51cbfbbd5a6eb3aa22131db66ef2ec3e731ec6fcf6872ca2b252eadc1cf1"
+    },
+    {
+      "path": "experiments/gpu_s/batches.py",
+      "sha256": "74c6b5eadc4e2ee9835ad7f8609671247a0b03f89dc21418191dd5f8fca56ba3",
+      "local_source_sha256": "74c6b5eadc4e2ee9835ad7f8609671247a0b03f89dc21418191dd5f8fca56ba3"
+    },
+    {
+      "path": "experiments/gpu_s/bridge.cpp",
+      "sha256": "2e0924ae28cb213db4b20013c4c300887e1f0dea7a4230e1570d7c544e69652d",
+      "local_source_sha256": "2e0924ae28cb213db4b20013c4c300887e1f0dea7a4230e1570d7c544e69652d"
+    },
+    {
+      "path": "experiments/gpu_s/CMakeLists.txt",
+      "sha256": "74fa7958c247630e87ae28416c8e6489a412407b6d32690b3bfb10327cadc8f7",
+      "local_source_sha256": "b2e77b8b2413b242f1791bcffb0daa7d47c8c6712bbf44e486f2fb8202c649d6"
+    },
+    {
+      "path": "experiments/gpu_s/common.py",
+      "sha256": "3c72da21e3b3aba77a6c130e6f506ec04f8a23cce70564c062277847e3b600b5",
+      "local_source_sha256": "3c72da21e3b3aba77a6c130e6f506ec04f8a23cce70564c062277847e3b600b5"
+    },
+    {
+      "path": "experiments/gpu_s/diagnose_b2.py",
+      "sha256": "3192393816b34eace66779b144940940fdbf9348ba1a50d837b0cbe7011ce3fd",
+      "local_source_sha256": "3192393816b34eace66779b144940940fdbf9348ba1a50d837b0cbe7011ce3fd"
+    },
+    {
+      "path": "experiments/gpu_s/hbf_gate.hpp",
+      "sha256": "5a0a3cebcd0ea961778fabd71411156777362730a1c23bdcac6f480d401894ac",
+      "local_source_sha256": "5a0a3cebcd0ea961778fabd71411156777362730a1c23bdcac6f480d401894ac"
+    },
+    {
+      "path": "experiments/gpu_s/native.cpp",
+      "sha256": "a0e60d2365265dc94135acf629bbc1c7fe81029d334724cfe6904f9e2c3b9b3b",
+      "local_source_sha256": "a0e60d2365265dc94135acf629bbc1c7fe81029d334724cfe6904f9e2c3b9b3b"
+    },
+    {
+      "path": "experiments/gpu_s/native_reference.cpp",
+      "sha256": "40a302614dc8d935468df8af7c326837e073fa10cc7667b72d0c365397379efb",
+      "local_source_sha256": "40a302614dc8d935468df8af7c326837e073fa10cc7667b72d0c365397379efb"
+    },
+    {
+      "path": "experiments/gpu_s/native_s8.cpp",
+      "sha256": "57f4da4fb675338dd6e2ce5f5f561e878b63b3cb1ca50ca99f444c6eb743a7bb",
+      "local_source_sha256": "57f4da4fb675338dd6e2ce5f5f561e878b63b3cb1ca50ca99f444c6eb743a7bb"
+    },
+    {
+      "path": "experiments/gpu_s/propagation.py",
+      "sha256": "e93e9c44efdf05e50e8e7bf853d1b0521c68bc5107bc17d325730ff0c42021fb",
+      "local_source_sha256": "e93e9c44efdf05e50e8e7bf853d1b0521c68bc5107bc17d325730ff0c42021fb"
+    },
+    {
+      "path": "experiments/gpu_s/README.md",
+      "sha256": "be0e9b5c01ed64c3f3f9d8bd7ef1800c0251bd92785cfae4841d5b786d1a6469",
+      "local_source_sha256": "658ac1cc46c8c901f1fed8685c57a24dca4583669bb15c2ce142760326a5781f"
+    },
+    {
+      "path": "experiments/gpu_s/reference.py",
+      "sha256": "cb2a307f02b9ff27c2d7ba2628009205c374fb3202ee2007594b73f1a5a50350",
+      "local_source_sha256": "cb2a307f02b9ff27c2d7ba2628009205c374fb3202ee2007594b73f1a5a50350"
+    },
+    {
+      "path": "experiments/gpu_s/report.py",
+      "sha256": "d8e4e4b3aab41d86f204517448f86b11fa697bdf08e99d9453c536f989e6ee6e",
+      "local_source_sha256": "d8e4e4b3aab41d86f204517448f86b11fa697bdf08e99d9453c536f989e6ee6e"
+    },
+    {
+      "path": "experiments/gpu_s/reproduce_snapshots.py",
+      "sha256": "37e90a6d5437dcae5cadeb5f68bb96ed6005fed9235a81557de45ee5c6c2c60e",
+      "local_source_sha256": "37e90a6d5437dcae5cadeb5f68bb96ed6005fed9235a81557de45ee5c6c2c60e"
+    },
+    {
+      "path": "experiments/gpu_s/s2.py",
+      "sha256": "401644f65e1ad5cf9fa27c77f571c9d28023659a2e28c5d08c0266f61745f6a2",
+      "local_source_sha256": "401644f65e1ad5cf9fa27c77f571c9d28023659a2e28c5d08c0266f61745f6a2"
+    },
+    {
+      "path": "experiments/gpu_s/s3.py",
+      "sha256": "378b572b4242b41fded432ed65165ce55850684ffbd5b3c08f87abb627eee77e",
+      "local_source_sha256": "378b572b4242b41fded432ed65165ce55850684ffbd5b3c08f87abb627eee77e"
+    },
+    {
+      "path": "experiments/gpu_s/s3_audit.py",
+      "sha256": "fc7a5ab0e12f960dfaffb22c1de785cc8cec5e78ad32a08d6051131ca2e28f92",
+      "local_source_sha256": "fc7a5ab0e12f960dfaffb22c1de785cc8cec5e78ad32a08d6051131ca2e28f92"
+    },
+    {
+      "path": "experiments/gpu_s/s4.py",
+      "sha256": "0ac17d6a9d8f55f89f6886044283abff8673a1725cad0fde1c0e3eeeae3840b2",
+      "local_source_sha256": "0ac17d6a9d8f55f89f6886044283abff8673a1725cad0fde1c0e3eeeae3840b2"
+    },
+    {
+      "path": "experiments/gpu_s/s4_audit.py",
+      "sha256": "67a3bb1236a65544ee4ad963d2ce3d209f07dca218e7ec1428fb8d27f0d99307",
+      "local_source_sha256": "67a3bb1236a65544ee4ad963d2ce3d209f07dca218e7ec1428fb8d27f0d99307"
+    },
+    {
+      "path": "experiments/gpu_s/s5_audit.py",
+      "sha256": "f391ea22aad0ed5a084c4ecc095335f375de804a0865e1b603a2c49962af3ad2",
+      "local_source_sha256": "f391ea22aad0ed5a084c4ecc095335f375de804a0865e1b603a2c49962af3ad2"
+    },
+    {
+      "path": "experiments/gpu_s/s5_fixed.py",
+      "sha256": "8cf3539217bfcd7b5c8ea7dcb2152f8c6665518b42d9e3151d8f377c4e516a53",
+      "local_source_sha256": "8cf3539217bfcd7b5c8ea7dcb2152f8c6665518b42d9e3151d8f377c4e516a53"
+    },
+    {
+      "path": "experiments/gpu_s/s5_validate.py",
+      "sha256": "9b37f0f00a7d6064426d47fcdb6cc9e545358f58575afb7aaf07f0995275f7da",
+      "local_source_sha256": "9b37f0f00a7d6064426d47fcdb6cc9e545358f58575afb7aaf07f0995275f7da"
+    },
+    {
+      "path": "experiments/gpu_s/s5_zero.py",
+      "sha256": "b1fbb2980d724ee4327d018aa461447d71ef2c3a4f8f6e2ae081852bbd99208d",
+      "local_source_sha256": "b1fbb2980d724ee4327d018aa461447d71ef2c3a4f8f6e2ae081852bbd99208d"
+    },
+    {
+      "path": "experiments/gpu_s/s6.py",
+      "sha256": "b12cc7bf4b1322d6049eec7a84328510d3a4dabe5725be02815fafe0830932cf",
+      "local_source_sha256": "b12cc7bf4b1322d6049eec7a84328510d3a4dabe5725be02815fafe0830932cf"
+    },
+    {
+      "path": "experiments/gpu_s/s6_pilot.py",
+      "sha256": "11606cd1931d92d411cd5043fa687d6f6653033be11bbf967723a472701b81f4",
+      "local_source_sha256": "11606cd1931d92d411cd5043fa687d6f6653033be11bbf967723a472701b81f4"
+    },
+    {
+      "path": "experiments/gpu_s/s6_qualify_minimum.py",
+      "sha256": "3e09ad79d31f40a7cc621e5368af2fa82d67220e3ad23e02f160a7d361d95342",
+      "local_source_sha256": "3e09ad79d31f40a7cc621e5368af2fa82d67220e3ad23e02f160a7d361d95342"
+    },
+    {
+      "path": "experiments/gpu_s/s6_report.py",
+      "sha256": "c91eba51d791ed8ac0f74865704ce163c9289fe6d95f1d039f99f5831939a703",
+      "local_source_sha256": "c91eba51d791ed8ac0f74865704ce163c9289fe6d95f1d039f99f5831939a703"
+    },
+    {
+      "path": "experiments/gpu_s/s7.py",
+      "sha256": "d084a333077de9f51a21d4b9a7f842cd3fe9fb53b795d1c0b142224877a73824",
+      "local_source_sha256": "d084a333077de9f51a21d4b9a7f842cd3fe9fb53b795d1c0b142224877a73824"
+    },
+    {
+      "path": "experiments/gpu_s/s8.py",
+      "sha256": "86b424c607ed228792343dec666beeeb80cd2735c54b97fa9e9fca72f3ab0db2",
+      "local_source_sha256": "86b424c607ed228792343dec666beeeb80cd2735c54b97fa9e9fca72f3ab0db2"
+    },
+    {
+      "path": "experiments/gpu_s/s8_decomposition.py",
+      "sha256": "0b21b5774c19058b278ac83d474d904e1dae25a12ab2fa69ad99f91c56132945",
+      "local_source_sha256": "0b21b5774c19058b278ac83d474d904e1dae25a12ab2fa69ad99f91c56132945"
+    },
+    {
+      "path": "experiments/gpu_s/s8_segment_audit.py",
+      "sha256": "c5a88052a1230efbbb5b1c346c5a5de63b929e95c24171dc7f890ba2445f0fa0",
+      "local_source_sha256": "c5a88052a1230efbbb5b1c346c5a5de63b929e95c24171dc7f890ba2445f0fa0"
+    },
+    {
+      "path": "experiments/gpu_s/s8_segments.hpp",
+      "sha256": "7f49fc3f6e4c00306b0190f689fbf9323b5fde28d2dd1e436cceb04b098fcad9",
+      "local_source_sha256": "7f49fc3f6e4c00306b0190f689fbf9323b5fde28d2dd1e436cceb04b098fcad9"
+    },
+    {
+      "path": "experiments/gpu_s/s8_validate.py",
+      "sha256": "dfe924743a6edd0da4d17c3620fe93d15dbc789b6d4f90312f20c9e7471b744f",
+      "local_source_sha256": "dfe924743a6edd0da4d17c3620fe93d15dbc789b6d4f90312f20c9e7471b744f"
+    },
+    {
+      "path": "experiments/gpu_s/s9.py",
+      "sha256": "b60444bb1330cdeb344e33f775bde0e5f671c0308243211626b1d27a8cf33a8b",
+      "local_source_sha256": "b60444bb1330cdeb344e33f775bde0e5f671c0308243211626b1d27a8cf33a8b"
+    },
+    {
+      "path": "experiments/gpu_s/s9_validate.py",
+      "sha256": "1c2f8f5197502c131254b438fe07377e5526dd9f5de94a50dfb4f1729ce071dd",
+      "local_source_sha256": "1c2f8f5197502c131254b438fe07377e5526dd9f5de94a50dfb4f1729ce071dd"
+    },
+    {
+      "path": "experiments/gpu_s/segment_audit.py",
+      "sha256": "b8b731106868dfb507bc685ba8a953f74baf30692af8c20c2ef87ad926e37b6b",
+      "local_source_sha256": "b8b731106868dfb507bc685ba8a953f74baf30692af8c20c2ef87ad926e37b6b"
+    },
+    {
+      "path": "experiments/gpu_s/segment_inventory.py",
+      "sha256": "e5c0c93580aaf7b7ec67ab5daaf0a80e914185d66ea9283ecdd3eedd32c8549b",
+      "local_source_sha256": "e5c0c93580aaf7b7ec67ab5daaf0a80e914185d66ea9283ecdd3eedd32c8549b"
+    },
+    {
+      "path": "experiments/gpu_s/segments.hpp",
+      "sha256": "0cde6923d80107aed935f08473375235206cc8190458fce7c724349e1999d433",
+      "local_source_sha256": "0cde6923d80107aed935f08473375235206cc8190458fce7c724349e1999d433"
+    },
+    {
+      "path": "experiments/gpu_s/study.py",
+      "sha256": "587000bf387e4c439d015584272291eea50da0d76ccbd2fcc137a0631e8c7010",
+      "local_source_sha256": "587000bf387e4c439d015584272291eea50da0d76ccbd2fcc137a0631e8c7010"
+    },
+    {
+      "path": "experiments/gpu_s/validate_propagation.py",
+      "sha256": "8a0226fba16af6ddb7bce39438cd288d5aa1cc976cae61bdbfe9c4519412ead8",
+      "local_source_sha256": "8a0226fba16af6ddb7bce39438cd288d5aa1cc976cae61bdbfe9c4519412ead8"
+    },
+    {
+      "path": "experiments/gpu_ffn/audit_tests.cpp",
+      "sha256": "98548e3f6ace6a5b9de20e7e1d81c044b473e77a3fe10dd57c108c93b7f4f312",
+      "local_source_sha256": "98548e3f6ace6a5b9de20e7e1d81c044b473e77a3fe10dd57c108c93b7f4f312"
+    },
+    {
+      "path": "experiments/gpu_ffn/build.ps1",
+      "sha256": "9409b2493e8b6cf138c79ff79d57b7592692529209185b116a398d46dd9ebce2",
+      "local_source_sha256": "9409b2493e8b6cf138c79ff79d57b7592692529209185b116a398d46dd9ebce2"
+    },
+    {
+      "path": "experiments/gpu_ffn/CMakeLists.txt",
+      "sha256": "49f5835538041e0b52a554446958e035d708487c2e39e414c7cac1eddbeb98d3",
+      "local_source_sha256": "49f5835538041e0b52a554446958e035d708487c2e39e414c7cac1eddbeb98d3"
+    },
+    {
+      "path": "experiments/gpu_ffn/gate.hpp",
+      "sha256": "88e1950f9c397cf6b1beb73818852854ee92b6ebd87f4ffdd1fdee3a5b69402b",
+      "local_source_sha256": "88e1950f9c397cf6b1beb73818852854ee92b6ebd87f4ffdd1fdee3a5b69402b"
+    },
+    {
+      "path": "experiments/gpu_ffn/H0-512MiB.ini",
+      "sha256": "30a65740f9af690b204eabcb33c9f9b2cb4baf6db12a9914a70295f4739c45fe",
+      "local_source_sha256": "30a65740f9af690b204eabcb33c9f9b2cb4baf6db12a9914a70295f4739c45fe"
+    },
+    {
+      "path": "experiments/gpu_ffn/online_audit.hpp",
+      "sha256": "ee134a0cac7b3482d1ad65f9f328a1169aadbde49c42954232258c0ba3c0a479",
+      "local_source_sha256": "ee134a0cac7b3482d1ad65f9f328a1169aadbde49c42954232258c0ba3c0a479"
+    },
+    {
+      "path": "experiments/gpu_ffn/prompt.txt",
+      "sha256": "ce4fa40becfa4a191064fbda15721985a953ae231557ea6f6f8f7b669e0d1a74",
+      "local_source_sha256": "ce4fa40becfa4a191064fbda15721985a953ae231557ea6f6f8f7b669e0d1a74"
+    },
+    {
+      "path": "experiments/gpu_ffn/README.md",
+      "sha256": "900034bd4948a7f04e6aafc985b391137d337e24aeae5d7f431006bc43e985ed",
+      "local_source_sha256": "a08c981034e1b2f115258381906f8ba7873b8b69e3f65de40015cf1fdbc5cb08"
+    },
+    {
+      "path": "experiments/gpu_ffn/run.py",
+      "sha256": "19681d806982e2cfb4ef5737d5a78d8fa66ac36e61c0253dbf7c5f1ba48c1997",
+      "local_source_sha256": "19681d806982e2cfb4ef5737d5a78d8fa66ac36e61c0253dbf7c5f1ba48c1997"
+    },
+    {
+      "path": "experiments/gpu_ffn/segments.hpp",
+      "sha256": "ed2e3a4f187f050422660417b5d07e1b894bebe14464ca6d41f56e6112fac70d",
+      "local_source_sha256": "ed2e3a4f187f050422660417b5d07e1b894bebe14464ca6d41f56e6112fac70d"
+    },
+    {
+      "path": "experiments/gpu_ffn/test_run.py",
+      "sha256": "9aeb785cbe28d722d7d8e45704c6b49641acb50854588569320d41b2cfe807db",
+      "local_source_sha256": "9aeb785cbe28d722d7d8e45704c6b49641acb50854588569320d41b2cfe807db"
+    },
+    {
+      "path": "experiments/gpu_ffn/validate.py",
+      "sha256": "5abf091f7b286c5a4a9c9d2734edec4744e3af3465be50a2e839bbf8c333f9b6",
+      "local_source_sha256": "5abf091f7b286c5a4a9c9d2734edec4744e3af3465be50a2e839bbf8c333f9b6"
+    },
+    {
+      "path": "experiments/reproduction_20261105/run-s.ps1",
+      "sha256": "f951c9db4cb735a81349cbcaebee5c454148890f5151f8f9dda045ef1667b6f5",
+      "local_source_sha256": null
+    },
+    {
+      "path": "experiments/reproduction_20261105/run-f.ps1",
+      "sha256": "642addef805a1a2b4a64080a71877e915b1b67b0328c9c849eaf55cdf43aecfb",
+      "local_source_sha256": null
+    },
+    {
+      "path": "experiments/reproduction_20261105/batches.example.json",
+      "sha256": "4bbcc2d396ef4cced9c6b12f2196bc5aff4cf123117b717dfd732bd23e0b8f3b",
+      "local_source_sha256": null
+    }
+  ]
+}

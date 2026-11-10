@@ -3,10 +3,11 @@ import csv,statistics,sys
 from pathlib import Path
 import numpy as np
 from common import read,write,rows,sha
+from batches import batch_path, MANIFEST
 from study import ROOT
 
 def run():
- out=ROOT/'output/gpu-s/20261101-s6-001';result=read(out/'stage-result.json');samples=rows(out/'compute-samples.jsonl');p=read(out/'sampling_protocol.json')
+ out=batch_path('s6');result=read(out/'stage-result.json');samples=rows(out/'compute-samples.jsonl');p=read(out/'sampling_protocol.json')
  values=np.array([[s['total_gpu_ps']]+s['step_gpu_ps'] for s in samples]); tables=[read(out/s['name']/'measured-segments.json') for s in samples]
  ids=[x['segment_id'] for x in tables[0]];assert all([x['segment_id'] for x in t]==ids for t in tables)
  durations=np.array([[x['duration_ps'] for x in t] for t in tables]);med=np.median(durations,axis=0);active=med>0
@@ -19,8 +20,9 @@ def run():
   for s in samples:wr.writerow([s['sample'],s['total_gpu_ps']/1e9,s['instrumented_wall']['request_to_last_token_ns']/1e6,s['reference_wall']['request_to_last_token_ns']/1e6])
  if (out/'compute-table.json').exists():
   table=read(out/'compute-table.json');selected=result['chosen_sample'];assert sum(x['duration_ps'] for x in table['segments'])==selected['total_gpu_ps']
-  table['header'].update(prompt_sha256=sha(ROOT/'output/gpu-s/20261101-s5b-002/S5/prompt.txt'),prompt_ids=read(out/selected['name']/'summary.json')['prompt_ids'],tokens=read(out/selected['name']/'summary.json')['tokens'],environment=read(out/selected['name']/'summary.json')['environment'])
-  write(out/'compute-table.json',table)
- write(ROOT/'docs/validation/gpu-s6.json',summary)
+  if not MANIFEST and 'prompt_sha256' not in table['header']:
+   table['header'].update(prompt_sha256=sha(batch_path('s5')/'S5/prompt.txt'),prompt_ids=read(out/selected['name']/'summary.json')['prompt_ids'],tokens=read(out/selected['name']/'summary.json')['tokens'],environment=read(out/selected['name']/'summary.json')['environment'])
+   write(out/'compute-table.json',table)
+ if not MANIFEST: write(ROOT/'docs/validation/gpu-s6.json',summary)
  print(summary)
 if __name__=='__main__':run()

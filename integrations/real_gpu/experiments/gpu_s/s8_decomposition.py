@@ -4,6 +4,7 @@ import csv
 import itertools
 from pathlib import Path
 from common import read, rows, write, sha
+from batches import batch_path
 from study import ROOT
 
 
@@ -11,7 +12,7 @@ def run(study):
     folder = study/'G3'
     assert read(folder/'stage-result.json')['status'] == 'pass'
     table = read(folder/'compute-table.json')
-    source = ROOT/'output/gpu-s/20261101-s6-001'/table['header']['sample']
+    source = batch_path('s6')/table['header']['sample']
     activities = {x['activity_id']: (x, 0) for x in rows(source/'kernels.jsonl')}
     activities.update({x['activity_id']: (x, 1) for x in rows(source/'transfers.jsonl')})
     step_parts = [[0, 0, 0] for _ in range(8)]

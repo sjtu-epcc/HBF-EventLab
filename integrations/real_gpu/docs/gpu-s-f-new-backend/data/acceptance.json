@@ -1,0 +1,305 @@
+{
+  "backend_commit": "8ccb1f353630f893f761b017d621812b7b9d5bf2",
+  "S": {
+    "stages": {
+      "S5": "pass",
+      "S6_minimum": "pass",
+      "S7": "pass",
+      "S8": "pass",
+      "S9": "pass"
+    },
+    "scope": "minimum_fixed_trace_mechanism_experiment",
+    "sample": "sample-5",
+    "compute_table_sha256": "d718644fba7abbf76763ab11951c02c9155d2c99b28601f85501edbc05dfafaf",
+    "coverage": {
+      "registered_valid_bytes": 10240,
+      "registered_storage_bytes": 12288,
+      "padding_bytes": 2048,
+      "touched_union_bytes": 10240,
+      "cumulative_read_bytes": 81920,
+      "read_globals": 24,
+      "read_logical_fragments": 1280,
+      "read_attempts": 1280,
+      "model_weight_bytes": 1503395840,
+      "selected_tensor_bytes": 6295552,
+      "registered_model_fraction": 6.81124673060157e-06,
+      "selected_tensor_fraction": 0.0016265452179570592
+    },
+    "numerical_arrays_per_gpu_path": 1369,
+    "full_native_HBF_exact": {
+      "status": "pass",
+      "tokens_exact": true,
+      "complete_logits_exact": true,
+      "valid_snapshot_arrays": 3608,
+      "valid_snapshot_bytes_exact": true,
+      "unused_kv_padding_excluded": true,
+      "all_raw_events_and_callback_ids_exact": true
+    },
+    "deterministic_simulated_state_full_timing_exact": true,
+    "runs": [
+      {
+        "case": "G3-full",
+        "status": "pass",
+        "metrics": {
+          "actual_outputs": 8,
+          "ttft_ps": 9887258788,
+          "itl_ps": [
+            3706533988,
+            4131855988,
+            5117490988,
+            5787798988,
+            5380472988,
+            5526637988,
+            5430111988
+          ],
+          "tpot_ps": 5011557559.428572
+        },
+        "wait_ps": 2363704,
+        "compute_ps": 44965798000,
+        "closed_and_drained": true,
+        "all_integer_residuals_ps": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "case": "G3-timing-1",
+        "status": "pass",
+        "metrics": {
+          "actual_outputs": 8,
+          "ttft_ps": 9887258788,
+          "itl_ps": [
+            3706533988,
+            4131855988,
+            5117490988,
+            5787798988,
+            5380472988,
+            5526637988,
+            5430111988
+          ],
+          "tpot_ps": 5011557559.428572
+        },
+        "wait_ps": 2363704,
+        "compute_ps": 44965798000,
+        "closed_and_drained": true,
+        "all_integer_residuals_ps": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "case": "G3-timing-2",
+        "status": "pass",
+        "metrics": {
+          "actual_outputs": 8,
+          "ttft_ps": 9887258788,
+          "itl_ps": [
+            3706533988,
+            4131855988,
+            5117490988,
+            5787798988,
+            5380472988,
+            5526637988,
+            5430111988
+          ],
+          "tpot_ps": 5011557559.428572
+        },
+        "wait_ps": 2363704,
+        "compute_ps": 44965798000,
+        "closed_and_drained": true,
+        "all_integer_residuals_ps": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "F": {
+    "F1": {
+      "status": "pass",
+      "coverage": {
+        "registered_valid_bytes": 18874368,
+        "parent_reads": 24,
+        "cumulative_read_bytes": 150994944,
+        "read_globals": 36864,
+        "read_fragments": 2359296,
+        "write_fragments": 294912
+      },
+      "native_logits_bitwise_equal": true,
+      "native_tokens_equal": true,
+      "G2": {
+        "actual_outputs": 8,
+        "ttft_ps": 6391889000,
+        "tpot_ps": 4871972285.714286,
+        "itl_ps": [
+          3694923000,
+          4010481000,
+          4927568000,
+          5563074000,
+          5403489000,
+          5561919000,
+          4942352000
+        ]
+      },
+      "G3": {
+        "actual_outputs": 8,
+        "ttft_ps": 6883838906,
+        "tpot_ps": 5363922191.714286,
+        "itl_ps": [
+          4186872906,
+          4502430906,
+          5419517906,
+          6055023906,
+          5895438906,
+          6053868906,
+          5434301906
+        ]
+      },
+      "total_wait_ps": 3935599248,
+      "compute_ps": 40495695000,
+      "all_conservation_residuals_zero": true,
+      "online_audit": {
+        "logical_failures": 0,
+        "attempt_errors": 0,
+        "read_fragments": 2359296,
+        "write_fragments": 294912,
+        "peak_live_fragments": 256,
+        "peak_live_attempts": 256
+      },
+      "events_processed": 39277556,
+      "closed_and_drained": true,
+      "negative_audit_fixtures_rejected": 5,
+      "compute_table_sha256": "1cd73a78747cf14844e031334bf2bcaaadf43d15153e5066c8b9f9a77c0221b0"
+    },
+    "F2": {
+      "status": "pass",
+      "coverage": {
+        "registered_valid_bytes": 75497472,
+        "parent_reads": 96,
+        "cumulative_read_bytes": 603979776,
+        "read_globals": 147456,
+        "read_fragments": 9437184,
+        "write_fragments": 1179648
+      },
+      "native_logits_bitwise_equal": true,
+      "native_tokens_equal": true,
+      "G2": {
+        "actual_outputs": 8,
+        "ttft_ps": 6391889000,
+        "tpot_ps": 4871972285.714286,
+        "itl_ps": [
+          3694923000,
+          4010481000,
+          4927568000,
+          5563074000,
+          5403489000,
+          5561919000,
+          4942352000
+        ]
+      },
+      "G3": {
+        "actual_outputs": 8,
+        "ttft_ps": 8359688624,
+        "tpot_ps": 6839771909.714286,
+        "itl_ps": [
+          5662722624,
+          5978280624,
+          6895367624,
+          7530873624,
+          7371288624,
+          7529718624,
+          6910151624
+        ]
+      },
+      "total_wait_ps": 15742396992,
+      "compute_ps": 40495695000,
+      "all_conservation_residuals_zero": true,
+      "online_audit": {
+        "logical_failures": 0,
+        "attempt_errors": 0,
+        "read_fragments": 9437184,
+        "write_fragments": 1179648,
+        "peak_live_fragments": 256,
+        "peak_live_attempts": 256
+      },
+      "events_processed": 157110227,
+      "closed_and_drained": true,
+      "negative_audit_fixtures_rejected": 5,
+      "compute_table_sha256": "1cd73a78747cf14844e031334bf2bcaaadf43d15153e5066c8b9f9a77c0221b0"
+    },
+    "F3": {
+      "status": "pass",
+      "coverage": {
+        "registered_valid_bytes": 528482304,
+        "parent_reads": 672,
+        "cumulative_read_bytes": 4227858432,
+        "read_globals": 1032192,
+        "read_fragments": 66060288,
+        "write_fragments": 8257536
+      },
+      "native_logits_bitwise_equal": true,
+      "native_tokens_equal": true,
+      "G2": {
+        "actual_outputs": 8,
+        "ttft_ps": 6391889000,
+        "tpot_ps": 4871972285.714286,
+        "itl_ps": [
+          3694923000,
+          4010481000,
+          4927568000,
+          5563074000,
+          5403489000,
+          5561919000,
+          4942352000
+        ]
+      },
+      "G3": {
+        "actual_outputs": 8,
+        "ttft_ps": 20166486368,
+        "tpot_ps": 18646569653.714287,
+        "itl_ps": [
+          17469520368,
+          17785078368,
+          18702165368,
+          19337671368,
+          19178086368,
+          19336516368,
+          18716949368
+        ]
+      },
+      "total_wait_ps": 110196778944,
+      "compute_ps": 40495695000,
+      "all_conservation_residuals_zero": true,
+      "online_audit": {
+        "logical_failures": 0,
+        "attempt_errors": 0,
+        "read_fragments": 66060288,
+        "write_fragments": 8257536,
+        "peak_live_fragments": 256,
+        "peak_live_attempts": 256
+      },
+      "events_processed": 1099771595,
+      "closed_and_drained": true,
+      "negative_audit_fixtures_rejected": 5,
+      "compute_table_sha256": "1cd73a78747cf14844e031334bf2bcaaadf43d15153e5066c8b9f9a77c0221b0"
+    }
+  }
+}

@@ -6,6 +6,7 @@ import itertools
 import shutil
 from pathlib import Path
 from common import read, write, rows, sha, metrics, validate_compute_table, RegionPlan
+from batches import batch_path, MANIFEST
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -149,8 +150,8 @@ def independent_audit(folder, table, events, windows, regions):
 
 
 def run(study):
-    source = ROOT/'output/gpu-s/20261101-s6-minimum-acceptance-001'
-    original = ROOT/'output/gpu-s/20261101-s6-001'
+    source = batch_path('s6-qualified')
+    original = batch_path('s6')
     qualified = read(source/'stage-result.json')
     assert qualified['status'] == 'pass'
     tablefile = source/'compute-table.json'
@@ -162,7 +163,7 @@ def run(study):
     assert sha(original/'sampling_protocol.json') == table['header']['protocol_sha256']
     events, windows = rows(sample/'events.jsonl'), rows(sample/'segments.jsonl')
     assert table['segments'] == read(sample/'measured-segments.json')
-    regionsfile = ROOT/'output/gpu-s/20261101-s4-001/S4/M2-regions.json'
+    regionsfile = batch_path('s4')/'S4/M2-regions.json'
     regions = read(regionsfile)
     validate(table, table, windows, events)
     assert not study.exists()
@@ -224,7 +225,7 @@ def run(study):
               'audit': audits[0], 'zero_access': read(folder/'zero-access.json'),
               'S8_started': False, 'logits_recomputed': False}
     write(folder/'stage-result.json', result)
-    write(ROOT/'docs/validation/gpu-s7.json', result)
+    if not MANIFEST: write(ROOT/'docs/validation/gpu-s7.json', result)
     write(study/'artifact-index.json', {'files': [
         {'path': p.relative_to(study).as_posix(), 'bytes': p.stat().st_size, 'sha256': sha(p)}
         for p in sorted(study.rglob('*')) if p.is_file() and p.name != 'artifact-index.json']})

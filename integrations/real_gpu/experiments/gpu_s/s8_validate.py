@@ -4,12 +4,12 @@ import copy
 import subprocess
 from pathlib import Path
 from common import read, write, sha
-from study import ROOT, environment
+from study import ROOT, environment, JOINT_BUILD
 
 
 def run(study):
     folder = study/'G3'; assert read(folder/'stage-result.json')['status'] == 'pass'
-    binary = ROOT/'build-s3/bin/gpu_s_s8.exe'
+    binary = JOINT_BUILD/'bin/gpu_s_s8.exe'
     table = read(folder/'compute-table.json')
     cfg = read(folder/'configs/native-verify.json')
     tests = {

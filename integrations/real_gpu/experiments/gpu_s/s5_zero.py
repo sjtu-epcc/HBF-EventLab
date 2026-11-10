@@ -2,7 +2,7 @@
 import argparse,copy
 from pathlib import Path
 from common import read,write,sha
-from study import ROOT,invoke
+from study import ROOT,BASE,invoke, JOINT_BUILD
 from audit import numerical,boundaries,stored_kv
 from s5_audit import positive
 from reference import CpuQwen
@@ -13,8 +13,8 @@ def run(s4,s2,study):
     assert read(s4/'S4/stage-result.json')['status']=='pass' and read(s2/'S2/stage-result.json')['status']=='pass'
     assert not study.exists();folder=study/'S5';folder.mkdir(parents=True)
     p=read(s2/'S0/profile.json');target=read(s2/'S0/numerical-targets-predeclared.json');regions=read(s4/'S4/M2-regions.json')
-    verify_build(ROOT/'build-portability-model');assert sha(p['model_path'])==p['gguf_sha256']
-    binary=executable(ROOT/'build-s3/bin','gpu_s_joint');prompt=folder/'prompt.txt';prompt.write_bytes((s2/'S0/inputs/main.txt').read_bytes())
+    verify_build(BASE);assert sha(p['model_path'])==p['gguf_sha256']
+    binary=executable(JOINT_BUILD/'bin','gpu_s_joint');prompt=folder/'prompt.txt';prompt.write_bytes((s2/'S0/inputs/main.txt').read_bytes())
     ini=folder/'effective-H0.ini';ini.write_bytes((s2/'S0/backend-preflight/effective-H0.ini').read_bytes())
     write(folder/'conditions.json',{'s4_result_sha256':sha(s4/'S4/stage-result.json'),'target_sha256':sha(s2/'S0/numerical-targets-predeclared.json'),
         'binary_sha256':sha(binary),'model_sha256':p['gguf_sha256'],'prompt_sha256':sha(prompt),'h0_sha256':sha(ini),

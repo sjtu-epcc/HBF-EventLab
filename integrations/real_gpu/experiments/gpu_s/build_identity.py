@@ -16,12 +16,13 @@ from integrated_build_identity import verify_build as verify_dependency, backend
 from platform_environment import executable
 
 
-def snapshot(build):
+def snapshot(build, *, source=None, project="gpu_s_stages", targets=("gpu_s_native", "gpu_s_s8", "gpu_s_bridge")):
+    source = Path(source if source is not None else SOURCE).resolve()
     build = Path(build).resolve()
     cache = _cache(build)
-    require(Path(cache['CMAKE_HOME_DIRECTORY']).resolve() == SOURCE, 'Wrong S experiment source entry')
+    require(Path(cache['CMAKE_HOME_DIRECTORY']).resolve() == source, 'Wrong experiment source entry')
     require(Path(cache['CMAKE_CACHEFILE_DIR']).resolve() == build, 'S build location changed')
-    require(cache['CMAKE_PROJECT_NAME'] == 'gpu_s_stages', 'Wrong S project')
+    require(cache['CMAKE_PROJECT_NAME'] == project, 'Wrong experiment project')
     backend = Path(cache['HBFLAB_EVENTLAB_SOURCE']).resolve()
     require(Path(cache['HBFEventLab_SOURCE_DIR']).resolve() == backend, 'Actual S backend source mismatch')
     base = Path(cache['BASE_BUILD']).resolve()
@@ -35,9 +36,12 @@ def snapshot(build):
         path = Path(cache['S_LIBRARY_'+name]).resolve()
         require(path.is_relative_to(base) and path.is_file(), 'Imported dependency outside selected build')
         imported.append(path)
-    for name in ('gpu_s_native', 'gpu_s_s8', 'gpu_s_bridge'):
+    for name in targets:
         require(executable(build/'bin', name).is_file(), 'Required S executable missing: '+name)
-    inputs = [p for p in SOURCE.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix not in ('.pyc', '.pyo')]
+    inputs = [p for p in source.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix not in ('.pyc', '.pyo')]
+    inputs += [FRONTEND/'experiments/cmake/cuda_experiment.cmake', Path(__file__).resolve()]
+    if project == 'gpu_ffn':
+        inputs += [SOURCE/'native_s8.cpp', SOURCE/'cupti_compat.hpp']
     artifacts = [p for p in (build/'bin').rglob('*') if p.is_file()]
     artifacts += [build/'CMakeCache.txt']
     artifacts += [p for p in (build/'eventlab').glob('*') if p.is_file() and p.suffix in ('.lib', '.a')]
@@ -72,27 +76,27 @@ def snapshot(build):
             sdk += [p for p in (root/folder).glob('*') if p.is_file() and (p.suffix == '.dll' or '.so' in p.name or p.suffix == '.dylib')]
     for path in sdk:
         require(path.is_file(), 'Configured SDK input missing: '+str(path))
-    return {'schema': 1, 'status': 'sealed', 'build': str(build), 'source': str(SOURCE),
+    return {'schema': 1, 'status': 'sealed', 'build': str(build), 'source': str(source),
             'base_build': str(base), 'dependency_identity_sha256': sha(base/'release-identity.json'),
             'backend_source_sha256': dependency['backend']['source_sha256'],
             'sources': records(inputs), 'artifacts': records(artifacts),
             'imported_libraries': records(imported), 'external_SDK_inputs': records(sdk)}
 
 
-def seal(build):
+def seal(build, **options):
     build = Path(build).resolve()
     require(not (build/'experiment-identity.json').exists(), 'Do not overwrite a sealed experiment build')
-    value = snapshot(build)
+    value = snapshot(build, **options)
     with (build/'experiment-identity.json').open('x', encoding='utf-8') as stream:
         json.dump(value, stream, indent=2)
         stream.write('\n')
     return value
 
 
-def verify(build):
+def verify(build, **options):
     build = Path(build).resolve()
     value = json.loads((build/'experiment-identity.json').read_text(encoding='utf-8'))
-    require(value == snapshot(build), 'Experiment source, configuration, library or executable changed; rebuild/reseal in a new evidence context')
+    require(value == snapshot(build, **options), 'Experiment source, configuration, library or executable changed; rebuild/reseal in a new evidence context')
     return value
 
 

@@ -3,7 +3,8 @@ import statistics,json,shutil
 from pathlib import Path
 import numpy as np
 from common import read,write,rows,sha,metrics
-from study import ROOT,invoke
+from batches import batch_path
+from study import ROOT,invoke, JOINT_BUILD
 from segment_audit import audit
 from s5_validate import operations
 from s5_audit import exact,normalized
@@ -29,8 +30,8 @@ def wall(d):
  return {'ttft_ns':m['ttft_ps'],'itl_ns':m['itl_ps'],'request_to_last_token_ns':ts[-1]-t0,'scope':'Request begin to token ID available; excludes model/context load; includes request instrumentation.'}
 
 def run():
- prior=ROOT/'output/gpu-s/20261101-s5b-002/S5';out=ROOT/'output/gpu-s/20261101-s6-001';assert not out.exists();out.mkdir(parents=True)
- binary=ROOT/'build-s3/bin/gpu_s_segmented.exe';reference=ROOT/'build-s3/bin/gpu_s_reference.exe';identity=read(prior/'S6-main-case.json');assert sha(binary)==identity['binary_sha256']
+ prior=batch_path('s5')/'S5';out=batch_path('s6');assert not out.exists();out.mkdir(parents=True)
+ binary=JOINT_BUILD/'bin/gpu_s_segmented.exe';reference=JOINT_BUILD/'bin/gpu_s_reference.exe';identity=read(prior/'S6-main-case.json');assert sha(binary)==identity['binary_sha256']
  cfg=read(prior/'configurations/native-timing-8.json');write(out/'config.json',cfg)
  protocol={'version':1,'measurement':'Union of CUPTI kernel/memcpy/memset GPU timestamp intervals inside each S5 synchronized segment. Idle gaps excluded, overlapping streams counted once. Empty windows remain zero.',
  'design_revision':'CUPTI activity timestamps replace proposed CUDA event brackets; models GPU active work only, not segment makespan. CPU launch gaps and host costs excluded and reported separately.',
@@ -48,7 +49,7 @@ def run():
   d=out/name;invoke([exe,cfg['model_path'],prior/'prompt.txt',d,8,mode,out/'config.json'],out/'logs'/name);return d
  # Verify baseline precision and KV with full exports before timing.
  v=execute('reference-verification',reference,'verify');exact(prior/'native-8',v,cfg);assert stored_kv(v,cfg)['status']=='pass'
- target=read(ROOT/'output/gpu-s/20261101-s2-b2-v2-001/S0/numerical-targets-predeclared.json');assert numerical(v,prior/'cpu-8',cfg,target)['status']=='pass'
+ target=read(batch_path('s2')/'S0/numerical-targets-predeclared.json');assert numerical(v,prior/'cpu-8',cfg,target)['status']=='pass'
  expected=operations(prior/'native-timing-8');samples=[];assessments=[];passed=False
  for i in range(-3,20):
   label='warmup-'+str(i+4) if i<0 else 'sample-'+str(i+1)
@@ -72,7 +73,18 @@ def run():
    if passed:break
  if passed:
   median=statistics.median(s['total_gpu_ps'] for s in samples);chosen=min(samples,key=lambda s:(abs(s['total_gpu_ps']-median),s['sample']))
-  table=read(out/chosen['name']/'measured-segments.json');write(out/'compute-table.json',{'header':{'protocol_sha256':sha(out/'sampling_protocol.json'),'binary_sha256':sha(binary),'model_sha256':cfg['gguf_sha256'],'config_sha256':sha(out/'config.json'),'events_sha256':sha(out/chosen['name']/'events.jsonl'),'sample':chosen['name'],'unit':'ps','conversion':'CUPTI integer ns * 1000 exactly','semantics':protocol['measurement']},'segments':table})
+  selected = out/chosen['name']
+  table = read(selected/'measured-segments.json')
+  summary = read(selected/'summary.json')
+  header = {
+   'protocol_sha256': sha(out/'sampling_protocol.json'), 'binary_sha256': sha(binary),
+   'model_sha256': cfg['gguf_sha256'], 'config_sha256': sha(out/'config.json'),
+   'events_sha256': sha(selected/'events.jsonl'), 'sample': chosen['name'],
+   'prompt_sha256': sha(prior/'prompt.txt'), 'prompt_ids': summary['prompt_ids'],
+   'tokens': summary['tokens'], 'environment': summary['environment'],
+   'unit': 'ps', 'conversion': 'CUPTI integer ns * 1000 exactly', 'semantics': protocol['measurement'],
+  }
+  write(out/'compute-table.json', {'header': header, 'segments': table})
  else:chosen=None
  write(out/'stage-result.json',{'stage':'S6','status':'inconclusive','aggregate_sampling_status':'pass' if passed else 'inconclusive','G1_table_frozen':False,'reason':'Critical-segment and resolution qualification requires separate review; aggregate stability alone is insufficient.','samples':len(samples),'chosen_sample':chosen,'formal_performance_claim':'GPU active work only; paired CPU request latencies reported separately','S7_started':False,'resolution_limit':'Individual sub-microsecond activities unresolved for precision claims; table retains measured values without padding.'})
  write(out/'artifact-index.json',{'files':[{'path':p.relative_to(out).as_posix(),'bytes':p.stat().st_size,'sha256':sha(p)} for p in sorted(out.rglob('*')) if p.is_file() and p.name!='artifact-index.json']})
