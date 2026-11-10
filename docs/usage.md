@@ -531,4 +531,4 @@ CLI可用`--stats-events events.jsonl --set output.statistics_buffer_bytes=65536
 
 可链接`HBFEventLab::tensor_bridge`，以`TensorAccessBridge::initialize/access/advance_compute/finish`驱动原Host。使用固定计算间隔、同Tick因果续体及严格驻留容量反馈，核心适配器不需要CUDA。构建、结果汇总、失败处理和数据边界见[tensor桥接说明](tensor_bridge.md)。
 
-可选的`HBF_EVENTLAB_QWEN_EXPERIMENT=ON`构建`hbf_eventlab_qwen`，要求CUDA和显式外部执行器路径。三方数值核验、选中tensor范围、环境准备、CLI与复现命令见[Qwen在线实验](qwen_online.md)。默认CTest不自动运行需GPU和模型权重的实验。
+可选的`HBF_EVENTLAB_QWEN_EXPERIMENT=ON`构建`hbf_eventlab_qwen`，要求CUDA和显式外部执行器路径。三方数值核验、选中tensor范围、环境准备、CLI与复现命令见[Qwen在线实验](../experiments/qwen_online/README.md)。默认CTest不自动运行需GPU和模型权重的实验。

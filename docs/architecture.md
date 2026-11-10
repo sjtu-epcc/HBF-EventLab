@@ -44,7 +44,7 @@ Host 的三个派生索引由 `host_indices.cpp` 集中维护：Pending 满重�
 
 会话的外部输入边界直接由 EventQueue 的当前时刻和同 Tick 执行状态派生，不维护第二份时钟。空区间使用 `advance_idle_to()` 推进时钟，不生成虚假事件、不重置累计事件数；已进入的 Tick（包括冻结但尚未执行完的 deadline 批次）不能再接受外部插入。内部反馈遵守原有同 Tick 轮次。`activity().drained()` 只描述临时活动；输入仍开放时不报告 Completed，已关闭且无事件但未排空时报告 Stalled。
 
-`TensorAccessBridge`是独立链接的可选适配层：将固定tensor的offset/bytes转成Global子范围，通过SimulationSession复用原Host并汇总父访存结果。它只持有注册表、当前父访存、未登记偏移和已登记Global集合，不维护MOCS、DLU组装或replay副本；执行器继续拥有真实数据。`advance_compute()`还可独立推进未选择的访存间隔和末尾计算，不制造虚拟命令。CPU示例与可选[Qwen CUDA实验](qwen_online.md)共用此接口，详见[tensor桥接](tensor_bridge.md)。
+`TensorAccessBridge`是独立链接的可选适配层：将固定tensor的offset/bytes转成Global子范围，通过SimulationSession复用原Host并汇总父访存结果。它只持有注册表、当前父访存、未登记偏移和已登记Global集合，不维护MOCS、DLU组装或replay副本；执行器继续拥有真实数据。`advance_compute()`还可独立推进未选择的访存间隔和末尾计算，不制造虚拟命令。CPU示例与可选[Qwen CUDA实验](../experiments/qwen_online/README.md)共用此接口，详见[tensor桥接](tensor_bridge.md)。
 
 会话可在反馈回调中接收`request_yield()`，当前事件结束后正常暂停，尚未发生的未来事件保持待执行。一次性`resume_feedback()`将续体安排为当前Tick的后续正常事件，支持零计算间隔；普通外部输入边界保持不变。冻结deadline批次仍整体结算。`advance_until_yield()`要求调用方保证没有更早的独立外部输入；没有此保证时仍应使用有界推进。
 

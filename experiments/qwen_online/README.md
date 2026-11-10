@@ -1,4 +1,6 @@
-# Qwen 在线接入与三方验证
+# Optional Qwen tensor-callback example
+
+此目录提供可选的单选区 tensor 回调实验，复用核心增量输入接口。
 
 此可选实验复用外部 Qwen3-0.6B CUDA 执行器，通过 `TensorAccessBridge` 调用 HBF EventLab 原有 Host。它验证真实推理能否受后端的容量、时间和完成反馈驱动。核心库及默认构建不依赖 CUDA、PyTorch 或模型权重。
 
@@ -12,13 +14,13 @@ Qwen CUDA 执行器：真实权重、真实计算、访存回调
   → Global 最终结果 → 回调返回 → CUDA 继续依赖计算
 ```
 
-执行器来源为 [Small_case](https://github.com/ZeePgm/Small_case)，本次验证使用提交 `3d8a58ba1c321f41edc3280acda70388964a39c9`。构建只引用该仓库的 `src/qwen.cu` 和 `include/hbf_gpu/qwen.hpp`，准备和 CPU 参照分别调用其 `scripts/prepare.py`、`scripts/reference.py`。不构建其旧在线运行器、StreamingHost 或后端。源码通过显式外部路径提供，未复制到本仓库；若后续要分发这些外部源码，需先确认相应授权。
+执行器来源为 [Small_case](https://github.com/ZeePgm/Small_case)，对应的外部执行器版本为提交 `3d8a58ba1c321f41edc3280acda70388964a39c9`。构建只引用该仓库的 `src/qwen.cu` 和 `include/hbf_gpu/qwen.hpp`，准备和 CPU 参照分别调用其 `scripts/prepare.py`、`scripts/reference.py`。不构建其旧在线运行器、StreamingHost 或后端。源码通过显式外部路径提供，未复制到本仓库。
 
 执行器先将真实 FP32 权重加载到 GPU；HBF 仅初始化所选范围的符号内容并约束访问完成。**这不是把真实权重从 NAND 传到 GPU，也不是完整的 GPU–HBM–HBF 数据迁移或性能模型。** 默认只选择第一层 q_proj 权重的 8KiB 子范围。所有其他真实计算仍执行，其访存回调保留在日志中，但未选择的范围不产生 HBF 命令。
 
 ## 环境与构建
 
-本次验证环境：Windows x64、VS 2022/MSVC 19.43、CUDA Toolkit 12.9.1、RTX 4070 Laptop GPU（计算能力 8.9）、Python 3.12。执行器需要约 2.5GB 空闲显存，建议至少留出 3GiB；模型准备另需数 GB 内存和磁盘。其他平台和 GPU 尚未完成本次实测。
+需要兼容的 C++/CUDA 工具链、Python 和外部执行器。显存、架构与模型路径按运行环境设置。
 
 以下 PowerShell 示例从项目根目录运行。外部源码、模型和虚拟环境放在仓库之外；按本机位置替换变量。
 
@@ -51,7 +53,7 @@ cmake --build build-qwen --config Release --target hbf_eventlab_qwen
   --output build-qwen/validation --failure-checks
 ```
 
-输出目录必须不存在或为空。脚本依次执行独立 Transformers CPU 参照、原生 CUDA、接入 HBF 的 CUDA，然后检查数值、公开事件和地址覆盖。没有 GPU 或显存不足时明确失败，不退回 CPU 冒充 GPU 结果。GPU 实验需要显式运行，不计入默认 CTest；当前默认测试范围和数量见[验证说明](verification.md)。
+输出目录必须不存在或为空。脚本依次执行独立 Transformers CPU 参照、原生 CUDA、接入 HBF 的 CUDA，然后检查数值、公开事件和地址覆盖。没有 GPU 或显存不足时明确失败，不退回 CPU 冒充 GPU 结果。GPU 实验需要显式运行，不计入默认 CTest；当前默认测试范围和数量见[验证说明](../../docs/verification.md)。
 
 | 参数 | 默认值与含义 |
 |---|---|
@@ -66,7 +68,7 @@ cmake --build build-qwen --config Release --target hbf_eventlab_qwen
 
 直接调用 `hbf_eventlab_qwen` 时还需 `--mode native|hbf --model DIR --output-prefix PATH`，可指定 `--chunk`（默认4096），它只控制 Global 子范围大小。当前 Python 三方脚本固定使用默认 chunk。`--resident` 是脚本显式覆盖项，即使给了 INI 也会覆盖其中同名 Host 预算。
 
-直接调用可使用`--detail full|off`（默认full）。off不挂接详细统计sink，也不写逐Global桥接日志；仍保留数值快照、逐执行器回调、每128个Global及父访问结束时的轻量进展、最终业务计数。该开关用于区分记录开销，不能把off样本声称为通过了完整JSONL审计。尺寸与程序墙钟复现入口见[墙钟测量](qwen_wall_time.md)。
+直接调用可使用`--detail full|off`（默认full）。off不挂接详细统计sink，也不写逐Global桥接日志；仍保留数值快照、逐执行器回调、每128个Global及父访问结束时的轻量进展、最终业务计数。该开关用于区分记录开销，不能把off样本声称为通过了完整JSONL审计。尺寸与程序墙钟复现入口见[墙钟测量](#墙钟测量)。
 
 默认 HBF 为 1 channel、1 die、2 banks、8 pages/block，按所选范围派生足够的逻辑 block 数并保留备用块；默认 `fragment64`、FCFS。注册区从配置的 Global base 起算，tensor 偏移单独记录，不把 GPU 指针当 HBF 地址。提供 INI 时使用其中几何，不自动扩容。多 channel 初始化要求完整覆盖 local DLU；小预算与交织导致补片不能登记时，仍可能超时或停滞。
 
@@ -102,14 +104,10 @@ cmake --build build-qwen --config Release --target hbf_eventlab_qwen
 
 异常验收中，初始化持续失败应在使用 GPU 权重前终止并排空；读途中触及 `LimitReached` 应停止执行器并保留未完成诊断，不能伪报成功或排空。
 
-## 已验证结果与边界
 
-2026-10-26 的默认 8KiB 范围测试通过：23 token prompt、1个生成 token（785）、24个执行位置；CPU/GPU logits 最大绝对误差约 `6.53e-5`、RMSE约 `7.25e-6`。原生 GPU 与 HBF GPU 快照逐字节一致。50个 Global、3200次命令尝试终结，25次输入容量背压，Host/Device 排空。
+## 墙钟测量
 
-该配置的初始化完成时刻为3.046486µs；推理模拟时间12.839256µs，包括7.468µs固定计算（含0.005µs尾段）和5.371256µs所选访存服务。这些数字仅用于复现功能行为，不能视为硬件测量。
-
-非零偏移对照选择同一tensor的`[4096,12288)`字节区间，计算间隔和尾段均为0；三方数值、覆盖与完成审计同样通过，推理模拟时间为5.371256µs，没有为零计算间隔额外增加Tick。
-
-当前仅覆盖固定只读权重子范围、单生产者同步回调；无 KV 写回、权重更新、多GPU、异步计算/访存重叠、HBM容量/缓存或真实NAND字节模型。完整网络虽在真实 GPU 上执行，但只有清单中选中的范围接受 HBF 约束。一次通过不证明整个权重空间或长文本推理均已验证。
-
-多 tensor 清单、覆盖率、GPU 计算区间测量和后续实验交付要求见[GPU 实验适配交接](gpu_experiment_handoff.md)。其中明确区分当前可复现能力与待实现任务。
+`measure_wall.py`比较选区规模和详细记录开关，`--profile on`导出程序性能分解。
+使用`python experiments/qwen_online/measure_wall.py --help`查看完整参数。
+初始化、推理、后端推进的程序墙钟分别记录；模拟 Tick 单独报告。
+核心诊断口径见[程序性能诊断](../../docs/runtime_profiling.md)。

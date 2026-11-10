@@ -1,6 +1,6 @@
 # Tensor 访存桥接
 
-`TensorAccessBridge` 将执行器的 `(tensor, offset, bytes)` 回调变成现有 Host 的增量 Global 输入，再按 Global 的最终逻辑结果完成父访存。它是软件适配层，不是另一套 Host，也不直接向 Device 提交请求。默认 CPU 示例无需 CUDA、GPU 或模型权重；可选的[Qwen 在线实验](qwen_online.md)复用同一桥接层进行真实 CUDA 推理验证。
+`TensorAccessBridge` 将执行器的 `(tensor, offset, bytes)` 回调变成现有 Host 的增量 Global 输入，再按 Global 的最终逻辑结果完成父访存。它是软件适配层，不是另一套 Host，也不直接向 Device 提交请求。默认 CPU 示例无需 CUDA、GPU 或模型权重；可选的[Qwen 在线实验](../experiments/qwen_online/README.md)复用同一桥接层进行真实 CUDA 推理验证。
 
 ## 构建和最小验证
 
@@ -77,4 +77,4 @@ auto drained = bridge.finish();
 
 跨channel地址交织仍由原Host完成。Global 4KiB不一定是完整local DLU；严格驻留预算、Global分组和初始化覆盖需共同满足前进性。例如两个channel、64B交织时，一份8KiB完整覆盖可形成两个local DLU；若预算只容纳最初的64个逻辑片段，后续补片可能无法登记而超时。适配器如实暴露这一结果，不悄悄扩容。显式burst还要求每次提交已覆盖完整local DLU。
 
-可选Qwen接入复用名称/offset/bytes回调，采用每次回调间固定计算时延和显式尾段，细节见[实验说明](qwen_online.md)。若未来采用测得的GPU计算耗时，应只测计算区间，排除Host模拟推进、统计导出及访存等待时间。
+可选Qwen接入复用名称/offset/bytes回调，采用每次回调间固定计算时延和显式尾段，细节见[实验说明](../experiments/qwen_online/README.md)。若未来采用测得的GPU计算耗时，应只测计算区间，排除Host模拟推进、统计导出及访存等待时间。

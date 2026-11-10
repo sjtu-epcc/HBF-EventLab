@@ -106,7 +106,7 @@ JSON的`wait_reasons`按通知原因输出固定大小的汇总，schema 1采用
 
 stdout包含程序墙钟、最终Tick、事件数、Global数、响应数和介质操作数。比较开关时除墙钟外这些字段应一致。建议交替开关、重复至少三次并报告中位数；不要在构建或其他重负载验证同时运行时比较墙钟。CTest不设性能阈值，避免机器速度影响功能验证。
 
-可选Qwen可在原命令后加`--profile on`，得到`<output-prefix>.profile.json`；默认`off`，仅HBF模式可开启。实验程序自行管理输出前缀，不使用核心INI的输出路径。`--detail off --profile on`保留聚合诊断、关闭大量逐命令统计，仍保留原有访存／进度报告。其他选区、权重、计算间隔及数值核验要求见[Qwen实验](qwen_online.md)。
+可选Qwen可在原命令后加`--profile on`，得到`<output-prefix>.profile.json`；默认`off`，仅HBF模式可开启。实验程序自行管理输出前缀，不使用核心INI的输出路径。`--detail off --profile on`保留聚合诊断、关闭大量逐命令统计，仍保留原有访存／进度报告。其他选区、权重、计算间隔及数值核验要求见[Qwen实验](../experiments/qwen_online/README.md)。
 
 优先观察：split占比是否大；输入背压导致多少重复拆分；pump、reclaim是否也有大量重复扫描。对旧报告可观察`results_entries_visited / results_scan.calls`随历史增长的趋势；当前两项均为0，不应计算0/0。这些是优化线索，不应把单项较大直接解释为唯一瓶颈。
 
