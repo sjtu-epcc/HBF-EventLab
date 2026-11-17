@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }} / ${{ matrix.configuration }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Toolchain versions
+        run: |
+          cmake --version
+          ctest --version
+          python --version
+      - name: Configure Linux
+        if: runner.os == 'Linux'
+        run: >-
+          cmake -S . -B build -G "Unix Makefiles"
+          -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          -DBUILD_TESTING=ON -DHBF_EVENTLAB_EXPERIMENT_TESTS=ON
+          -DHBF_EVENTLAB_QWEN_EXPERIMENT=OFF
+          -DPython3_EXECUTABLE="${{ env.pythonLocation }}/bin/python"
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        run: >-
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTING=ON -DHBF_EVENTLAB_EXPERIMENT_TESTS=ON
+          -DHBF_EVENTLAB_QWEN_EXPERIMENT=OFF
+          -DPython3_EXECUTABLE="${{ env.pythonLocation }}/python.exe"
+      - name: Build
+        run: cmake --build build --config ${{ matrix.configuration }} --parallel 2
+      # Serial tests avoid sharing output paths across test processes.
+      - name: Test
+        run: >-
+          ctest --test-dir build -C ${{ matrix.configuration }}
+          --output-on-failure --no-tests=error
+          --output-junit test-results.xml
+      - name: Upload test and configuration logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.configuration }}
+          path: |
+            build/test-results.xml
+            build/Testing/Temporary/*.log
+            build/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: warn
+          retention-days: 14

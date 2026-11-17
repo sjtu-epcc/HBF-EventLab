@@ -15,6 +15,12 @@
 
 上述两个配置为后端基线发布前的重新构建与完整回归，CTest串行运行（未启用 `--parallel`），每项超时30s；两个配置的构建也依次执行。复现时可将日志及JUnit XML保存为构建产物。表中耗时对应所列环境。墙钟耗时包含测试进程和测试框架开销，并受机器、工具链、并发和系统负载影响；不构成 Debug/Release 或跨平台性能结论。项目要求 C++17 和 CMake 3.20 或更新版本，平台构建方法见[使用说明](usage.md#构建)；复现时应记录 commit、工具链及配置。
 
+## 自动化 CI
+
+[GitHub Actions CI](https://github.com/sjtu-epcc/HBF-EventLab/actions/workflows/ci.yml) 在推送、Pull Request 和手动触发时运行。配置见 [ci.yml](../.github/workflows/ci.yml)：Ubuntu 24.04／GCC 与 Windows Server 2022／MSVC，分别构建 Debug 和 Release，使用 Python 3.12，显式开启 C++ 与 Python 实验测试，关闭可选 CUDA Qwen 目标。
+
+每个任务执行 CMake 配置、构建和完整 CTest；没有注册测试时按失败处理。测试串行运行并遵守各用例自身的超时设置。JUnit 报告、CTest 日志及 CMake 配置日志作为产物保留 14 天；任务失败后仍尝试保存日志。具体通过情况以对应提交的 Actions 记录为准。真实 GPU 数值验证和绘图不在该自动化流程内。
+
 ## 2. 测试矩阵
 
 512项由35个基础行为场景、34个生命周期/事件场景、46个Device场景、1个Device示例、153个Host行为场景、1个增量Host示例、45个在线会话场景、11个Session故障接口/Host历史边界场景、3个会话/容量/桥接示例、23个tensor桥接场景、8个计算尾段/选区场景、45个统计场景、26个配置场景、28个CLI场景、12个程序性能诊断场景、19个通知诊断/唤醒场景、10个读调度/窗口观察场景和12个依赖Python的实验及公共基础设施测试入口组成。分类表示验证职责，不表示规范章节数量。
@@ -281,8 +287,4 @@ python experiments/read_scheduling/plot.py out/read-scheduling-minimal
 
 ## 可选Qwen在线验证
 
-默认512项CTest不需要GPU、CUDA或模型权重，其中包含8个计算推进/选区场景及1个Python审计测试入口。真实GPU三方验证需要显式启用可选目标并运行[Qwen实验](../experiments/qwen_online/README.md#运行)。程序性能诊断的开关对照使用无CUDA的原Host闭环；可选CUDA目标需要独立构建和验证。
-
-2026-10-26在Windows、MSVC 19.43、CUDA 12.9.1、RTX 4070 Laptop GPU完成：独立CPU参照、原生GPU、HBF接入GPU三方生成结果一致；logits最大绝对误差约6.53e-5、RMSE约7.25e-6，低于运行前确定的阈值；两个GPU模式的全部快照逐字节一致。默认选区为8KiB，50个Global、3200次命令尝试终结，25次输入容量背压，Host/Device排空。
-
-附加验证覆盖非零tensor偏移与零计算间隔、初始化持续program fail的错误中止及排空、选中读途中运行限制的错误中止和未完成诊断。计算尾段明确计入；模拟时间不来自程序墙钟。该实验只验证所选权重子范围的在线契约，不证明整个模型的所有访存已经通过HBF，也不是校准后的GPU–HBF性能结果。配置、范围、阈值与完整复现命令统一见[Qwen实验说明](../experiments/qwen_online/README.md)。
+Qwen 在线实验通过原有增量 Host 验证真实 GPU 访存的完成反馈、容量背压与数值一致性，需要独立准备 CUDA、GPU 和模型权重。默认 CTest 与 CI 仅运行其无 CUDA 的接口及审计测试；环境、配置和复现步骤见 [Qwen 实验详细说明](../experiments/qwen_online/README.md)。
