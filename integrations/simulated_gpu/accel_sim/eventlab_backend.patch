@@ -1,0 +1,227 @@
+diff --git a/Makefile b/Makefile
+index 35457c9..11f6432 100644
+--- a/Makefile
++++ b/Makefile
+@@ -149,11 +149,11 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
+ 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
+ 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
+ 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
+ 			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
+ 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
+-			$(MCPAT) \
++			$(MCPAT) $(HBF_EVENTLAB_LIBRARY) \
+ 			-o $(SIM_LIB_DIR)/libcudart.so
+ 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.2 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.2; fi
+ 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.3 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.3; fi
+ 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.4 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.4; fi
+ 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.5.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.5.0; fi
+diff --git a/src/gpgpu-sim/Makefile b/src/gpgpu-sim/Makefile
+index 7767fc8..5a7a0b9 100644
+--- a/src/gpgpu-sim/Makefile
++++ b/src/gpgpu-sim/Makefile
+@@ -90,10 +90,12 @@ depend:
+ 	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
+ 
+ $(OUTPUT_DIR)/%.$(OEXT): %.cc
+ 	$(CPP) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+ 
++$(OUTPUT_DIR)/hbf_eventlab_bridge.$(OEXT): CXXFLAGS += -std=c++17 -I$(HBF_EVENTLAB_ROOT)/include -I$(HBF_EVENTLAB_ROOT)/integrations/simulated_gpu/include -I$(HBF_EVENTLAB_ROOT)/integrations/simulated_gpu/third_party/hbf_sim
++
+ clean:
+ 	rm -f *.o core *~ *.a 
+ 	rm -f Makefile.makedepend Makefile.makedepend.bak
+ 
+ $(OUTPUT_DIR)/option_parser.$(OEXT): option_parser.h
+diff --git a/src/gpgpu-sim/gpu-sim.cc b/src/gpgpu-sim/gpu-sim.cc
+index eb180e5..62c0033 100644
+--- a/src/gpgpu-sim/gpu-sim.cc
++++ b/src/gpgpu-sim/gpu-sim.cc
+@@ -2203,11 +2203,11 @@ void gpgpu_sim::cycle() {
+     // Clock every HBF stack exactly once, then let memory partitions drain and
+     // inject in a GPU-wide rotating order.  Advance the cursor only after an
+     // actual admission so periodic device service cannot phase-lock priority.
+     if (m_memory_config->hbf_enabled && m_hbf_system &&
+         m_memory_config->m_n_mem > 0) {
+-      if (m_hbf_system->busy()) m_hbf_system->cycle();
++      m_hbf_system->cycle_at(dram_time - m_config.dram_period);
+       const unsigned partition_count = m_memory_config->m_n_mem;
+       const unsigned start = m_hbf_partition_rr_next % partition_count;
+       bool admitted = false;
+       unsigned last_admitted = start;
+       for (unsigned offset = 0; offset < partition_count; ++offset) {
+diff --git a/src/gpgpu-sim/hbf_system.cc b/src/gpgpu-sim/hbf_system.cc
+index ec48f05..2150ff1 100644
+--- a/src/gpgpu-sim/hbf_system.cc
++++ b/src/gpgpu-sim/hbf_system.cc
+@@ -1,18 +1,22 @@
+ #include "hbf_system.h"
+ 
+ #include <assert.h>
+ #include <limits.h>
+ #include <stdlib.h>
++#include <stdexcept>
++#include <string>
+ 
+ #include "gpu-sim.h"
+ #include "hbf_cube.h"
++#include "hbf_eventlab_bridge.h"
+ #include "mem_fetch.h"
+ 
+ hbf_system_t::hbf_system_t(const memory_config *config,
+                            memory_stats_t *stats, gpgpu_sim *gpu)
+     : m_config(config),
++      m_eventlab(NULL),
+       m_num_stacks(config->hbf_num_stacks > 0 ? config->hbf_num_stacks : 1),
+       m_stack_map(config->hbf_stack_map == 1 ? 1 : 0),
+       m_rewrite_addresses(m_num_stacks > 1 || config->hbf_route_all),
+       m_total_capacity(config->hbf_size),
+       m_stack_capacity(config->hbf_size / m_num_stacks) {
+@@ -32,20 +36,29 @@ hbf_system_t::hbf_system_t(const memory_config *config,
+             "HBF: explicit page,channel placement tables do not encode a "
+             "stack; use stack_map 0/1 for multi-stack runs\n");
+     exit(1);
+   }
+ 
++  const char *backend = getenv("HBF_BACKEND");
++  if (backend && std::string(backend) == "eventlab") {
++    m_eventlab = new hbf_eventlab_bridge_t(config, gpu);
++    return;
++  }
++  if (backend && std::string(backend) != "upstream")
++    throw std::invalid_argument("unknown HBF_BACKEND");
++
+   m_stacks.reserve(m_num_stacks);
+   m_routed_requests.assign(m_num_stacks, 0);
+   m_completed_requests.assign(m_num_stacks, 0);
+   for (unsigned stack = 0; stack < m_num_stacks; ++stack) {
+     m_stacks.push_back(new hbf_cube_t(config, stats, gpu, stack,
+                                       m_num_stacks, m_stack_capacity));
+   }
+ }
+ 
+ hbf_system_t::~hbf_system_t() {
++  delete m_eventlab;
+   // Outstanding requests are still simulator-owned.  Restore their externally
+   // visible addresses before releasing device metadata.
+   for (auto &entry : m_original_addresses)
+     entry.first->set_addr(entry.second);
+   m_original_addresses.clear();
+@@ -60,16 +73,21 @@ hbf_stack_location_t hbf_system_t::locate(
+                               m_config->hbf_page_size, m_num_stacks,
+                               m_stack_map);
+ }
+ 
+ bool hbf_system_t::full(unsigned long long address, bool is_write) const {
++  if (m_eventlab) return m_eventlab->full();
+   hbf_stack_location_t location = locate(address);
+   assert(location.stack < m_stacks.size());
+   return m_stacks[location.stack]->full(is_write);
+ }
+ 
+ void hbf_system_t::push(mem_fetch *request) {
++  if (m_eventlab) {
++    m_eventlab->push(request);
++    return;
++  }
+   assert(request != NULL);
+   hbf_stack_location_t location = locate(request->get_addr());
+   assert(location.stack < m_stacks.size());
+ 
+   if (m_rewrite_addresses) {
+@@ -91,20 +109,29 @@ void hbf_system_t::push(mem_fetch *request) {
+ 
+ void hbf_system_t::cycle() {
+   for (hbf_cube_t *stack : m_stacks) stack->cycle();
+ }
+ 
++void hbf_system_t::cycle_at(double dram_time_seconds) {
++  if (m_eventlab)
++    m_eventlab->advance(dram_time_seconds);
++  else if (busy())
++    cycle();
++}
++
+ void hbf_system_t::restore_address(mem_fetch *request) {
+   if (!m_rewrite_addresses || request == NULL) return;
+   auto original = m_original_addresses.find(request);
+   assert(original != m_original_addresses.end() &&
+          "HBF completion has no saved GPU address");
+   request->set_addr(original->second);
+   m_original_addresses.erase(original);
+ }
+ 
+ mem_fetch *hbf_system_t::pop_return_for(unsigned global_subpartition_id) {
++  if (m_eventlab)
++    return m_eventlab->pop_return_for(global_subpartition_id);
+   unsigned &next = m_return_rr_next[global_subpartition_id];
+   if (next >= m_num_stacks) next = 0;
+   for (unsigned checked = 0; checked < m_num_stacks; ++checked) {
+     unsigned stack = (next + checked) % m_num_stacks;
+     mem_fetch *request =
+@@ -117,20 +144,26 @@ mem_fetch *hbf_system_t::pop_return_for(unsigned global_subpartition_id) {
+   }
+   return NULL;
+ }
+ 
+ bool hbf_system_t::busy() const {
++  if (m_eventlab) return m_eventlab->busy();
+   for (const hbf_cube_t *stack : m_stacks)
+     if (stack->busy()) return true;
+   return !m_original_addresses.empty();
+ }
+ 
+ unsigned hbf_system_t::channels_per_stack() const {
++  if (m_eventlab) return m_eventlab->channels_per_stack();
+   return m_stacks.empty() ? 0 : m_stacks.front()->num_channels();
+ }
+ 
+ void hbf_system_t::print_stat(FILE *fp) {
++  if (m_eventlab) {
++    m_eventlab->print_stat(fp);
++    return;
++  }
+   fprintf(fp, "\n========= HBF System Statistics =========\n");
+   fprintf(fp, "HBF Stacks:             %u\n", m_num_stacks);
+   fprintf(fp, "HBF Stack Map:          %s\n",
+           m_stack_map == 1 ? "contiguous" : "page-interleave");
+   fprintf(fp, "HBF Total Capacity:     %llu bytes\n", m_total_capacity);
+diff --git a/src/gpgpu-sim/hbf_system.h b/src/gpgpu-sim/hbf_system.h
+index 3d7f584..b6cc86b 100644
+--- a/src/gpgpu-sim/hbf_system.h
++++ b/src/gpgpu-sim/hbf_system.h
+@@ -12,10 +12,11 @@
+ #include <stdio.h>
+ #include <vector>
+ 
+ class gpgpu_sim;
+ class hbf_cube_t;
++class hbf_eventlab_bridge_t;
+ class mem_fetch;
+ class memory_config;
+ class memory_stats_t;
+ 
+ struct hbf_stack_location_t {
+@@ -37,10 +38,11 @@ class hbf_system_t {
+   ~hbf_system_t();
+ 
+   bool full(unsigned long long address, bool is_write) const;
+   void push(mem_fetch *request);
+   void cycle();
++  void cycle_at(double dram_time_seconds);
+   mem_fetch *pop_return_for(unsigned global_subpartition_id);
+ 
+   bool busy() const;
+   unsigned num_stacks() const { return m_num_stacks; }
+   unsigned channels_per_stack() const;
+@@ -104,10 +106,11 @@ class hbf_system_t {
+  private:
+   hbf_stack_location_t locate(unsigned long long address) const;
+   void restore_address(mem_fetch *request);
+ 
+   const memory_config *m_config;
++  hbf_eventlab_bridge_t *m_eventlab;
+   std::vector<hbf_cube_t *> m_stacks;
+   std::vector<unsigned long long> m_routed_requests;
+   std::vector<unsigned long long> m_completed_requests;
+   std::map<unsigned, unsigned> m_return_rr_next;
+   std::map<mem_fetch *, unsigned long long> m_original_addresses;

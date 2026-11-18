@@ -1,0 +1,22 @@
+add_library(hbf_eventlab_simulated_gpu src/page_controller.cpp)
+add_library(HBFEventLab::simulated_gpu ALIAS hbf_eventlab_simulated_gpu)
+target_link_libraries(hbf_eventlab_simulated_gpu PUBLIC HBFEventLab::core)
+target_include_directories(hbf_eventlab_simulated_gpu PUBLIC include third_party/hbf_sim)
+
+if(BUILD_TESTING)
+    add_executable(gpu_incremental_tests tests/gpu_incremental.cpp)
+    target_link_libraries(gpu_incremental_tests PRIVATE HBFEventLab::simulated_gpu)
+    foreach(scenario backpressure recovery partial too_large streaming cross_unit retire_history
+            burst_backpressure burst_recovery burst_partial burst_too_large burst_streaming burst_cross_unit)
+        add_test(NAME gpu_incremental_${scenario} COMMAND gpu_incremental_tests ${scenario})
+        set_tests_properties(gpu_incremental_${scenario} PROPERTIES TIMEOUT 30)
+    endforeach()
+
+    add_executable(gpu_configuration_tests tests/gpu_configuration.cpp)
+    target_link_libraries(gpu_configuration_tests PRIVATE HBFEventLab::simulated_gpu)
+    set(gpt2_ini "${CMAKE_CURRENT_SOURCE_DIR}/../../experiments/simulated_gpu/gpt2/config/gpt2-eventlab-device.ini")
+    foreach(scenario mocs supported address output unknown roundtrip timing write_mode fault limits clock experiment)
+        add_test(NAME gpu_configuration_${scenario} COMMAND gpu_configuration_tests ${scenario} "${gpt2_ini}")
+        set_tests_properties(gpu_configuration_${scenario} PROPERTIES TIMEOUT 60)
+    endforeach()
+endif()

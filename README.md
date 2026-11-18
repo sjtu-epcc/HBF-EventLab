@@ -91,6 +91,7 @@ The first command saves the effective configuration and statistics; the second i
 | Host sending | When does prioritizing open DLUs differ from FCFS? [Policy comparison](experiments/arrival_policy/README.md) |
 | Read/write scheduling | How do read windows and NAND arbitration affect contention? [Read-scheduling experiments](experiments/read_scheduling/README.md) |
 | Real GPU and token timing | How do selected FFN weight accesses affect modeled TTFT/TPOT? [F1–F3 experiment on the GPU branch](https://github.com/sjtu-epcc/HBF-EventLab/tree/feat/real-gpu-sf-experiments/integrations/real_gpu/experiments/gpu_ffn) |
+| Simulated GPU | [Accel-Sim adapter](integrations/simulated_gpu/README.md) and [GPT-2 trace replay](experiments/simulated_gpu/gpt2/README.md) |
 
 Backend experiment scripts use the Python standard library. Install optional plotting dependencies with `python -m pip install -e ".[plots]"`. Each experiment guide describes its inputs, configuration, checks, and outputs; see the [shared experiment guide](experiments/README.md).
 

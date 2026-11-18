@@ -91,6 +91,7 @@ Windows 使用 `.\build\Release\hbf_eventlab_cli.exe`，将相同参数写在一
 | Host 发送 | 优先补齐已打开 DLU 在什么情况下与 FCFS 不同？[策略对比](experiments/arrival_policy/README.md) |
 | 读写调度 | 读窗口与 NAND 仲裁如何影响竞争？[读调度实验](experiments/read_scheduling/README.md) |
 | 真实 GPU 与 token 时延 | 选定 FFN 权重访问如何影响模拟 TTFT／TPOT？[GPU 分支的 F1–F3 实验](https://github.com/sjtu-epcc/HBF-EventLab/tree/feat/real-gpu-sf-experiments/integrations/real_gpu/experiments/gpu_ffn) |
+| 模拟 GPU | [Accel-Sim 适配器](integrations/simulated_gpu/README.md)与 [GPT-2 轨迹回放](experiments/simulated_gpu/gpt2/README.md) |
 
 后端实验脚本使用 Python 标准库；绘图依赖可通过 `python -m pip install -e ".[plots]"` 安装。各实验说明提供输入、配置、检查与输出解释，公共流程见[实验工具说明](experiments/README.md)。
 
