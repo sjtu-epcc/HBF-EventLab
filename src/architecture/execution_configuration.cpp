@@ -1,6 +1,8 @@
 #include "hbf_eventlab/architecture/execution_configuration.hpp"
 namespace hbf_eventlab {
 void ExecutionConfiguration::validate(const StaticDeviceDescription& d) const {
+    if(sense_order!=SenseOrder::Accepted && sense_order!=SenseOrder::ReadyRound)
+        throw std::invalid_argument("execution.nand_scheduler.sense_order: unsupported ordering");
     const auto& speed=ucie_speed_profile(ucie.speed_grade);
     if(d.geometry().host_channels>speed.max_modules)
         throw std::invalid_argument("device.geometry.host_channels: exceeds selected UCIe speed grade module limit");

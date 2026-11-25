@@ -149,6 +149,11 @@ void zeros(){
     c.host.max_pending_retries=1;rejects([&]{resolve_configuration(c);},"pending_delay_ps");
 }
 void policies(){
+    auto config=one_channel();
+    check(config.execution.sense_order==SenseOrder::ReadyRound,"simulated GPU branch defaults to ready rounds");
+    apply_configuration_override(config,"execution.nand_scheduler.sense_order","ready_round");
+    check(resolve_configuration(config).values().execution.sense_order==SenseOrder::ReadyRound,"ready round selectable");
+    rejects([&]{apply_configuration_override(config,"execution.nand_scheduler.sense_order","invalid");},"sense_order");
     for(const auto& name:{"fcfs","read_priority"}){
         auto c=one_channel();apply_configuration_override(c,"execution.nand_scheduler.policy",name);
         check(resolve_configuration(c).values().execution.nand_scheduler==name,"built-in NAND policies selectable");
