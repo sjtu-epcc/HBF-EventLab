@@ -35,6 +35,7 @@ struct ReadDispatchConfiguration {
     Tick wait{10000}; // 0 releases without an accumulation delay
     std::size_t threshold=32; // 0 disables count trigger; timer/Batch remain active
 };
+enum class SenseOrder { Accepted, ReadyRound };
 struct ExecutionConfiguration {
     MediaTimingConfiguration media_timing;
     UcieExecutionConfiguration ucie;
@@ -42,6 +43,7 @@ struct ExecutionConfiguration {
     ReadDispatchConfiguration read_dispatch;
     std::string nand_scheduler="fcfs";
     std::string ucie_scheduler="fifo";
+    SenseOrder sense_order=SenseOrder::Accepted;
     void validate(const StaticDeviceDescription&) const;
 };
 } // namespace hbf_eventlab

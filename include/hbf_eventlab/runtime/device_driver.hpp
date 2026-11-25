@@ -84,6 +84,7 @@ private:
         AcceptanceObserver acceptance;
         Stage stage=Stage::Link;
         std::uint64_t accepted_sequence=0;
+        std::uint64_t sense_round=0; // assigned once, when a released miss first passes its read dependencies
         std::optional<WaitId> wait;
         std::optional<ReadCandidate> read;
         bool released=false,cache_pending=false;
@@ -150,6 +151,7 @@ private:
     std::map<CommandKey,std::uint64_t> identities_;
     std::set<EventId> events_owned_;
     std::uint64_t next_attempt_=0;
+    std::uint64_t last_sense_round_=0;
     DeviceStatistics stats_;
     IStatisticsSink* statistics_sink_=nullptr;
     std::function<ProgramOutcome(const ProgramOperation&)> outcome_=[](const auto&){return ProgramOutcome::Success;};

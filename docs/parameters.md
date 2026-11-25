@@ -144,6 +144,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 | `execution.read_dispatch.policy` | `window` | 当前配置入口只提供 window 策略；API 可以注入自定义实现。 |
 | `execution.read_dispatch.wait_ps` | `10000` | 窗口等待时间；0 表示不等待累积。 |
 | `execution.read_dispatch.threshold` | `32` | 等待 Core sense 的窗口成员数触发阈值；0 关闭数量触发，timer 和 Batch 仍可释放。 |
+| `execution.nand_scheduler.sense_order` | `accepted` | 同 Bank 的 sense 排序模型。`accepted` 依据 Base Die 正式接受序。实验值 `ready_round` 将同一释放批次中已通过读依赖检查的 miss 归为同一轮；当时受阻的读在首次通过检查的调度轮次加入。等待 Bank 或缓存填充槽时保留轮次。NAND 策略可从本 Bank 最早一轮中任选合法候选，后轮 miss 等待，独立缓存命中仍可直接服务。 |
 | `execution.nand_scheduler.policy` | `fcfs` | `fcfs`：合法候选按现有序号优先；`read_priority`：合法读优先，再按序号／ID，program与erase之间仍为FCFS。非抢占，不绕过窗口／顺序／资源限制；持续读可能使写饥饿。 |
 | `execution.ucie_scheduler.policy` | `fifo` | 当前配置入口只提供返回方向 FIFO 仲裁。 |
 

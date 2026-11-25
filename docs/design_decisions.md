@@ -211,7 +211,7 @@
 | [ADR-LOOP-R01](#adr-loop-r01) | 显式Core Channel路由接在UCIe与Die之间，当前无限带宽、零延迟、不争用。 | 拓扑受规范约束；无限带宽/零延迟无直接规定 | 模型／输入假设；实现机制 | 已实现于当前子集；V2 |
 | [ADR-LOOP-R02](#adr-loop-r02) | 每个物理Bank同一时刻最多一个read/program/erase，独立Bank可并行；不全程锁祖先Die。 | 受规范约束，机制未指定（保守资源基线） | 模型／输入假设；实现机制 | 已实现于当前子集；V1 |
 | [ADR-LOOP-R03](#adr-loop-r03) | NAND选择、UCIe响应仲裁和窗口释放分属不同策略，Device先过滤合法候选。 | 受规范约束，机制未指定 | 可配置策略；实现机制 | 已实现于当前子集；V1 |
-| [ADR-LOOP-R04](#adr-loop-r04) | 同Bank sense严格有序；实现以控制器正式接受序为基线检查较早未满足读。 | 严格sense顺序：直接规定；采用正式接受序：项目解释 | 行为要求；行为要求（项目解释） | 已实现于当前子集；V1 |
+| [ADR-LOOP-R04](#adr-loop-r04) | 同 Bank 的 sense 顺序由正式接受序或就绪轮次确定。 | 同 Bank 保序由规范规定，排序起点由模型选择 | 行为要求与模型参数 | 已实现 |
 | [ADR-LOOP-R05](#adr-loop-r05) | 每Bank两个页Cache；合法命中不等待读窗口，发射sense前再次查Cache。 | 双缓存和及时命中服务：直接规定；查询流水组织：受规范约束，机制未指定 | 行为要求；实现机制 | 已实现于当前子集；V1 |
 | [ADR-LOOP-R06](#adr-loop-r06) | Cache替换仅选择未填充、未被结果引用的槽，无效槽优先，随后选最久未用。 | 受规范约束，机制未指定 | 实现机制 | 已实现于当前子集；V1 |
 | [ADR-LOOP-R07](#adr-loop-r07) | sense必须先有Cache目的槽；完成释放Bank，结果经有限Egress交接后才释放Cache引用。 | 受规范约束，机制未指定 | 实现机制 | 已实现于当前子集；V1 |
@@ -2112,21 +2112,19 @@
 
 <a id="adr-loop-r04"></a>
 
-#### ADR-LOOP-R04｜同 Bank sense 严格有序，以正式接受序作为当前实现基线。
+#### ADR-LOOP-R04｜同 Bank 读未命中的 sense 排序边界
 
 | 字段 | 记录 |
 |---|---|
-| 规范关系 | 严格sense顺序：直接规定；采用正式接受序：项目解释 |
-| 条目性质 | 行为要求；行为要求（项目解释） |
-| 分类边界说明 | §5.3.1(6)是固定约束；“请求顺序”落到哪个抽象接收边界，需要本版本明确。 |
-| 规范依据／无直接依据说明 | §5.3.1(5b/6) p57；规范没有规定本模拟器accepted_sequence字段。 |
-| 关联要求／条目 | REQ-READDISPATCH；[ADR-LOOP-R03](#adr-loop-r03)；[ADR-LOOP-P07](#adr-loop-p07) |
-| 选择理由 | 避免替换Scheduler后让后到sense越过同Bank旧读，包含旧读尚受跨Bank组序阻挡的情况。 |
-| 模型假设／参数依据 | 本条无独立数值；沿用所关联条目的配置。 |
-| 实现位置（函数／成员） | [bool DeviceDriver::prior_sense](../src/runtime/device_driver.cpp#L266)；[t.accepted_sequence=++stats_.accepted](../src/runtime/device_driver.cpp#L178)；[void DeviceDriver::notify_sense_order](../src/runtime/device_driver.cpp#L263) |
-| 验证测试与覆盖 | 逆序偏好策略仍不能越过同Bank旧sense；旧读被组序阻挡时也保序。<br>[Device：sense_order_policy](../CMakeLists.txt#L162)；[Device：sense_order_blocked](../CMakeLists.txt#L162) |
-| 实现状态／验证状态 | 已实现于当前支持子集；V1。 |
-| 已知限制 | 不把不同Bank排序合并为全局FIFO；Cache合法命中可按既定规则服务。 |
+| 规范依据 | OCP HBF v0.7.0 §5.3.1(5b、6) 约束同 Bank 前序读与 Core Die sense 顺序；§5.3.2.1 描述 Regular Read 的累积和调度。规范未指定 Base Die 应在哪个内部事件为未命中读排定先后。 |
+| 选择理由 | 两种模型用于比较在正式接受或就绪时确定次序对同 Bank 页竞争的影响。排序范围为单个物理 Bank，每个 Bank 同时执行一项介质操作。 |
+| 正式接受序 `accepted` | 命令进入 Base Die 正式处理、占用 outstanding 名额时取得序号。较早接受、尚待服务的同 Bank 读可以挡住后续 miss，即使前者尚未释放或仍受读组依赖约束。 |
+| 就绪轮次 `ready_round` | 同批释放且已通过读依赖检查的 miss 取得同一轮次；释放时仍受阻的读在首次通过检查的调度轮次加入。等待 Bank 空闲或缓存填充槽时保留轮次。NAND 策略可从本 Bank 最早轮次的合法候选中选择，后续轮次等待。 |
+| 缓存与返回 | 正式接受时即可检查 Bank Cache。无保序依赖的命中可以在 timer 到期前取得数据；同组读取数和返回仍受组头约束。响应另经出口缓冲和链路仲裁。 |
+| 配置 | `execution.nand_scheduler.sense_order` 默认 `accepted`。轮内优先级由 `execution.nand_scheduler.policy` 决定。参见[参数说明](parameters.md)。 |
+| 实现 | [DeviceDriver](../src/runtime/device_driver.cpp) 中的 `release_batches()`、`prior_sense()` 和 `execute_media()`。 |
+| 验证 | [设备测试](../tests/device.cpp) 中的 `sense_order_policy`、`sense_order_blocked` 和 `sense_ready_round` 分别检查接受序、依赖解除及同轮选择。四个同轮未命中读可按反向偏好执行，第五个晚到的 miss 等待，独立缓存命中可先返回。 |
+| 关联条目 | [ADR-LOOP-R03](#adr-loop-r03)；[ADR-LOOP-P07](#adr-loop-p07) |
 
 <a id="adr-loop-r05"></a>
 

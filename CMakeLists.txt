@@ -319,7 +319,7 @@ if(BUILD_TESTING)
             pending_frozen pending_tx_full rejected_batch_no_effect ingress_bypass fault_fanout replacement_replay
             remap_cache duplicate_handoff response_feedback configuration cache_pin_invalidation teardown unsupported
             policies invalid_policy link_latency pending_recheck deadline_link_boundary
-            sense_order_policy sense_order_blocked ordered_late_error rewrite_saved_read retirement_loop
+            sense_order_policy sense_order_blocked sense_ready_round ordered_late_error rewrite_saved_read retirement_loop
             teardown_cache_hit callback_limit multi_channel_bandwidth channel_preflight preflight_rx_fit)
         add_test(NAME device_${scenario} COMMAND hbf_eventlab_device_tests ${scenario})
         set_tests_properties(device_${scenario} PROPERTIES TIMEOUT 20)

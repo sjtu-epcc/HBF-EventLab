@@ -55,6 +55,12 @@ void parse(const std::string& s,WriteCommandMode& value) {
     if(s=="fragment64")value=WriteCommandMode::Fragment64;else if(s=="burst4096")value=WriteCommandMode::Burst4096;
     else throw std::invalid_argument("expected fragment64 or burst4096");
 }
+void parse(const std::string& s,SenseOrder& value) {
+    if(s=="accepted") value=SenseOrder::Accepted;
+    else if(s=="ready_round") value=SenseOrder::ReadyRound;
+    else throw std::invalid_argument("expected accepted or ready_round");
+}
+std::string format(SenseOrder value) {return value==SenseOrder::Accepted?"accepted":"ready_round";}
 void parse(const std::string& s,ReadHintMode& value) {
     if(s=="tail_batch")value=ReadHintMode::TailBatch;else if(s=="all_regular")value=ReadHintMode::AllRegular;
     else throw std::invalid_argument("expected tail_batch or all_regular");
@@ -131,6 +137,7 @@ Fields fields(SimulationConfiguration& c) {
     add("execution.buffers.egress_entries",e.buffers.egress.entries);add("execution.buffers.egress_payload_bytes",e.buffers.egress.payload_bytes);
     add("execution.read_dispatch.policy",e.read_dispatch.policy);add("execution.read_dispatch.wait_ps",e.read_dispatch.wait);
     add("execution.read_dispatch.threshold",e.read_dispatch.threshold);
+    add("execution.nand_scheduler.sense_order",e.sense_order);
     add("execution.nand_scheduler.policy",e.nand_scheduler);add("execution.ucie_scheduler.policy",e.ucie_scheduler);
     add("faults.channel",c.faults.target.channel);add("faults.die",c.faults.target.die);
     add("faults.bank",c.faults.target.bank);add("faults.block",c.faults.target.block);
@@ -238,7 +245,8 @@ void write_configuration_summary(std::ostream& out,const ResolvedSimulationConfi
        <<" program="<<e.media_timing.program.value<<" erase="<<e.media_timing.erase.value
        <<" assembly_timeout="<<d.selected.assembly_timeout.value<<" read_window="<<e.read_dispatch.wait.value
        <<" read_threshold="<<e.read_dispatch.threshold<<" host_policy="<<c.host.send_policy
-       <<" nand_policy="<<e.nand_scheduler<<" ucie_policy="<<e.ucie_scheduler<<"\n"
+       <<" nand_policy="<<e.nand_scheduler<<" ucie_policy="<<e.ucie_scheduler
+       <<" sense_order="<<format(e.sense_order)<<"\n"
        <<"CONFIG retention_fragments="<<c.host.retained_fragments<<" replay_pass_limit="<<c.host.max_replay_passes
        <<" pending_retries="<<c.host.max_pending_retries<<" timeout_retries="<<c.host.max_timeout_retries
        <<" retry_delay="<<c.host.pending_retry_delay.value<<" max_tick="<<format(c.run.max_tick)

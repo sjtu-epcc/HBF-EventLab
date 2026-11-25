@@ -219,8 +219,19 @@ bool DeviceDriver::admit(Transaction& t) {
 void DeviceDriver::release_batches(ChannelId ch,const std::vector<DispatchBatch>& batches) {
     for(const auto& batch:batches) {
         ++stats_.window_batches;
+        std::uint64_t round=0;
+        if(config_.sense_order==SenseOrder::ReadyRound)
+            round=last_sense_round_=checked_add(last_sense_round_,1);
         for(auto command:batch) {
-            auto* t=find(ch,command); if(t) { t->released=true; emit("window-release",ch,t->id.value); }
+            auto* t=find(ch,command);
+            if(!t) continue;
+            t->released=true;
+            emit("window-release",ch,t->id.value);
+            if(round && t->read) {
+                const auto probe=reads_.probe(*t->read,false);
+                if(probe.state==ProbeState::Ready && !cache_.contains(*probe.target))
+                    t->sense_round=round;
+            }
         }
     }
 }
@@ -291,7 +302,10 @@ void DeviceDriver::notify_sense_order(const Transaction& t) {
 bool DeviceDriver::prior_sense(const Transaction& t,BankKey bank) const {
     for(auto identity:channels_[bank.channel]->transactions) {
         const auto& older=transactions_.at(identity);
-        if(!older.read || older.cache_pending || older.accepted_sequence>=t.accepted_sequence) continue;
+        if(!older.read || older.cache_pending) continue;
+        if(config_.sense_order==SenseOrder::ReadyRound) {
+            if(!older.sense_round || older.sense_round>=t.sense_round) continue;
+        } else if(older.accepted_sequence>=t.accepted_sequence) continue;
         const auto p=reads_.probe(*older.read,false);
         if(p.state==ProbeState::Stale || p.state==ProbeState::Terminal) continue;
         const auto b=bank_of(capacity_.inspect(older.input.command.address));
@@ -311,6 +325,7 @@ void DeviceDriver::execute_media(ChannelId ch) {
     };
     for(;;) {
         std::vector<Choice> choices;
+        std::uint64_t newly_ready_round=0;
         for(const auto& entry:channels_[ch]->erases) {
             const auto candidate=writes_.erase_candidate(entry.first);
             if(!candidate) throw std::logic_error("stale erase directory");
@@ -340,6 +355,13 @@ void DeviceDriver::execute_media(ChannelId ch) {
             // Another sense in this loop may make a formerly missed page a hit at
             // completion. Cache is rechecked by the next notification-driven pump.
             if(cache_.contains(*p.target)) { try_cache(t); continue; }
+            if(config_.sense_order==SenseOrder::ReadyRound && !t.sense_round) {
+                // Released earlier with an unresolved dependency. All such misses first
+                // found ready in this pass share a round, even when the Bank is busy.
+                if(!newly_ready_round)
+                    newly_ready_round=last_sense_round_=checked_add(last_sense_round_,1);
+                t.sense_round=newly_ready_round;
+            }
             if(prior_sense(t,bank)) { wait(t,{bank_wait(WaitReason::SenseOrder,bank)});continue; }
             if(!runtime_.available(bank)) { wait(t,{bank_wait(WaitReason::Bank,bank)});continue; }
             if(!cache_.can_fill(bank)) { ++stats_.cache_blocked;wait(t,{bank_wait(WaitReason::CacheSpace,bank)});continue; }
@@ -350,6 +372,11 @@ void DeviceDriver::execute_media(ChannelId ch) {
         const auto selected=nand_policy_->select(views);
         const auto it=std::find_if(choices.begin(),choices.end(),[&](const auto& c){return c.view.identity==selected;});
         if(it==choices.end()) throw std::logic_error("NAND policy selected a noncandidate");
+        if(trace_ && it->read) {
+            for(const auto& candidate:choices)
+                if(candidate.read) emit("sense-candidate",ch,candidate.transaction,candidate.view.target);
+            emit("sense-selected",ch,it->transaction,it->view.target);
+        }
         const auto choice=*it; const auto bank=bank_of(choice.view.target);
         // Includes topology validation/routing even though the Core link is ideal.
         (void)topology_.core_channel(bank.die);

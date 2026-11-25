@@ -382,14 +382,49 @@ void sense_order_policy() {
     for(auto&e:f.trace)if(e.action=="sense-issue")order.push_back(e.target->page);
     check(order==std::vector<PageId>({0,1,2}),"Bank sense order is legality, not replaceable priority");
 }
+void sense_ready_round() {
+    ExecutionConfiguration c;
+    c.sense_order=SenseOrder::ReadyRound;
+    c.read_dispatch.wait=Tick{50000};
+    c.read_dispatch.threshold=4;
+    Fixture f(c,256,Tick{10000000},std::make_unique<ReverseNand>());
+    f.warm({},6);
+    f.send(f.tx(Op::Read,{},5,0,64,0,ReadHint::Batch));
+    f.run();
+    f.trace.clear();
+    for(PageId page=0;page<4;++page) f.send(f.tx(Op::Read,{},page));
+    while(!f.count("sense-issue")) check(f.events.run_next(),"first round starts");
+    const auto late=f.send(f.tx(Op::Read,{},4,0,64,0,ReadHint::Batch));
+    const auto hit=f.send(f.tx(Op::Read,{},5));
+    f.run();
+    std::vector<std::vector<PageId>> decisions;
+    std::vector<PageId> candidates,issued;
+    for(const auto& e:f.trace) {
+        if(e.action=="sense-candidate") candidates.push_back(e.target->page);
+        if(e.action=="sense-selected") { decisions.push_back(candidates); candidates.clear(); }
+        if(e.action=="sense-issue") issued.push_back(e.target->page);
+    }
+    check(decisions==std::vector<std::vector<PageId>>{{0,1,2,3},{0,1,2},{0,1},{0},{4}},
+          "only the oldest ready round of this Bank reaches the scheduler");
+    check(issued==std::vector<PageId>{3,2,1,0,4},"scheduler can reverse peers but cannot overtake a round");
+    check(f.moment("window-release",late.value)<f.moment("sense-finish"),"late miss released during first sense");
+    check(f.replies.at(hit).at<f.moment("sense-finish") && f.rr(hit).data==DataToken{105},
+          "independent cache hit skips earlier misses and its timer");
+    check(f.count("window-release")==5,"cache hit never joined a release batch");
+}
 void sense_order_blocked() {
-    Fixture f;f.warm({},2);f.warm({0,0,1,0});f.trace.clear();
-    f.send(f.tx(Op::Read,{0,0,1,0},0,0,64,0,ReadHint::Batch,7));
-    f.send(f.tx(Op::Read,{},0,0,64,0,ReadHint::Batch,7));
-    f.send(f.tx(Op::Read,{},1,0,64,0,ReadHint::Batch,8));f.run();
-    std::vector<PageId> order;
-    for(auto&e:f.trace)if(e.action=="sense-issue"&&e.target->bank==0)order.push_back(e.target->page);
-    check(order==std::vector<PageId>({0,1}),"younger same-Bank sense cannot bypass older order-blocked read");
+    for(const auto mode:{SenseOrder::Accepted,SenseOrder::ReadyRound}) {
+        ExecutionConfiguration c;c.sense_order=mode;
+        Fixture f(c);f.warm({},2);f.warm({0,0,1,0});f.trace.clear();
+        const auto head=f.send(f.tx(Op::Read,{0,0,1,0},0,0,64,0,ReadHint::Batch,7));
+        const auto dependent=f.send(f.tx(Op::Read,{},0,0,64,0,ReadHint::Batch,7));
+        f.send(f.tx(Op::Read,{},1,0,64,0,ReadHint::Batch,8));f.run();
+        std::vector<PageId> order;
+        for(auto&e:f.trace)if(e.action=="sense-issue"&&e.target->bank==0)order.push_back(e.target->page);
+        const std::vector<PageId> expected=mode==SenseOrder::Accepted?std::vector<PageId>{0,1}:std::vector<PageId>{1,0};
+        check(order==expected,"blocked read gets precedence only in accepted order mode");
+        check(f.replies.at(head).at<f.replies.at(dependent).at,"both modes preserve group order");
+    }
 }
 void ordered_late_error() {
     ExecutionConfiguration c;c.buffers.egress={1,64};Fixture f(c);f.warm();
@@ -478,7 +513,7 @@ void preflight_rx_fit() {
 }
 int main(int argc,char**argv) {
     const std::map<std::string,void(*)()> cases{
-        {"sense_order_policy",sense_order_policy},{"sense_order_blocked",sense_order_blocked},
+        {"sense_order_policy",sense_order_policy},{"sense_ready_round",sense_ready_round},{"sense_order_blocked",sense_order_blocked},
         {"ordered_late_error",ordered_late_error},{"rewrite_saved_read",rewrite_saved_read},
         {"retirement_loop",retirement_loop},{"teardown_cache_hit",teardown_cache_hit},
         {"callback_limit",callback_limit},{"multi_channel_bandwidth",multi_channel_bandwidth},
