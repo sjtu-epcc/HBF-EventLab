@@ -8,11 +8,12 @@ build=$(realpath -m "${2:?provide an EventLab build directory}")
 gpu="$sim/gpu-simulator/gpgpu-sim"
 [[ $(git -C "$sim" rev-parse HEAD) == 3415a3171d9312fac6a835bc1aa188f7aab685c0 ]] || { echo 'Unexpected HBF-Sim revision' >&2; exit 1; }
 [[ $(git -C "$gpu" rev-parse HEAD) == 6c3cf4ff32110908386d605a7034fc67666a92de ]] || { echo 'Run upstream make bootstrap at the pinned revision first' >&2; exit 1; }
-patch="$here/eventlab_backend.patch"
-if ! git -C "$gpu" apply --reverse --check "$patch" 2>/dev/null; then
-    git -C "$gpu" apply --check "$patch"
-    git -C "$gpu" apply "$patch"
-fi
+for patch in "$here/eventlab_backend.patch" "$here/read_observation.patch"; do
+    if ! git -C "$gpu" apply --reverse --check "$patch" 2>/dev/null; then
+        git -C "$gpu" apply --check "$patch"
+        git -C "$gpu" apply "$patch"
+    fi
+done
 cmake -S "$repo" -B "$build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DBUILD_SHARED_LIBS=OFF -DHBF_EVENTLAB_SIMULATED_GPU=ON
 cmake --build "$build" --target hbf_eventlab_simulated_gpu --parallel "${JOBS:-2}"

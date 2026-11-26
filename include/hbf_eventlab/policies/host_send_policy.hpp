@@ -23,13 +23,25 @@ public:
         })->id;
     }
 };
+// Prefer a read on the last successfully handed-off read's channel-local page.
+class SameReadPagePolicy final:public IHostSendPolicy {
+public:
+    SendUnitId select(const std::vector<HostSendCandidate>& c) const override {
+        if(c.empty())throw std::logic_error("empty Host candidate set");
+        return std::min_element(c.begin(),c.end(),[](const auto& a,const auto& b) {
+            return std::make_tuple(!a.same_read_page,a.sequence,a.id) <
+                   std::make_tuple(!b.same_read_page,b.sequence,b.id);
+        })->id;
+    }
+};
 inline void validate_host_send_policy(const std::string& name) {
-    if(name!="fcfs" && name!="fill_open")
-        throw std::invalid_argument("host.send_policy: unsupported policy '"+name+"'; supported: fcfs, fill_open");
+    if(name!="fcfs" && name!="fill_open" && name!="same_read_page")
+        throw std::invalid_argument("host.send_policy: unsupported policy '"+name+"'; supported: fcfs, fill_open, same_read_page");
 }
 inline std::unique_ptr<IHostSendPolicy> make_host_send_policy(const std::string& name) {
     validate_host_send_policy(name);
     if(name=="fcfs")return std::make_unique<FcfsHostSendPolicy>();
+    if(name=="same_read_page")return std::make_unique<SameReadPagePolicy>();
     return std::make_unique<FillOpenDluPolicy>();
 }
 } // namespace hbf_eventlab

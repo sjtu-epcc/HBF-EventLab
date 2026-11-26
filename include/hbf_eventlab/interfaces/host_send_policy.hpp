@@ -4,7 +4,7 @@ namespace hbf_eventlab {
 // HostDriver filters legality before selection. sequence is this queue entry's
 // age (renewed on real retry), NOT the stable SendUnitId or a Device acceptance ID.
 // A blocked candidate may be bypassed; NotTaken does not renew its sequence.
-struct HostSendCandidate { SendUnitId id; bool supplements_open_dlu; bool replay; std::uint64_t sequence; };
+struct HostSendCandidate { SendUnitId id; bool supplements_open_dlu; bool replay; std::uint64_t sequence; bool same_read_page=false; };
 class IHostSendPolicy {
 public:
     virtual ~IHostSendPolicy()=default;

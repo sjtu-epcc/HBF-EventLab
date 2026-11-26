@@ -31,6 +31,8 @@ class GpuPageController {
 public:
     GpuPageController(HostDriver&,EventQueue&,std::vector<GpuTraceRequest>,GpuControllerConfiguration={});
     ~GpuPageController();
+    using ReadMappingObserver = std::function<void(GlobalRequestId,GlobalRequestId,std::uint64_t,bool)>;
+    void set_read_mapping_observer(ReadMappingObserver observer) { read_mapping_=std::move(observer); }
     void start();
     // Streaming dependencies may refer only to previously admitted source IDs.
     void enqueue(GpuTraceRequest);
@@ -61,6 +63,7 @@ private:
     void wake();
     void pump();
     bool admit(std::size_t);
+    ReadMappingObserver read_mapping_;
     void service_pages();
     void submit(Key,Page&);
     void backend_completed(const WorkResult&,Tick);

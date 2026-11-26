@@ -120,6 +120,8 @@ int main(int argc,char**argv){
         if(!sinks.empty()){device.set_statistics_sink(observation);host.set_statistics_sink(observation);}
         device.set_program_outcome(make_program_outcome(cfg.faults));
         if(trace){
+            host.set_read_order_observations(std::cout);
+            device.set_read_order_observations(std::cout);
             host.set_trace([](auto&e){std::cout<<"HOST "<<e.at.value<<" "<<e.action<<" cmd="<<e.command.value
                 <<" unit="<<e.unit.value<<" channel="<<e.block.channel<<" block="<<e.block.block<<" pass="<<e.pass<<"\n";});
             device.set_trace([](auto&e){std::cout<<"DEVICE "<<e.at.value<<" "<<e.action<<" channel="<<e.channel<<" id="<<e.identity<<"\n";});

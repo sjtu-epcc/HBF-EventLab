@@ -1,4 +1,5 @@
 #pragma once
+#include <ostream>
 #include "hbf_eventlab/host/global_request_splitter.hpp"
 #include "hbf_eventlab/host/retention_store.hpp"
 #include "hbf_eventlab/host/recovery_manager.hpp"
@@ -75,6 +76,7 @@ public:
     const HostStatistics& statistics() const {return stats_;}
     const RecoveryManager& recovery() const {return recovery_;}
     const WriteRetentionStore& retained() const {return retention_;}
+    void set_read_order_observations(std::ostream& out) { read_order_out_=&out; }
     void set_trace(std::function<void(const HostTrace&)> f) {trace_=std::move(f);}
     bool workload_success() const;
     std::string waiting_reason() const;
@@ -129,6 +131,7 @@ private:
     };
     struct Channel {
         std::set<SendUnitId> queue;
+        std::optional<LocalDlu> last_read_page;
         std::map<PageKey,std::size_t> open;
         std::optional<WaitId> wait;
         std::optional<EventId> pump;
@@ -222,6 +225,7 @@ private:
     HostStatistics stats_;
     RuntimeProfile* profile_=nullptr;
     IStatisticsSink* statistics_sink_=nullptr;
+    std::ostream* read_order_out_=nullptr;
     std::function<void(const HostTrace&)> trace_;
     std::function<void(const GlobalCompletion&)> completion_;
     std::function<void(InputCapacity)> input_capacity_handler_;

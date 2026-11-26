@@ -192,6 +192,13 @@ void GpuPageController::backend_completed(const WorkResult& result,Tick) {
     const auto it=backend_.find(result.id);if(it==backend_.end())throw std::logic_error("unknown GPU backend completion");
     const auto key=it->second;auto page=pages_.find(key);
     if(page==pages_.end())throw std::logic_error("missing GPU page MSHR");
+    if(read_mapping_ && page->second.op==Op::Read) {
+        bool merged=false;
+        for(const auto waiter:page->second.waiters) {
+            read_mapping_(requests_.at(waiter).trace.request.id,result.id,page->second.address,merged);
+            merged=true;
+        }
+    }
     auto waiters=page->second.waiters;cancel(page->second.timer);pages_.erase(page);backend_.erase(it);
     for(auto i:waiters) {
         auto& request=requests_.at(i);

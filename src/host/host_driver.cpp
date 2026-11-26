@@ -130,7 +130,9 @@ void HostDriver::pump(ChannelId ch) {
             if(profile_)profile_->add(RuntimeCounter::PumpQueueVisits);
             const auto& u=units_.at(uid);if(tried.count(uid)||!eligible(u))continue;
             const bool open=u.content && channel.open.count({*u.content,u.fragments.front().logical.page});
-            candidates.push_back({uid,open,u.replay,u.enqueue_sequence});
+            const bool same=u.op==Op::Read && channel.last_read_page &&
+                channel.last_read_page->value==u.fragments.front().address.local.value/dlu_bytes;
+            candidates.push_back({uid,open,u.replay,u.enqueue_sequence,same});
         }
         if(candidates.empty())break;
         if(profile_)profile_->add(RuntimeCounter::PumpCandidates,candidates.size());
@@ -157,6 +159,17 @@ void HostDriver::pump(ChannelId ch) {
         }
         if(!handoff.attempt)throw std::logic_error("Taken without attempt identity");
         if(profile_)profile_->add(RuntimeCounter::HandoffTaken);
+        if(u.op==Op::Read) {
+            channel.last_read_page=LocalDlu{f.address.local.value/dlu_bytes};
+            if(read_order_out_)for(const auto& candidate:candidates) {
+                const auto& alternative=units_.at(candidate.id);
+                if(alternative.op!=Op::Read)continue;
+                const auto& frag=alternative.fragments.front();
+                *read_order_out_<<"host-read-option "<<events_.now().value<<" "<<handoff.attempt->value
+                    <<" "<<ch<<" "<<chosen.value<<" "<<candidate.id.value<<" "<<frag.parent.value
+                    <<" "<<frag.address.local.value<<"\n";
+            }
+        }
         u.capacity_at_handoff=capacity_progress_[ch];u.order_retry_allowed=false;
         if(u.retry==RetryKind::PendingLimit) {++u.pending_retries;++stats_.pending_retry_commands;}
         else if(u.retry==RetryKind::Timeout && u.handoffs)++stats_.timeout_retry_commands;

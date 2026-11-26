@@ -98,7 +98,7 @@ Pending 上限与组装存储仍耦合：每 channel 配置 `Pending × 4096B` �
 
 | 完整配置键 | 默认值 | 含义、范围与零值语义 |
 |---|---|---|
-| `host.send_policy` | `fcfs` | `fcfs`：每 channel 当前合法候选中先入队者优先，受阻者可被越过；`fill_open`：补齐已打开 DLU 优先，其次 replay，再按入队顺序。 |
+| `host.send_policy` | `fcfs` | `fcfs`：每 channel 当前合法候选中先入队者优先，受阻者可被越过；`fill_open`：补齐已打开 DLU 优先，其次 replay，再按入队顺序。`same_read_page` 用于读次序实验，优先发送与该 channel 最近一次成功移交的读处于同一逻辑 DLU 的合法读，其余按入队序。 |
 | `host.write_mode` | `fragment64` | `fragment64` 或 `burst4096`；后者要求设备支持 write burst，且输入能覆盖完整 local DLU。不自动改变组包。 |
 | `host.read_hint_mode` | `tail_batch` | `tail_batch` 或 `all_regular`；前者在每 Global、每 channel 的最后一条读使用 Batch。 |
 | `host.max_open_dlus_per_channel` | `2` | 正数。Host 活跃写 DLU 数：从首条命令 Taken 到该 DLU 已移交命令全部收到响应；不是 Device Pending 数。 |

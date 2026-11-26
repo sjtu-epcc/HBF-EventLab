@@ -157,6 +157,7 @@ void DeviceDriver::wait(Transaction& t,const std::vector<WaitKey>& keys) {
     const auto id=t.id.value;
     t.wait=signals_.subscribe(observations,[this,id] {
         auto it=transactions_.find(id); if(it==transactions_.end()) return;
+        end_order_wait(it->second);
         it->second.wait.reset(); request_pump(it->second.input.command.address.channel);
     });
 }
@@ -206,6 +207,8 @@ bool DeviceDriver::admit(Transaction& t) {
     if(cmd.op==Op::Read) {
         // Only real acceptance can close a Batch collection, including immediate
         // Pending forwarding/0xA and cache hits. Invalid read_hint has no Batch effect.
+        if(trace_) emit("read-accepted",ch,t.id.value);
+        if(read_order_out_)*read_order_out_<<"order-accepted "<<events_.now().value<<" "<<t.id.value<<" "<<t.accepted_sequence<<"\n";
         if(t.read) try_cache(t);
         const bool member=t.read.has_value() && !t.cache_pending;
         if(member && statistics_sink_)statistics_sink_->observe(StatReadWindowEntered{t.id,events_.now()});
@@ -264,6 +267,7 @@ bool DeviceDriver::try_cache(Transaction& t) {
     if(probe.state!=ProbeState::Ready) return false;
     t.target=probe.target;
     auto result=cache_.pin(*probe.target); if(!result) return false;
+    observe_served_page(t,*probe.target);
     t.cache_result=std::move(result); t.cache_pending=true;
     notify_sense_order(t);
     remove_window(t); ++stats_.cache_hits; emit("cache-hit",c.channel,t.id.value,probe.target);
@@ -289,7 +293,7 @@ void DeviceDriver::pump(ChannelId ch) {
         auto& t=transactions_.at(identity); if(t.stage!=Stage::Accepted || !t.read) continue;
         // A path can independently settle an error while its candidate sleeps.
         if(!reads_.candidate(ch,t.input.command.id) && !t.cache_pending) {
-            remove_window(t); t.read.reset(); notify_sense_order(t); if(t.wait) {signals_.cancel(*t.wait);t.wait.reset();}
+            remove_window(t); t.read.reset(); notify_sense_order(t); if(t.wait) {end_order_wait(t);signals_.cancel(*t.wait);t.wait.reset();}
         } else try_cache(t);
     }
     execute_media(ch);
@@ -299,7 +303,7 @@ void DeviceDriver::pump(ChannelId ch) {
 void DeviceDriver::notify_sense_order(const Transaction& t) {
     if(t.target) signals_.notify(bank_wait(WaitReason::SenseOrder,bank_of(*t.target)));
 }
-bool DeviceDriver::prior_sense(const Transaction& t,BankKey bank) const {
+const DeviceDriver::Transaction* DeviceDriver::prior_sense(const Transaction& t,BankKey bank) const {
     for(auto identity:channels_[bank.channel]->transactions) {
         const auto& older=transactions_.at(identity);
         if(!older.read || older.cache_pending) continue;
@@ -309,9 +313,18 @@ bool DeviceDriver::prior_sense(const Transaction& t,BankKey bank) const {
         const auto p=reads_.probe(*older.read,false);
         if(p.state==ProbeState::Stale || p.state==ProbeState::Terminal) continue;
         const auto b=bank_of(capacity_.inspect(older.input.command.address));
-        if(!(b<bank) && !(bank<b)) return true;
+        if(!(b<bank) && !(bank<b)) return &older;
     }
-    return false;
+    return nullptr;
+}
+void DeviceDriver::observe_served_page(const Transaction& t,const PhysicalNandAddress& p) {
+    if(read_order_out_)*read_order_out_<<"order-page "<<events_.now().value<<" "<<t.id.value<<" "
+        <<p.channel<<" "<<p.die<<" "<<p.bank<<" "<<p.block<<" "<<p.page<<"\n";
+}
+void DeviceDriver::end_order_wait(Transaction& t) {
+    if(!t.observed_order_wait)return;
+    *read_order_out_<<"order-wait-end "<<events_.now().value<<" "<<t.id.value<<"\n";
+    t.observed_order_wait=false;
 }
 void DeviceDriver::execute_media(ChannelId ch) {
     // Rebuild the bounded READY set after each commit. Resource-blocked high priority
@@ -362,7 +375,20 @@ void DeviceDriver::execute_media(ChannelId ch) {
                     newly_ready_round=last_sense_round_=checked_add(last_sense_round_,1);
                 t.sense_round=newly_ready_round;
             }
-            if(prior_sense(t,bank)) { wait(t,{bank_wait(WaitReason::SenseOrder,bank)});continue; }
+            if(const auto* older=prior_sense(t,bank)) {
+                if(trace_) emit("prior-sense",ch,t.id.value,p.target);
+                if(read_order_out_) {
+                    const auto blocked=*p.target;
+                    const auto before=capacity_.inspect(older->input.command.address);
+                    *read_order_out_<<"order-wait-begin "<<events_.now().value<<" "<<t.id.value<<" "<<older->id.value;
+                    for(const auto& page:{blocked,before})
+                        *read_order_out_<<" "<<page.channel<<" "<<page.die<<" "<<page.bank<<" "<<page.block<<" "<<page.page;
+                    *read_order_out_<<"\n";
+                    t.observed_order_wait=true;
+                }
+                wait(t,{bank_wait(WaitReason::SenseOrder,bank)});
+                continue;
+            }
             if(!runtime_.available(bank)) { wait(t,{bank_wait(WaitReason::Bank,bank)});continue; }
             if(!cache_.can_fill(bank)) { ++stats_.cache_blocked;wait(t,{bank_wait(WaitReason::CacheSpace,bank)});continue; }
             choices.push_back({{choices.size()+1,t.accepted_sequence,MediaOperationKind::Read,*p.target},t.read,{},{},t.id.value});
@@ -418,6 +444,7 @@ void DeviceDriver::execute_media(ChannelId ch) {
             if(!operation) {cache_.cancel_fill(*fill);runtime_.release(bank,ticket);continue;}
             auto& tx=transactions_.at(choice.transaction); remove_window(tx); tx.read.reset(); notify_sense_order(tx);
             if(statistics_sink_)statistics_sink_->observe(StatBankOperationStarted{ticket,MediaOperationKind::Read,operation->physical,events_.now()});
+            observe_served_page(tx,operation->physical);
             if(statistics_sink_)statistics_sink_->observe(StatReadServed{tx.id,ReadServiceKind::Sense,ticket,events_.now()});
             ++stats_.senses; emit("sense-issue",ch,ticket,operation->physical);
             schedule(after(events_.now(),config_.media_timing.sense),EventPhase::Completion,[this,op=*operation,fill=*fill,bank,ticket] {
@@ -451,7 +478,7 @@ void DeviceDriver::queue_responses(ChannelId ch) {
             if(!writes_.response(ch,cmd.id)) continue;
             t.egress=egress_.reserve_metadata(ch); if(!t.egress) continue;
         }
-        if(t.wait) {signals_.cancel(*t.wait);t.wait.reset();}
+        if(t.wait) {end_order_wait(t);signals_.cancel(*t.wait);t.wait.reset();}
         remove_window(t); t.read.reset(); t.stage=Stage::Egress;
         emit("egress-ready",ch,t.id.value);
     }
@@ -466,6 +493,10 @@ void DeviceDriver::start_response(ChannelId ch) {
         candidates.push_back({t.id.value,t.accepted_sequence,cmd.op,checked_add(config_.ucie.overhead.response_control_bytes,payload)});
     }
     if(candidates.empty()) return;
+    if(trace_) {
+        for(const auto& candidate:candidates)
+            if(candidate.op==Op::Read) emit("response-read-candidate",ch,candidate.identity);
+    }
     const auto id=link_policy_->select(candidates);
     const auto chosen=std::find_if(candidates.begin(),candidates.end(),[&](const auto& c){return c.identity==id;});
     if(chosen==candidates.end()) throw std::logic_error("link policy selected a noncandidate");

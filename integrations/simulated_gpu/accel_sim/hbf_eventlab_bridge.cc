@@ -41,7 +41,53 @@ Tick clock_ticks(std::uint64_t cycles,double frequency) {
 }
 }
 
+// One registry entry per simulated GPU. Scheduler probes run in the simulation thread.
+namespace {
+struct ReadObservations final : IStatisticsSink {
+  std::ofstream out;
+  unsigned long long outstanding_reads=0;
+  std::set<std::uint64_t> active_read_attempts;
+  std::set<GlobalRequestId> read_globals;
+  std::map<LogicalWorkId,GlobalRequestId> read_work;
+  void observe(const StatisticsEvent& event) override {
+    if(auto e=std::get_if<StatGlobalDefined>(&event)) {
+      if(e->op==Op::Read)read_globals.insert(e->id);
+    } else if(auto e=std::get_if<StatWorkDefined>(&event)) {
+      if(read_globals.count(e->parent))read_work.emplace(e->id,e->parent);
+    } else if(auto e=std::get_if<StatAttemptLinked>(&event)) {
+      for(auto work:e->work) {
+        auto match=read_work.find(work);
+        if(match!=read_work.end())out<<"link "<<e->id.value<<" "<<match->second.value<<"\n";
+      }
+    } else if(auto e=std::get_if<StatWorkFinished>(&event))read_work.erase(e->id);
+    else if(auto e=std::get_if<StatGlobalFinished>(&event))read_globals.erase(e->id);
+    if(auto e=std::get_if<StatAttemptStarted>(&event)) {
+      if(e->command.op==Op::Read)
+        out<<"command "<<e->at.value<<" "<<e->id.value<<" "<<e->command.address.channel<<" "
+           <<e->command.id.value<<" "<<(e->command.read_hint==ReadHint::Batch?"batch":"regular")<<"\n";
+    } else if(auto e=std::get_if<StatReadWindowEntered>(&event))
+      out<<"enter "<<e->at.value<<" "<<e->id.value<<"\n";
+    else if(auto e=std::get_if<StatReadWindowReleased>(&event)) {
+      out<<"release "<<e->at.value<<" "<<e->channel<<" "<<to_string(e->reason)<<" "<<e->members.size();
+      for(auto member:e->members)out<<" "<<member.value;
+      out<<"\n";
+    } else if(auto e=std::get_if<StatReadServed>(&event))
+      out<<"service "<<e->at.value<<" "<<e->id.value<<" "<<(e->kind==ReadServiceKind::Sense?"sense":"cache")<<"\n";
+  }
+};
+std::map<const gpgpu_sim*,ReadObservations*> read_observers;
+}
+bool eventlab_reads_observed(const gpgpu_sim* gpu) {
+  return !read_observers.empty() && read_observers.count(gpu);
+}
+void eventlab_observe_sm(const gpgpu_sim* gpu,unsigned uid,unsigned sm,unsigned long long cycle,
+                        bool ready,bool issued) {
+  auto& obs=*read_observers.at(gpu);
+  obs.out<<"sm "<<cycle<<" "<<uid<<" "<<sm<<" "<<ready<<" "<<issued<<" "<<obs.outstanding_reads<<"\n";
+}
 struct hbf_eventlab_bridge_t::implementation {
+  ReadObservations observations;
+  ~implementation(){read_observers.erase(gpu);}
   struct Mapping {std::uint64_t address,content=0;GlobalRequestId image{};};
   const memory_config *config;
   gpgpu_sim *gpu;
@@ -135,6 +181,40 @@ struct hbf_eventlab_bridge_t::implementation {
     if(c->hbf_read_mode==1)gc.read_window=clock_ticks(c->hbf_read_agg_window,frequency);
     controller=std::make_unique<GpuPageController>(*host,events,std::vector<GpuTraceRequest>{},gc);
     controller->set_result_observer([this](GlobalRequestId id,const GpuRequestResult& result){finish(id,result);});
+    if(const char* path=std::getenv("HBF_EVENTLAB_READ_OBSERVATIONS")) {
+      observations.out.open(path);
+      if(!observations.out)throw std::runtime_error("cannot open read observations");
+      observations.out.exceptions(std::ios::badbit|std::ios::failbit);
+      if(std::getenv("HBF_EVENTLAB_ORDER_OBSERVATIONS")) {
+        device->set_read_order_observations(observations.out);
+        host->set_read_order_observations(observations.out);
+      }
+      device->set_statistics_sink(observations);
+      host->set_statistics_sink(observations);
+      device->set_trace([this](const DeviceTrace& e) {
+        const std::string_view action=e.action;
+        if(action=="read-accepted")observations.active_read_attempts.insert(e.identity);
+        if(action=="response-read-candidate" ||
+           (action=="egress-ready" && observations.active_read_attempts.count(e.identity)) ||
+           (action=="response-issue" && observations.active_read_attempts.erase(e.identity))) {
+          observations.out<<action<<" "<<e.at.value<<" "<<e.channel<<" "<<e.identity<<"\n";
+        } else if(action=="response-issue" && !observations.active_read_attempts.empty()) {
+          observations.out<<"write-response-issue "<<e.at.value<<" "<<e.channel<<" "<<e.identity<<"\n";
+        }
+        if(action=="read-accepted")
+          observations.out<<"accepted "<<e.at.value<<" "<<e.identity<<"\n";
+        if(e.target && (std::string_view(e.action)=="sense-candidate" ||
+                        std::string_view(e.action)=="sense-selected" || std::string_view(e.action)=="prior-sense")) {
+          const auto& p=*e.target;
+          observations.out<<e.action<<" "<<e.at.value<<" "<<e.identity<<" "<<p.channel<<" "<<p.die<<" "
+                          <<p.bank<<" "<<p.block<<" "<<p.page<<"\n";
+        }
+      });
+      controller->set_read_mapping_observer([this](GlobalRequestId sector,GlobalRequestId global,std::uint64_t address,bool merged) {
+        observations.out<<"mapping "<<sector.value<<" "<<global.value<<" "<<address<<" "<<merged<<"\n";
+      });
+      read_observers.emplace(gpu,&observations);
+    }
     host->start_incremental();
     controller->start();next_slot.resize(total_channels);
     if(const char *path=std::getenv("HBF_EVENTLAB_TRACE")) {
@@ -257,6 +337,7 @@ struct hbf_eventlab_bridge_t::implementation {
       if(batch==write_content.end())batch=write_content.emplace(page,++next_content).first;
       slot.content=batch->second;r.request.content=slot.content;
     }else if(slot.content)r.request.expected_content=slot.content;
+    if(observations.out.is_open() && !mf->is_write())++observations.outstanding_reads;
     owned.emplace(id,mf);++admitted;if(mf->get_data_size()==32)++sector_requests;
     max_owned=std::max<std::uint64_t>(max_owned,owned.size());log("INGRESS",id,mf,events.now());
     controller->enqueue(std::move(r));
@@ -311,12 +392,14 @@ struct hbf_eventlab_bridge_t::implementation {
     auto found=returns.find(source);if(found==returns.end()||found->second.empty())return nullptr;
     auto result=found->second.front();found->second.pop_front();
     log("RETURNED",result.first,result.second,sampled);
+    if(observations.out.is_open() && !result.second->is_write())--observations.outstanding_reads;
     owned.erase(result.first);++returned;
     if(found->second.empty())returns.erase(found);
     return result.second;
   }
   bool busy() const {return !owned.empty()||!controller->drained()||!host->activity().drained()||!device->activity().drained();}
   void print(FILE *fp) {
+    if(observations.out.is_open())observations.out.flush();
     // Accel-Sim normally reports at each kernel boundary while its clock is
     // cumulative. Retire there as well as on a clock reset.
     retire_history();

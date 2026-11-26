@@ -1,4 +1,5 @@
 #pragma once
+#include <ostream>
 #include "hbf_eventlab/interfaces/host_port.hpp"
 #include "hbf_eventlab/interfaces/statistics_sink.hpp"
 #include "hbf_eventlab/runtime/read_path.hpp"
@@ -70,6 +71,7 @@ public:
     void set_statistics_sink(IStatisticsSink&);
     // Fault input and optional streaming diagnostics; no unbounded history in Device.
     void set_program_outcome(std::function<ProgramOutcome(const ProgramOperation&)> f) { outcome_=std::move(f); }
+    void set_read_order_observations(std::ostream& out) { read_order_out_=&out; }
     void set_trace(std::function<void(const DeviceTrace&)> f) { trace_=std::move(f); }
     void declare_discardable(ChannelId,std::uint64_t);
     bool quiesce_pair(ChannelId,std::uint64_t,std::uint64_t);
@@ -87,6 +89,7 @@ private:
         std::uint64_t sense_round=0; // assigned once, when a released miss first passes its read dependencies
         std::optional<WaitId> wait;
         std::optional<ReadCandidate> read;
+        bool observed_order_wait=false;
         bool released=false,cache_pending=false;
         std::optional<ReadResultLease> cache_result;
         std::optional<PhysicalNandAddress> target;
@@ -122,7 +125,9 @@ private:
     void deliver(std::uint64_t);
     void notify_cache(BankKey);
     void notify_bank(BankKey);
-    bool prior_sense(const Transaction&,BankKey) const;
+    const Transaction* prior_sense(const Transaction&,BankKey) const;
+    void observe_served_page(const Transaction&,const PhysicalNandAddress&);
+    void end_order_wait(Transaction&);
     void notify_sense_order(const Transaction&);
     void emit(const char*,ChannelId,std::uint64_t,std::optional<PhysicalNandAddress> = {});
     Transaction* find(ChannelId,CommandId);
@@ -155,6 +160,7 @@ private:
     DeviceStatistics stats_;
     IStatisticsSink* statistics_sink_=nullptr;
     std::function<ProgramOutcome(const ProgramOperation&)> outcome_=[](const auto&){return ProgramOutcome::Success;};
+    std::ostream* read_order_out_=nullptr;
     std::function<void(const DeviceTrace&)> trace_;
 };
 } // namespace hbf_eventlab

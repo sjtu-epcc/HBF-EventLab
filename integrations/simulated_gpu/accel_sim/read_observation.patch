@@ -1,0 +1,36 @@
+--- a/src/gpgpu-sim/shader.cc
++++ b/src/gpgpu-sim/shader.cc
+@@ -1126,13 +1126,22 @@
+   m_warp[warp_id]->set_next_pc(next_inst->pc + next_inst->isize);
+ }
+ 
++extern bool eventlab_reads_observed(const gpgpu_sim*);
++extern void eventlab_observe_sm(const gpgpu_sim*,unsigned,unsigned,unsigned long long,bool,bool);
++// Each issue() invokes all schedulers synchronously on this simulation thread.
++static thread_local bool observe_sm, any_ready, any_issued;
+ void shader_core_ctx::issue() {
++  observe_sm = get_not_completed() && get_kernel() && eventlab_reads_observed(m_gpu);
++  if (observe_sm) any_ready = any_issued = false;
+   // Ensure fair round robin issu between schedulers
+   unsigned j;
+   for (unsigned i = 0; i < schedulers.size(); i++) {
+     j = (Issue_Prio + i) % schedulers.size();
+     schedulers[j]->cycle();
+   }
++  if (observe_sm)
++    eventlab_observe_sm(m_gpu,get_kernel()->get_uid(),get_sid(),
++                        m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle,any_ready,any_issued);
+   Issue_Prio = (Issue_Prio + 1) % schedulers.size();
+ 
+   // really is issue;
+@@ -1556,6 +1565,10 @@
+     }
+   }
+ 
++  if (observe_sm) {
++    any_ready |= ready_inst;
++    any_issued |= issued_inst;
++  }
+   // issue stall statistics:
+   if (!valid_inst)
+     m_stats->shader_cycle_distro[0]++;  // idle or control hazard
